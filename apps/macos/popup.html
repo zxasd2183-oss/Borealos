@@ -1,0 +1,171 @@
+<!doctype html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; -webkit-user-select:none; }
+  html,body { background:transparent; font-family:-apple-system,"SF Pro Text","Helvetica Neue",sans-serif; }
+  body { padding:10px; }
+  .capsule {
+    border-radius:18px; padding:16px 16px 12px;
+    background:rgba(245,245,247,.72);
+    border:1px solid rgba(255,255,255,.55);
+    box-shadow:0 12px 40px rgba(0,0,0,.18);
+    backdrop-filter:blur(20px);
+    color:#1d1d1f;
+    animation:drop .22s cubic-bezier(.32,1.4,.5,1);
+  }
+  @media (prefers-color-scheme:dark) {
+    .capsule { background:rgba(30,30,32,.78); border-color:rgba(255,255,255,.12); color:#f5f5f7; }
+    .sub { color:rgba(245,245,247,.55)!important; }
+    .row b { color:#f5f5f7!important; }
+    .track { background:rgba(255,255,255,.14)!important; }
+    .grand { border-top-color:rgba(255,255,255,.14)!important; }
+  }
+  @keyframes drop { from { opacity:0; transform:translateY(-8px) scale(.97); } to { opacity:1; transform:none; } }
+  .head { display:flex; align-items:center; gap:8px; margin-bottom:10px; }
+  .dot { width:9px; height:9px; border-radius:50%; background:#30d158; box-shadow:0 0 6px rgba(48,209,88,.6); transition:background .3s; }
+  .dot.off { background:#ff9f0a; box-shadow:0 0 6px rgba(255,159,10,.6); }
+  .dot.dead { background:#ff453a; box-shadow:0 0 6px rgba(255,69,58,.6); }
+  .title { font-size:13px; font-weight:600; letter-spacing:.2px; }
+  .sub { font-size:11px; color:#86868b; margin-left:auto; }
+  .sec { font-size:11px; font-weight:600; color:#86868b; text-transform:uppercase; letter-spacing:.6px; margin:12px 0 6px; }
+  .row { display:flex; align-items:center; gap:8px; padding:5px 0; font-size:12px; }
+  .row .name { flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .row b { font-weight:600; color:#1d1d1f; font-variant-numeric:tabular-nums; }
+  .track { flex:0 0 90px; height:5px; border-radius:3px; background:rgba(0,0,0,.08); overflow:hidden; }
+  .fill { height:100%; border-radius:3px; background:linear-gradient(90deg,#0a84ff,#5e5ce6); transition:width .6s cubic-bezier(.2,.8,.2,1); }
+  .empty { font-size:12px; color:#86868b; text-align:center; padding:18px 0 10px; line-height:1.7; }
+  .btns { display:flex; gap:8px; margin-top:14px; }
+  .btns button {
+    flex:1; border:0; border-radius:10px; padding:8px 0; font-size:12px; font-weight:600;
+    background:rgba(0,113,227,.12); color:#0a84ff; cursor:pointer; transition:transform .15s,background .15s;
+  }
+  .btns button:hover { background:rgba(0,113,227,.2); transform:translateY(-1px); }
+  .btns button:active { transform:scale(.97); }
+  .btns button.gray { background:rgba(120,120,128,.12); color:#86868b; }
+  .grand { display:flex; justify-content:space-between; font-size:12px; font-weight:600; padding:8px 0 2px; border-top:1px solid rgba(120,120,128,.18); margin-top:8px; }
+  .task { display:flex; align-items:center; gap:8px; padding:5px 0; font-size:12px; }
+  .task .tname { flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .badge { flex:0 0 auto; font-size:10px; font-weight:600; padding:2px 8px; border-radius:8px; }
+  .badge.running { background:rgba(10,132,255,.14); color:#0a84ff; animation:pulse 1.6s ease-in-out infinite; }
+  .badge.pending { background:rgba(120,120,128,.14); color:#86868b; }
+  .badge.done { background:rgba(48,209,88,.14); color:#30d158; }
+  .badge.failed { background:rgba(255,69,58,.14); color:#ff453a; }
+  @keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:.45; } }
+  .qrow { padding:6px 0 2px; font-size:12px; }
+  .qhead { display:flex; align-items:center; gap:8px; }
+  .qhead .qname { flex:1; font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .qhead .qpct { font-weight:700; font-variant-numeric:tabular-nums; }
+  .qbar { height:5px; border-radius:3px; background:rgba(0,0,0,.08); overflow:hidden; margin:4px 0 2px; }
+  .qfill { height:100%; border-radius:3px; background:linear-gradient(90deg,#0a84ff,#5e5ce6); transition:width .6s cubic-bezier(.2,.8,.2,1); }
+  .qfill.warn { background:linear-gradient(90deg,#ff9f0a,#ff453a); }
+  .qnote { font-size:10px; color:#86868b; }
+  @media (prefers-color-scheme:dark) {
+    .qbar { background:rgba(255,255,255,.14); }
+  }
+</style>
+</head>
+<body>
+<div class="capsule">
+  <div class="head">
+    <div class="dot off" id="dot"></div>
+    <div class="title">Borealos <span style="font-weight:400;opacity:.4;font-size:10px">v5.1.2</span></div>
+    <div class="sub" id="hint">连接中…</div>
+  </div>
+  <div id="body">
+    <div class="empty">正在读取状态…</div>
+  </div>
+  <div class="btns">
+    <button onclick="bar.action('show-main')">主窗口</button>
+    <button onclick="bar.action('open-site')" class="gray">官网</button>
+    <button onclick="bar.action('quit')" class="gray">退出</button>
+  </div>
+</div>
+<script>
+  const dot = document.getElementById('dot');
+  const hint = document.getElementById('hint');
+  const body = document.getElementById('body');
+  function fmt(n){ if(n>=1e6) return (n/1e6).toFixed(1)+'M'; if(n>=1e3) return (n/1e3).toFixed(1)+'K'; return String(n); }
+  function esc(s){ return String(s).replace(/[&<>"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+  function at(ts){ if(!ts) return ''; const d=new Date(ts); return '更新于 '+String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0'); }
+  function render(d){
+    // 网关完全不可达
+    if(!d || !d.ok){
+      dot.className = 'dot dead'; hint.textContent = '离线';
+      body.innerHTML = '<div class="empty">网关不可达<br>胶囊保持待命，恢复后自动变绿</div>';
+      return;
+    }
+    // 网关通但没登录态
+    if(!d.authed){
+      dot.className = 'dot off'; hint.textContent = '未登录';
+      body.innerHTML = '<div class="empty">尚未登录<br>打开主窗口登录后，这里自动出数据</div>';
+      return;
+    }
+    // 已登录，网关健康状态
+    const online = d.online !== false;
+    dot.className = online ? 'dot' : 'dot off';
+    hint.textContent = (online ? '在线' : '网关异常') + (d.at ? ' · ' + at(d.at).slice(3) : '');
+    const tasks = Array.isArray(d.tasks) ? d.tasks : [];
+    const models = (d.usage && d.usage.models) || [];
+    const grand = (d.usage && d.usage.grand) || null;
+    const providers = (d.quota && d.quota.providers) || [];
+    let html = '';
+    // 进行中/最近任务
+    if(tasks.length){
+      const label = { running:'运行中', pending:'排队中', done:'已完成', failed:'失败' };
+      html += '<div class="sec">任务</div>';
+      for(const t of tasks.slice(0,4)){
+        const st = label[t.status] ? t.status : 'pending';
+        html += '<div class="task"><span class="tname">'+esc(t.title||t.id)+'</span>'+
+          '<span class="badge '+st+'">'+label[st]+'</span></div>';
+      }
+    }
+    // 订阅限额（官方接口，与 CLI /usage 同源）
+    if(providers.length){
+      html += '<div class="sec">订阅限额</div>';
+      for(const p of providers){
+        if(p.error){
+          html += '<div class="qrow"><div class="qhead"><span class="qname">'+esc(p.name)+'</span>'+
+            '<span class="qnote">需重新登录</span></div></div>';
+          continue;
+        }
+        const ws = (p.windows||[]).filter(w=>w.usedPercent!=null);
+        if(!ws.length){
+          html += '<div class="qrow"><div class="qhead"><span class="qname">'+esc(p.name)+'</span>'+
+            '<span class="qnote">'+(p.plan?esc(p.plan)+' · ':'')+'不限量 ✓</span></div></div>';
+          continue;
+        }
+        for(const w of ws){
+          const pct = Math.round(w.usedPercent);
+          const warn = pct >= 80 ? ' warn' : '';
+          let reset = '';
+          if(w.resetAt){ const rd=new Date(w.resetAt); reset = ' · '+ (rd.getMonth()+1) + '/' + rd.getDate() + ' 重置'; }
+          html += '<div class="qrow"><div class="qhead"><span class="qname">'+esc(p.name)+' · '+esc(w.label)+'</span>'+
+            '<span class="qpct">'+pct+'%</span></div>'+
+            '<div class="qbar"><div class="qfill'+warn+'" style="width:'+Math.max(2,pct)+'%"></div></div>'+
+            (reset?'<div class="qnote">'+reset+'</div>':'')+'</div>';
+        }
+      }
+    }
+    if(!models.length){
+      html += tasks.length ? '' : '<div class="empty">暂无用量记录</div>';
+      body.innerHTML = html || '<div class="empty">暂无数据</div>';
+      return;
+    }
+    const max = models[0].total || 1;
+    html += '<div class="sec">模型用量</div>';
+    for(const m of models.slice(0,5)){
+      html += '<div class="row"><span class="name">'+esc(m.model)+'</span>'+
+        '<span class="track"><span class="fill" style="width:'+Math.max(4,Math.round(m.total/max*100))+'%"></span></span>'+
+        '<b>'+fmt(m.total)+'</b></div>';
+    }
+    if(grand){
+      html += '<div class="grand"><span>合计</span><span>'+fmt(grand.total)+' tokens · '+grand.calls+' 次</span></div>';
+    }
+    body.innerHTML = html;
+  }
+  bar.onStatus(render);
+</script>
+</body>
+</html>

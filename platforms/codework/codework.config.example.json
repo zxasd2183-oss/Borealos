@@ -1,0 +1,52 @@
+{
+  "version": "2.0.0",
+  "name": "CodeWork 2.0",
+  "description": "智能体辅助开发框架",
+  "stages": {
+    "directory": "./stages",
+    "namingPattern": "stage-{number}"
+  },
+  "deliverables": {
+    "directory": "./deliverables",
+    "autoCopy": true,
+    "namingPattern": "{stageName}-{timestamp}"
+  },
+  "templates": {
+    "directory": "./templates",
+    "defaultTemplate": "web-app"
+  },
+  "tracking": {
+    "enabled": true,
+    "logLevel": "info",
+    "saveHistory": true
+  },
+  "tools": {
+    "allowedTools": ["read", "write", "edit", "exec", "web_search"],
+    "timeout": 30000
+  },
+  "gateway": {
+    "url": "ws://127.0.0.1:18789",
+    "model": "moonshot/kimi-for-coding"
+  },
+  "plugins": {
+    "directory": "./plugins",
+    "autoLoad": true,
+    "allowedSources": ["local", "npm", "github"],
+    "registry": {
+      "vector-workshop": {
+        "name": "矢量工坊",
+        "version": "1.0.0",
+        "source": "local",
+        "path": "./plugins/vector-workshop",
+        "entry": "handler.js",
+        "ui": "ui.html",
+        "enabled": true,
+        "config": {
+          "routePrefix": "/vector",
+          "accessKey": "${CODEWORK_VECTOR_ACCESS_KEY}",
+          "auth": true
+        }
+      }
+    }
+  }
+}

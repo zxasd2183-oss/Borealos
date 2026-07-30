@@ -1,0 +1,85 @@
+{
+  "id": "amz-render-fixture",
+  "analysisVersion": "amazon-full-v1",
+  "file": "fixture.csv",
+  "metrics": {
+    "reportTypeName": "广告活动报告",
+    "groupBy": "campaign",
+    "totals": {
+      "impressions": 3000,
+      "clicks": 75,
+      "spend": 120,
+      "sales": 260,
+      "orders": 5,
+      "ctr": 2.5,
+      "acos": 46.15,
+      "roas": 2.17
+    },
+    "groups": [
+      {
+        "itemId": "campaign-alpha",
+        "name": "Alpha Campaign",
+        "impressions": 1800,
+        "clicks": 45,
+        "spend": 80,
+        "sales": 100,
+        "orders": 2,
+        "acos": 80
+      },
+      {
+        "itemId": "campaign-beta",
+        "name": "Beta Campaign",
+        "impressions": 1200,
+        "clicks": 30,
+        "spend": 40,
+        "sales": 160,
+        "orders": 3,
+        "acos": 25
+      }
+    ]
+  },
+  "coverage": {
+    "analyzedItems": 2,
+    "failedItems": 0,
+    "totalItems": 2,
+    "percentage": 100
+  },
+  "itemAnalyses": [
+    {
+      "itemId": "campaign-alpha",
+      "priority": "high",
+      "dataBasis": "ACOS 80% exceeds the 40% threshold.",
+      "reason": "Spend efficiency is below target.",
+      "consolePath": "Campaign Manager > Campaigns > Alpha Campaign",
+      "steps": [
+        "Open campaign settings",
+        "Reduce the base bid"
+      ],
+      "adjustment": "Reduce bid by 15%-20%",
+      "observationWindow": "7 days",
+      "successCriteria": "ACOS falls below 40%",
+      "rollbackCondition": "Restore the prior bid if orders fall to zero"
+    },
+    {
+      "itemId": "campaign-beta",
+      "priority": "low",
+      "dataBasis": "Three orders at 25% ACOS.",
+      "reason": "Efficient but volume is limited.",
+      "consolePath": "Campaign Manager > Campaigns > Beta Campaign",
+      "steps": [
+        "Open budget settings",
+        "Increase the daily budget"
+      ],
+      "adjustment": "Increase budget by 10%",
+      "observationWindow": "14 days",
+      "successCriteria": "Orders increase while ACOS stays below 30%",
+      "rollbackCondition": "Restore the prior budget if ACOS exceeds 35%"
+    }
+  ],
+  "analysisWarnings": [],
+  "batchSummary": {
+    "completed": 1,
+    "failed": 0,
+    "total": 1
+  }
+}

@@ -1,0 +1,36 @@
+plugins {
+    id 'com.android.application'
+}
+
+android {
+    namespace 'com.nexa.app'
+    compileSdk 35
+    buildToolsVersion "35.0.0"
+
+    defaultConfig {
+        applicationId "dev.borealos.app"
+        minSdk 26
+        targetSdk 35
+        versionCode 10
+        versionName "5.1.8"
+    }
+
+    buildFeatures {
+        buildConfig true
+    }
+
+    // 手机版 / 平板版双安装包：同一代码库，仅 applicationId / 应用名 / 更新通道不同
+    flavorDimensions "device"
+    productFlavors {
+        phone {
+            dimension "device"
+            applicationId "dev.borealos.app"
+            buildConfigField "String", "UPDATE_CHANNEL", '"android"'
+        }
+        pad {
+            dimension "device"
+            applicationId "dev.borealos.pad"
+            buildConfigField "String", "UPDATE_CHANNEL", '"android-tablet"'
+        }
+    }
+}

@@ -1,0 +1,71 @@
+# Dependencies and builds
+**/node_modules/
+**/dist/
+**/build/
+**/.gradle/
+**/coverage/
+**/.cache/
+**/__pycache__/
+*.py[cod]
+**/.tmp*/
+**/tmp/
+
+# Runtime state and user data
+**/.codework/
+**/state/
+**/sessions/
+**/identity/
+**/work-users/
+**/work-uploads/
+**/deliverables/
+**/projects/
+*.db
+*.db-*
+*.sqlite
+*.sqlite3
+
+# Credentials and local configuration
+.env
+.env.*
+!.env.example
+*.key
+*.pem
+*.p12
+*.pfx
+*.crt
+*.cer
+**/secrets/
+**/local.properties
+platforms/codework/codework.config.json
+platforms/codework/plugins/vector-workshop/manifest.json
+services/vector/config.json
+
+# Logs, caches, profiles and temporary output
+*.log
+*.tmp
+*.bak
+*.bak-*
+**/edge-*profile/
+**/shots/
+**/screenshots/
+
+# Installers, archives and large generated media
+*.exe
+*.msi
+*.apk
+*.aab
+*.dmg
+*.zip
+*.7z
+*.tar
+*.gz
+*.mp4
+*.webm
+
+# Editor and operating-system files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+desktop.ini
+.worktrees/

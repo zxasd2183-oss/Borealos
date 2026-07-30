@@ -1,0 +1,29 @@
+{
+  "version": "2.0.0",
+  "name": "CodeWork 2.0",
+  "description": "智能体辅助开发框架",
+  "environment": "production",
+  "tracking": {
+    "logLevel": "warn",
+    "saveHistory": true
+  },
+  "tools": {
+    "timeout": 60000
+  },
+  "executor": {
+    "maxRetries": 3,
+    "retryDelayMs": 2000,
+    "retryExponential": true
+  },
+  "database": {
+    "type": "sqlite",
+    "path": "./.codework/codework.db"
+  },
+  "server": {
+    "enabled": true,
+    "host": "0.0.0.0",
+    "port": 8443,
+    "https": true,
+    "autoCert": false
+  }
+}

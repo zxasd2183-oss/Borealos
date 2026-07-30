@@ -1,0 +1,53 @@
+{
+  "id": "universal-render-fixture",
+  "analysisVersion": "amazon-full-v1",
+  "analysisStatus": "complete",
+  "file": "operations.xlsx",
+  "metrics": {
+    "reportType": "universal",
+    "reportTypeName": "通用数据报告",
+    "sourceRowCount": 3,
+    "validRowCount": 3,
+    "columns": ["Region", "Units", "Observed At", "Owner"],
+    "totals": {
+      "sourceRows": 3,
+      "validRows": 3,
+      "sheetCount": 2,
+      "columnCount": 4
+    },
+    "sheets": [
+      {
+        "name": "Operations",
+        "sourceRowCount": 2,
+        "validRowCount": 2,
+        "columnCount": 3,
+        "profiles": [
+          {"field": "Region", "kind": "category", "nonEmptyCount": 2, "distinctCount": 2, "topValues": [{"value": "East", "count": 1}, {"value": "West", "count": 1}]},
+          {"field": "Units", "kind": "numeric", "nonEmptyCount": 2, "distinctCount": 2, "numeric": {"min": 10, "max": 20, "sum": 30, "mean": 15}},
+          {"field": "Observed At", "kind": "date", "nonEmptyCount": 2, "distinctCount": 2, "dateRange": {"min": "2026-01-01", "max": "2026-01-02"}}
+        ]
+      },
+      {
+        "name": "Owners",
+        "sourceRowCount": 1,
+        "validRowCount": 1,
+        "columnCount": 1,
+        "profiles": [
+          {"field": "Owner", "kind": "category", "nonEmptyCount": 1, "distinctCount": 1, "topValues": [{"value": "Ava", "count": 1}]}
+        ]
+      }
+    ],
+    "groups": [
+      {"itemId": "universal-001", "name": "Operations · Row 2", "sheetName": "Operations", "rowNumber": 2, "values": {"Region": "East", "Units": 10, "Observed At": "2026-01-01"}},
+      {"itemId": "universal-002", "name": "Operations · Row 3", "sheetName": "Operations", "rowNumber": 3, "values": {"Region": "West", "Units": 20, "Observed At": "2026-01-02"}},
+      {"itemId": "universal-003", "name": "Owners · Row 2", "sheetName": "Owners", "rowNumber": 2, "values": {"Owner": "Ava"}}
+    ]
+  },
+  "coverage": {"analyzedItems": 3, "failedItems": 0, "totalItems": 3, "percentage": 100},
+  "itemAnalyses": [
+    {"itemId": "universal-001", "priority": "medium", "dataBasis": "Units 10 in East.", "reason": "This is below the two-row mean of 15.", "consolePath": "数据源 > Operations > Row 2", "steps": ["Confirm the unit definition", "Compare with West"], "adjustment": "Observe; no adjustment", "observationWindow": "7 days", "successCriteria": "Definition is confirmed", "rollbackCondition": "Discard the comparison if units differ"},
+    {"itemId": "universal-002", "priority": "low", "dataBasis": "Units 20 in West.", "reason": "This is above the two-row mean of 15.", "consolePath": "数据源 > Operations > Row 3", "steps": ["Validate the source row"], "adjustment": "Observe; no adjustment", "observationWindow": "7 days", "successCriteria": "Source row is validated", "rollbackCondition": "Revert any annotation if source changes"},
+    {"itemId": "universal-003", "priority": "low", "dataBasis": "Owner Ava is the only owner value.", "reason": "Ownership coverage cannot be compared yet.", "consolePath": "数据源 > Owners > Row 2", "steps": ["Confirm whether more owners are expected"], "adjustment": "Add missing owners only if verified", "observationWindow": "14 days", "successCriteria": "Owner list is confirmed complete", "rollbackCondition": "Remove unverified additions"}
+  ],
+  "analysisWarnings": []
+}

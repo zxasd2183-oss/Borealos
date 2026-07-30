@@ -1,0 +1,16 @@
+{
+  "analysisVersion": "amazon-full-v1",
+  "analysisStatus": "complete",
+  "fixtureItemCount": 125,
+  "file": "amazon-full-125.csv",
+  "reportTypeName": "广告活动报告",
+  "report": {
+    "overview": "完整样本用于验证逐项教学手册与全量数据附录。",
+    "issues": [],
+    "actions": {
+      "now": ["优先处理高花费低转化项目"],
+      "week": ["复盘出价调整结果"],
+      "ongoing": ["每周记录覆盖率与回滚情况"]
+    }
+  }
+}

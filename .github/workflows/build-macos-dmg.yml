@@ -1,0 +1,49 @@
+name: Build macOS DMG
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - 'v*'
+    paths:
+      - 'apps/macos/**'
+      - '.github/workflows/build-macos-dmg.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  build-dmg:
+    name: Build unsigned DMG
+    runs-on: macos-latest
+    timeout-minutes: 30
+
+    defaults:
+      run:
+        working-directory: apps/macos
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Cache Electron runtime
+        uses: actions/cache@v4
+        with:
+          path: apps/macos/electron-bin
+          key: electron-macos-${{ runner.arch }}-39.8.10
+
+      - name: Build DMG
+        run: bash build-dmg.sh
+
+      - name: Verify DMG
+        run: |
+          test -n "$(find . -maxdepth 1 -name '*.dmg' -print -quit)"
+          shasum -a 256 ./*.dmg
+
+      - name: Upload DMG artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Borealos-macOS-DMG-${{ github.ref_name }}
+          path: apps/macos/*.dmg
+          if-no-files-found: error
+          retention-days: 30

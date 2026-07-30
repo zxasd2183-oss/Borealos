@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- pad flavor 专属：应用名（覆盖 main 的 Borealos） -->
+    <string name="app_name">Borealos Pad</string>
+</resources>

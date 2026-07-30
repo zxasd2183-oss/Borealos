@@ -1,0 +1,17 @@
+{
+  "analysisVersion": "amazon-full-v1",
+  "analysisStatus": "complete",
+  "fixtureItemCount": 125,
+  "file": "universal-multi-sheet.xlsx",
+  "reportType": "universal",
+  "reportTypeName": "通用数据报告",
+  "report": {
+    "overview": "该工作簿包含区域运营明细和负责人信息，所有有效行均已解释。",
+    "issues": [],
+    "actions": {
+      "now": ["确认字段定义和数据来源"],
+      "week": ["复核数值范围与日期范围"],
+      "ongoing": ["持续检查新增行和分类变化"]
+    }
+  }
+}

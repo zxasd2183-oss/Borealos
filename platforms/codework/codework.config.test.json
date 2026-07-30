@@ -1,0 +1,44 @@
+{
+  "version": "2.0.0",
+  "name": "CodeWork 2.0",
+  "description": "智能体辅助开发框架",
+  "environment": "test",
+  "stages": {
+    "directory": "./stages",
+    "namingPattern": "stage-{number}"
+  },
+  "deliverables": {
+    "directory": "./deliverables",
+    "autoCopy": true,
+    "namingPattern": "{stageName}-{timestamp}"
+  },
+  "templates": {
+    "directory": "./templates",
+    "defaultTemplate": "web-app"
+  },
+  "tracking": {
+    "enabled": true,
+    "logLevel": "error",
+    "saveHistory": false
+  },
+  "tools": {
+    "allowedTools": ["read", "write", "edit", "exec", "web_search"],
+    "timeout": 5000
+  },
+  "executor": {
+    "maxRetries": 0,
+    "retryDelayMs": 100,
+    "retryExponential": false
+  },
+  "database": {
+    "type": "json",
+    "path": "./.codework/test.db"
+  },
+  "server": {
+    "enabled": false,
+    "host": "127.0.0.1",
+    "port": 3999,
+    "https": false,
+    "autoCert": true
+  }
+}
