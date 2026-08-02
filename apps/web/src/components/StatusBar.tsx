@@ -1,5 +1,6 @@
 import type { FC } from 'react';
 import type { EditorTab, CursorPosition } from '../App';
+import { GitIcon, RefreshIcon, CloseIcon, SettingsIcon, BorealOsLogo, ChevronDownIcon } from './Icons';
 
 interface StatusBarProps {
   /** 当前激活的文件标签页 */
@@ -18,18 +19,18 @@ const StatusBar: FC<StatusBarProps> = ({ activeFile, cursorPosition }) => {
       {/* 左侧：Git 信息与问题统计 */}
       <div className="status-bar__left">
         <div className="status-item" title="Git 分支">
-          <span className="status-item__icon">⎇</span>
+          <span className="status-item__icon"><GitIcon size={12} /></span>
           <span>main</span>
         </div>
         <div className="status-item" title="同步更改">
-          <span className="status-item__icon">↻</span>
+          <span className="status-item__icon"><RefreshIcon size={12} /></span>
           <span>0</span>
-          <span className="status-item__icon">↓</span>
+          <span className="status-item__icon"><ChevronDownIcon size={12} /></span>
           <span>0</span>
         </div>
         <div className="status-divider" />
         <div className="status-item" title="错误">
-          <span className="status-item__icon">✕</span>
+          <span className="status-item__icon"><CloseIcon size={12} /></span>
           <span>0</span>
         </div>
         <div className="status-item" title="警告">
@@ -63,7 +64,7 @@ const StatusBar: FC<StatusBarProps> = ({ activeFile, cursorPosition }) => {
         )}
         <div className="status-divider" />
         <div className="status-item" title="BorealOS 反馈">
-          <span className="status-item__icon">★</span>
+          <span className="status-item__icon"><BorealOsLogo size={12} /></span>
           <span>BorealOS v0.1.0</span>
         </div>
       </div>
