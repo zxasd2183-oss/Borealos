@@ -12,29 +12,86 @@
  */
 
 import type { FastifyInstance, FastifyPluginAsync } from 'fastify';
-import { spawn, type ChildProcess } from 'child_process';
+import { spawn, execSync, type ChildProcess } from 'child_process';
 import os from 'os';
+import fs from 'fs';
+import path from 'path';
 import type { TerminalMessage, TerminalOutput } from '../types';
+
+/**
+ * 查找可用的 shell 可执行文件完整路径
+ * 在沙箱环境中 PATH 可能不包含系统目录，需要手动定位
+ */
+function findShell(): { cmd: string; args: string[] } {
+  const isWindows = os.platform() === 'win32';
+
+  if (isWindows) {
+    // 常见 PowerShell 路径
+    const psPaths = [
+      'C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe',
+      'C:\\Windows\\SysWOW64\\WindowsPowerShell\\v1.0\\powershell.exe',
+    ];
+    // PowerShell 7+ 路径
+    const pwshPaths = [
+      'C:\\Program Files\\PowerShell\\7\\pwsh.exe',
+      'C:\\Program Files\\PowerShell\\7-preview\\pwsh.exe',
+    ];
+
+    for (const p of [...pwshPaths, ...psPaths]) {
+      if (fs.existsSync(p)) {
+        return { cmd: p, args: ['-NoLogo', '-NoExit', '-ExecutionPolicy', 'Bypass'] };
+      }
+    }
+
+    // 尝试通过 where 命令查找
+    try {
+      const found = execSync('where powershell.exe', { encoding: 'utf-8' }).trim().split('\n')[0].trim();
+      if (found && fs.existsSync(found)) {
+        return { cmd: found, args: ['-NoLogo', '-NoExit', '-ExecutionPolicy', 'Bypass'] };
+      }
+    } catch { /* ignore */ }
+
+    // 回退到 cmd.exe
+    const cmdPath = 'C:\\Windows\\System32\\cmd.exe';
+    if (fs.existsSync(cmdPath)) {
+      return { cmd: cmdPath, args: [] };
+    }
+  }
+
+  // Linux/macOS
+  const bashPaths = ['/bin/bash', '/usr/bin/bash', '/usr/local/bin/bash'];
+  for (const p of bashPaths) {
+    if (fs.existsSync(p)) {
+      return { cmd: p, args: ['-i'] };
+    }
+  }
+
+  return { cmd: isWindows ? 'powershell.exe' : 'bash', args: isWindows ? ['-NoLogo'] : ['-i'] };
+}
 
 const terminalRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) => {
   // WebSocket /api/terminal/ws - 交互式终端
   fastify.get('/api/terminal/ws', { websocket: true }, (socket, request) => {
     fastify.log.info('终端 WebSocket 已连接');
 
-    // 根据操作系统选择合适的 shell
+    // 查找可用的 shell
+    const { cmd: shell, args: shellArgs } = findShell();
+
+    // 构建环境变量，补充系统路径
     const isWindows = os.platform() === 'win32';
-    const shell = isWindows ? 'powershell.exe' : 'bash';
-    const shellArgs = isWindows
-      ? ['-NoLogo', '-NoExit', '-ExecutionPolicy', 'Bypass']
-      : ['-i'];
+    const systemPath = isWindows
+      ? 'C:\\Windows\\System32;C:\\Windows\\System32\\WindowsPowerShell\\v1.0;C:\\Windows'
+      : '';
+    const env = {
+      ...process.env,
+      TERM: 'xterm-256color',
+      PATH: process.env.PATH ? `${process.env.PATH};${systemPath}` : systemPath,
+    };
 
     // 启动 shell 子进程
     const shellProcess: ChildProcess = spawn(shell, shellArgs, {
       cwd: os.homedir(),
-      env: {
-        ...process.env,
-        TERM: 'xterm-256color',
-      },
+      env,
     });
 
     fastify.log.info(
