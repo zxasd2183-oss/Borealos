@@ -1,22 +1,35 @@
 /**
  * AI 聊天路由
  *
- * POST /api/chat     - 发送消息并获取回复（模拟 AI 回复）
- * WS   /api/chat/ws  - WebSocket 流式聊天（模拟流式输出）
+ * GET  /api/models       - 获取可用模型列表
+ * POST /api/chat         - 发送消息获取 AI 回复（非流式）
+ * WS   /api/chat/ws      - WebSocket 流式聊天
  */
 
 import type { FastifyInstance, FastifyPluginAsync } from 'fastify';
 import type { ChatRequestBody, ChatMessage, ApiResponse, ChatWsOutput } from '../types';
 import * as store from '../store';
+import {
+  AVAILABLE_MODELS,
+  DEFAULT_MODEL,
+  chatCompletion,
+  chatCompletionStream,
+  type AIModel,
+  type ChatAPIMessage,
+} from '../ai';
 
 const chatRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) => {
-  // POST /api/chat - 发送消息并获取模拟回复
+  // GET /api/models - 获取可用模型列表
+  fastify.get('/api/models', async () => {
+    return { success: true, data: AVAILABLE_MODELS } as ApiResponse<AIModel[]>;
+  });
+
+  // POST /api/chat - 非流式聊天
   fastify.post<{ Body: ChatRequestBody }>(
     '/api/chat',
     async (request, reply) => {
-      const { message, projectId } = request.body;
+      const { message, projectId, model, history } = request.body;
 
-      // 参数校验
       if (!message || typeof message !== 'string' || message.trim().length === 0) {
         return reply.status(400).send({
           success: false,
@@ -25,26 +38,55 @@ const chatRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) => {
       }
 
       // 保存用户消息
-      store.addChatMessage({
-        role: 'user',
-        content: message,
-        projectId,
-      });
+      store.addChatMessage({ role: 'user', content: message, projectId });
 
-      // 生成模拟回复
-      const replyContent = generateMockReply(message);
+      // 构建消息列表
+      const messages: ChatAPIMessage[] = [
+        { role: 'system', content: '你是 BorealOS IDE 的 AI 助手，帮助用户编写和调试代码。请用中文回复。' },
+      ];
+      // 加入历史消息
+      if (history && history.length > 0) {
+        for (const h of history) {
+          if (h.role === 'user' || h.role === 'assistant') {
+            messages.push({ role: h.role, content: h.content });
+          }
+        }
+      }
+      // 当前消息
+      messages.push({ role: 'user', content: message });
 
-      // 保存助手回复
-      const assistantMessage = store.addChatMessage({
-        role: 'assistant',
-        content: replyContent,
-        projectId,
-      });
+      const useModel = model || DEFAULT_MODEL;
 
-      return reply.send({
-        success: true,
-        data: assistantMessage,
-      } as ApiResponse<ChatMessage>);
+      try {
+        const result = await chatCompletion(useModel, messages);
+
+        const assistantMessage = store.addChatMessage({
+          role: 'assistant',
+          content: result.content,
+          projectId,
+        });
+
+        return reply.send({
+          success: true,
+          data: assistantMessage,
+        } as ApiResponse<ChatMessage>);
+      } catch (err) {
+        const errorMsg = err instanceof Error ? err.message : 'AI 服务调用失败';
+        fastify.log.error(`AI 聊天错误: ${errorMsg}`);
+
+        // 回退到模拟回复
+        const fallback = `⚠️ AI 服务暂时不可用：${errorMsg}\n\n以下是模拟回复：\n收到你的消息："${message}"`;
+        const assistantMessage = store.addChatMessage({
+          role: 'assistant',
+          content: fallback,
+          projectId,
+        });
+
+        return reply.send({
+          success: true,
+          data: assistantMessage,
+        } as ApiResponse<ChatMessage>);
+      }
     },
   );
 
@@ -52,74 +94,75 @@ const chatRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) => {
   fastify.get('/api/chat/ws', { websocket: true }, (socket, request) => {
     fastify.log.info('聊天 WebSocket 已连接');
 
-    socket.on('message', (rawMessage) => {
+    socket.on('message', async (rawMessage) => {
       try {
         const data = JSON.parse(rawMessage.toString()) as ChatRequestBody;
-        const { message, projectId } = data;
+        const { message, projectId, model, history } = data;
 
         if (!message || message.trim().length === 0) {
-          const errorMsg: ChatWsOutput = {
-            type: 'error',
-            error: '消息内容不能为空',
-          };
+          const errorMsg: ChatWsOutput = { type: 'error', error: '消息内容不能为空' };
           socket.send(JSON.stringify(errorMsg));
           return;
         }
 
         // 保存用户消息
-        store.addChatMessage({
-          role: 'user',
-          content: message,
-          projectId,
-        });
+        store.addChatMessage({ role: 'user', content: message, projectId });
 
-        // 生成模拟回复
-        const replyContent = generateMockReply(message);
+        // 构建消息列表
+        const messages: ChatAPIMessage[] = [
+          { role: 'system', content: '你是 BorealOS IDE 的 AI 助手，帮助用户编写和调试代码。请用中文回复。' },
+        ];
+        if (history && history.length > 0) {
+          for (const h of history) {
+            if (h.role === 'user' || h.role === 'assistant') {
+              messages.push({ role: h.role, content: h.content });
+            }
+          }
+        }
+        messages.push({ role: 'user', content: message });
 
-        // 模拟流式输出：逐字符发送
-        const chars = Array.from(replyContent);
-        let index = 0;
+        const useModel = model || DEFAULT_MODEL;
 
-        const interval = setInterval(() => {
-          // WebSocket 连接已断开则停止
-          if (socket.readyState !== 1) {
-            // readyState 1 = WebSocket.OPEN
-            clearInterval(interval);
-            return;
+        try {
+          let fullContent = '';
+
+          // 流式输出
+          for await (const chunk of chatCompletionStream(useModel, messages)) {
+            if (socket.readyState !== 1) return;
+
+            fullContent += chunk;
+            const chunkMsg: ChatWsOutput = { type: 'chunk', content: chunk };
+            socket.send(JSON.stringify(chunkMsg));
           }
 
-          if (index >= chars.length) {
-            // 全部发送完毕，发送结束标志
-            const doneMsg: ChatWsOutput = {
-              type: 'done',
-              content: replyContent,
-            };
+          // 发送完成信号
+          if (socket.readyState === 1) {
+            const doneMsg: ChatWsOutput = { type: 'done', content: fullContent };
             socket.send(JSON.stringify(doneMsg));
 
-            // 保存完整的助手回复
+            // 保存完整回复
             store.addChatMessage({
               role: 'assistant',
-              content: replyContent,
+              content: fullContent,
               projectId,
             });
-
-            clearInterval(interval);
-            return;
           }
+        } catch (err) {
+          const errorMsg = err instanceof Error ? err.message : 'AI 流式调用失败';
+          fastify.log.error(`AI 流式聊天错误: ${errorMsg}`);
 
-          // 逐字符发送
-          const chunkMsg: ChatWsOutput = {
-            type: 'chunk',
-            content: chars[index],
-          };
-          socket.send(JSON.stringify(chunkMsg));
-          index++;
-        }, 30); // 每 30ms 发送一个字符，模拟流式输出
+          if (socket.readyState === 1) {
+            const errOut: ChatWsOutput = {
+              type: 'error',
+              error: `AI 服务错误: ${errorMsg}`,
+            };
+            socket.send(JSON.stringify(errOut));
+          }
+        }
       } catch {
-        // JSON 解析失败
         const errorMsg: ChatWsOutput = {
           type: 'error',
-          error: '消息格式错误，请发送 JSON 格式：{ "message": "内容" }',
+          error: '消息格式错误，请发送 JSON: { "message": "内容", "model": "模型ID" }',
         };
         socket.send(JSON.stringify(errorMsg));
       }
@@ -134,25 +177,5 @@ const chatRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) => {
     });
   });
 };
-
-/**
- * 生成模拟 AI 回复
- *
- * 当前为模拟实现，后续版本将接入真实 AI 模型。
- * @param userMessage 用户消息
- * @returns 模拟回复内容
- */
-function generateMockReply(userMessage: string): string {
-  const replies: string[] = [
-    `我收到了你的消息："${userMessage}"。这是一个模拟回复，实际的 AI 集成将在后续版本中实现。`,
-    `关于"${userMessage}"，我理解你的问题。目前我处于模拟模式，暂时无法提供真实的 AI 回复。`,
-    `你说了："${userMessage}"。\n\n这是一条来自 BorealOS 后端的模拟回复。在接入真实的 AI 模型后，我将能够提供更有帮助的回答。`,
-    `收到消息："${userMessage}"。\n\n当前运行在模拟模式。要启用真实的 AI 对话，请配置 AI 模型的 API 密钥。`,
-  ];
-
-  // 根据消息长度选择不同的回复
-  const index = userMessage.length % replies.length;
-  return replies[index];
-}
 
 export default chatRoutes;
