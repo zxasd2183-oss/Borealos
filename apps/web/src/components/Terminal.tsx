@@ -4,6 +4,7 @@ import { Terminal as XTermTerminal } from '@xterm/xterm';
 import { FitAddon } from '@xterm/addon-fit';
 // 引入 xterm 样式
 import '@xterm/xterm/css/xterm.css';
+import { TerminalIcon, RefreshIcon } from './Icons';
 
 /**
  * 终端组件
@@ -244,7 +245,7 @@ const Terminal: FC = () => {
       {/* 终端标题栏 */}
       <div className="terminal-header">
         <div className="terminal-header__title">
-          <span>🖥️ 终端</span>
+          <span><TerminalIcon size={14} /> 终端</span>
           <span className={`terminal-header__status ${connected ? '' : 'terminal-header__status--disconnected'}`}>
             {connected ? '● 已连接' : '● 离线模式'}
           </span>
@@ -255,7 +256,7 @@ const Terminal: FC = () => {
             title="清空终端"
             onClick={() => window.dispatchEvent(new CustomEvent('borealos:clear-terminal'))}
           >
-            ↻
+            <RefreshIcon size={14} />
           </button>
         </div>
       </div>
