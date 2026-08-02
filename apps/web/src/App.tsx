@@ -7,56 +7,6 @@ import ChatPanel from './components/ChatPanel';
 import StatusBar from './components/StatusBar';
 
 /* ============================================================
- * 共享类型定义
- * ============================================================ */
-
-/** 文件树节点 */
-export interface FileNode {
-  /** 显示名称 */
-  name: string;
-  /** 完整路径 */
-  path: string;
-  /** 节点类型：文件或目录 */
-  type: 'file' | 'directory';
-  /** 子节点（仅目录） */
-  children?: FileNode[];
-  /** 文件语言（用于 Monaco 语法高亮） */
-  language?: string;
-}
-
-/** 编辑器标签页 */
-export interface EditorTab {
-  /** 文件完整路径 */
-  path: string;
-  /** 文件名 */
-  name: string;
-  /** 语言标识 */
-  language: string;
-  /** 文件内容 */
-  content: string;
-  /** 是否已修改未保存 */
-  isDirty: boolean;
-}
-
-/** 聊天消息 */
-export interface ChatMessage {
-  /** 消息唯一 ID */
-  id: string;
-  /** 角色：用户 / AI助手 / 系统 */
-  role: 'user' | 'assistant' | 'system';
-  /** 消息内容 */
-  content: string;
-  /** 时间戳 */
-  timestamp: number;
-}
-
-/** 状态栏光标位置信息 */
-export interface CursorPosition {
-  lineNumber: number;
-  column: number;
-}
-
-/* ============================================================
  * 模拟文件树数据（实际项目中由后端 API 提供）
  * ============================================================ */
 const MOCK_FILE_TREE: FileNode[] = [
@@ -176,6 +126,10 @@ const App: React.FC = () => {
   // 消息 ID 计数器
   const messageIdRef = useRef(0);
 
+  // 聊天消息引用（避免 useCallback 依赖问题）
+  const chatMessagesRef = useRef(chatMessages);
+  chatMessagesRef.current = chatMessages;
+
   /* ---------- 编辑器相关操作 ---------- */
 
   /** 打开文件（若已打开则切换到对应标签页） */
@@ -247,8 +201,8 @@ const App: React.FC = () => {
 
   /* ---------- 聊天相关操作 ---------- */
 
-  /** 发送聊天消息 */
-  const handleSendMessage = useCallback(async (content: string) => {
+  /** 发送聊天消息（使用 WebSocket 流式输出） */
+  const handleSendMessage = useCallback(async (content: string, model?: string) => {
     const userMessage: ChatMessage = {
       id: `msg-${messageIdRef.current++}`,
       role: 'user',
@@ -258,38 +212,107 @@ const App: React.FC = () => {
     setChatMessages((prev) => [...prev, userMessage]);
     setIsAiThinking(true);
 
-    try {
-      // 尝试调用后端 AI 接口
-      const response = await fetch('/api/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: content }),
-      });
-      if (response.ok) {
-        const json = await response.json();
-        const replyContent = json.data?.content ?? json.reply ?? '(空回复)';
-        const replyMessage: ChatMessage = {
-          id: `msg-${messageIdRef.current++}`,
-          role: 'assistant',
-          content: replyContent,
-          timestamp: Date.now(),
-        };
-        setChatMessages((prev) => [...prev, replyMessage]);
-      } else {
-        throw new Error('接口返回错误');
+    // 创建流式回复消息占位
+    const streamingId = `msg-${messageIdRef.current++}`;
+    setChatMessages((prev) => [
+      ...prev,
+      { id: streamingId, role: 'assistant', content: '', timestamp: Date.now() },
+    ]);
+
+    let handled = false;
+
+    /** 更新流式消息内容 */
+    const updateStreaming = (text: string) => {
+      setChatMessages((prev) =>
+        prev.map((m) => (m.id === streamingId ? { ...m, content: text } : m)),
+      );
+    };
+
+    /** 回退到 POST 非流式接口 */
+    const tryPostFallback = async () => {
+      if (handled) return;
+      try {
+        const response = await fetch('/api/chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ message: content, model }),
+        });
+        if (response.ok) {
+          const json = await response.json();
+          handled = true;
+          updateStreaming(json.data?.content ?? json.reply ?? '(空回复)');
+        } else {
+          throw new Error('接口返回错误');
+        }
+      } catch {
+        handled = true;
+        updateStreaming(simulateAiReply(content));
+      } finally {
+        setIsAiThinking(false);
       }
-    } catch {
-      // 后端不可用时，使用本地模拟回复
-      const simulatedReply = simulateAiReply(content);
-      const replyMessage: ChatMessage = {
-        id: `msg-${messageIdRef.current++}`,
-        role: 'assistant',
-        content: simulatedReply,
-        timestamp: Date.now(),
+    };
+
+    // 尝试 WebSocket 流式聊天
+    try {
+      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+      const wsUrl = `${protocol}//${window.location.host}/api/chat/ws`;
+      const ws = new WebSocket(wsUrl);
+      let fullContent = '';
+
+      // 连接超时回退（5秒）
+      const connectTimeout = setTimeout(() => {
+        if (!handled && ws.readyState !== WebSocket.OPEN) {
+          ws.close();
+          tryPostFallback();
+        }
+      }, 5000);
+
+      ws.onopen = () => {
+        clearTimeout(connectTimeout);
+        // 构建历史消息（排除系统欢迎消息和空流式占位）
+        const history = chatMessagesRef.current
+          .filter((m) => (m.role === 'user' || m.role === 'assistant') && m.content.length > 0)
+          .map((m) => ({ role: m.role, content: m.content }));
+        ws.send(JSON.stringify({ message: content, model, history }));
       };
-      setChatMessages((prev) => [...prev, replyMessage]);
-    } finally {
-      setIsAiThinking(false);
+
+      ws.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          if (data.type === 'chunk') {
+            fullContent += data.content;
+            updateStreaming(fullContent);
+          } else if (data.type === 'done') {
+            handled = true;
+            updateStreaming(data.content || fullContent);
+            setIsAiThinking(false);
+            ws.close();
+          } else if (data.type === 'error') {
+            handled = true;
+            updateStreaming(`⚠️ ${data.error || 'AI 服务错误'}`);
+            setIsAiThinking(false);
+            ws.close();
+          }
+        } catch {
+          // 忽略解析错误
+        }
+      };
+
+      ws.onerror = () => {
+        clearTimeout(connectTimeout);
+        if (!handled) {
+          tryPostFallback();
+        }
+      };
+
+      ws.onclose = () => {
+        clearTimeout(connectTimeout);
+        if (!handled) {
+          tryPostFallback();
+        }
+      };
+    } catch {
+      tryPostFallback();
     }
   }, []);
 
