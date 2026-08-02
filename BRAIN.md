@@ -2,7 +2,7 @@
 
 > **用途**：本文件是项目的"记忆大脑"。每次会话开始时优先读取此文件以恢复上下文，防止失忆。每次开发结束或重要节点更新此文件，并立即推送到 Gitee。
 >
-> **最后更新**：2026-08-02
+> **最后更新**：2026-08-02（UI 改造：用量面板 + 项目进度面板）
 
 ---
 
@@ -81,6 +81,9 @@ borealos/
 - [x] UI 重构（活动栏 + 图标组件）
 - [x] 终端 WebSocket URL 与消息解析修复
 - [x] Vite 代理 WebSocket 配置修复
+- [x] **用量显示面板**（UsagePanel）— Token 用量、API 调用统计、额度进度条、7天趋势柱状图、模型用量分布
+- [x] **项目进度面板**（ProgressPanel）— 总进度环、模块完成度、里程碑时间线、可勾选待办任务
+- [x] 活动栏新增"用量统计"和"项目进度"两个视图入口
 
 ### 🚧 待开发
 - [ ] `apps/desktop`（Tauri 2.0 桌面端）
@@ -133,6 +136,7 @@ pnpm lint                             # 类型检查
 ## 九、最近提交脉络
 
 最新提交（master HEAD）：
+- UI 改造：UsagePanel + ProgressPanel + 新图标 + 样式
 - `18489e7` create: ActivityBar.tsx
 - `59c03fd` create: Icons.tsx
 - `02f6f83` create: vite-env.d.ts

@@ -136,6 +136,68 @@ export const SearchSmallIcon: FC<IconProps> = (p) => (
 
 export const GearIcon: FC<IconProps> = (p) => <SettingsIcon {...p} />;
 
+/* ==================== 用量/进度图标 ==================== */
+
+export const ChartIcon: FC<IconProps> = (p) => (
+  <Svg {...p}>
+    <path d="M3 3v18h18" />
+    <rect x="7" y="13" width="3" height="5" rx="0.5" fill="currentColor" fillOpacity="0.3" />
+    <rect x="12" y="9" width="3" height="9" rx="0.5" fill="currentColor" fillOpacity="0.5" />
+    <rect x="17" y="5" width="3" height="13" rx="0.5" fill="currentColor" fillOpacity="0.7" />
+  </Svg>
+);
+
+export const RocketIcon: FC<IconProps> = (p) => (
+  <Svg {...p}>
+    <path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z" />
+    <path d="M12 15l-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z" />
+    <path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5" />
+  </Svg>
+);
+
+export const ZapIcon: FC<IconProps> = (p) => (
+  <Svg {...p}>
+    <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" fill="currentColor" fillOpacity="0.2" />
+  </Svg>
+);
+
+export const ClockIcon: FC<IconProps> = (p) => (
+  <Svg {...p}>
+    <circle cx="12" cy="12" r="10" />
+    <polyline points="12 6 12 12 16 14" />
+  </Svg>
+);
+
+export const TargetIcon: FC<IconProps> = (p) => (
+  <Svg {...p}>
+    <circle cx="12" cy="12" r="10" />
+    <circle cx="12" cy="12" r="6" />
+    <circle cx="12" cy="12" r="2" fill="currentColor" />
+  </Svg>
+);
+
+export const LayersIcon: FC<IconProps> = (p) => (
+  <Svg {...p}>
+    <polygon points="12 2 2 7 12 12 22 7 12 2" fill="currentColor" fillOpacity="0.15" />
+    <polyline points="2 17 12 22 22 17" />
+    <polyline points="2 12 12 17 22 12" />
+  </Svg>
+);
+
+export const TrendingUpIcon: FC<IconProps> = (p) => (
+  <Svg {...p}>
+    <polyline points="23 6 13.5 15.5 8.5 10.5 1 18" />
+    <polyline points="17 6 23 6 23 12" />
+  </Svg>
+);
+
+export const CoinIcon: FC<IconProps> = (p) => (
+  <Svg {...p}>
+    <circle cx="12" cy="12" r="10" fill="currentColor" fillOpacity="0.1" />
+    <path d="M12 6v12M9 9h4.5a2 2 0 0 1 0 4H9M9 13h5a2 2 0 0 1 0 4H9" />
+  </Svg>
+);
+
 /* ==================== 文件类型图标 ==================== */
 
 export const FolderIcon: FC<IconProps> = (p) => (

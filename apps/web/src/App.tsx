@@ -7,6 +7,8 @@ import Editor from './components/Editor';
 import Terminal from './components/Terminal';
 import ChatPanel from './components/ChatPanel';
 import StatusBar from './components/StatusBar';
+import UsagePanel from './components/UsagePanel';
+import ProgressPanel from './components/ProgressPanel';
 import { SearchIcon, GitIcon, SettingsIcon } from './components/Icons';
 
 /* ============================================================
@@ -402,6 +404,8 @@ const App: React.FC = () => {
         {activeView === 'explorer' && (
           <FileTree treeData={MOCK_FILE_TREE} onOpenFile={handleOpenFile} activePath={activeTabPath} />
         )}
+        {activeView === 'usage' && <UsagePanel />}
+        {activeView === 'progress' && <ProgressPanel />}
         {activeView === 'search' && (
           <div className="sidebar-placeholder">
             <div className="sidebar-placeholder__header">搜索</div>
@@ -446,7 +450,7 @@ const App: React.FC = () => {
           <Terminal />
         </div>
 
-        {/* 右侧 AI 聊天面板 */}
+        {/* 右侧 AI 聊天面板（始终显示） */}
         <ChatPanel
           messages={chatMessages}
           isThinking={isAiThinking}
