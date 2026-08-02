@@ -11,8 +11,8 @@ import { BorealOSClient } from '@borealos/api';
 // 可通过 VITE_API_BASE_URL 环境变量覆盖
 const baseURL = import.meta.env.VITE_API_BASE_URL || '';
 
-// WebSocket 地址：根据当前页面协议自动选择 ws/wss
-const wsURL = `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}`;
+// WebSocket 地址：根据当前页面协议自动选择 ws/wss，统一走 /ws 网关端点
+const wsURL = `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}/ws`;
 
 // BorealOS API 客户端单例，供全应用复用
 export const apiClient = new BorealOSClient({ baseURL, wsURL });

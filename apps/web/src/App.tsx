@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import { apiClient } from './lib/api-client';
 import MenuBar from './components/MenuBar';
 import ActivityBar from './components/ActivityBar';
@@ -175,6 +175,15 @@ const App: React.FC = () => {
   const chatMessagesRef = useRef(chatMessages);
   chatMessagesRef.current = chatMessages;
 
+  // 应用启动时连接 WebSocket 网关（自动重连 + 心跳由 SDK 管理）
+  useEffect(() => {
+    apiClient.ws.connect();
+    return () => {
+      // 组件卸载时断开连接
+      apiClient.ws.disconnect();
+    };
+  }, []);
+
   /* ---------- 编辑器相关操作 ---------- */
 
   /** 打开文件（若已打开则切换到对应标签页） */
@@ -246,7 +255,7 @@ const App: React.FC = () => {
 
   /* ---------- 聊天相关操作 ---------- */
 
-  /** 发送聊天消息（使用 WebSocket 流式输出） */
+  /** 发送聊天消息（使用 @borealos/api SDK 的 chat.stream 流式输出） */
   const handleSendMessage = useCallback(async (content: string, model?: string) => {
     const userMessage: ChatMessage = {
       id: `msg-${messageIdRef.current++}`,
@@ -264,8 +273,6 @@ const App: React.FC = () => {
       { id: streamingId, role: 'assistant', content: '', timestamp: Date.now() },
     ]);
 
-    let handled = false;
-
     /** 更新流式消息内容 */
     const updateStreaming = (text: string) => {
       setChatMessages((prev) =>
@@ -275,81 +282,52 @@ const App: React.FC = () => {
 
     /** 回退到 POST 非流式接口（使用 @borealos/api 的 BorealOSClient） */
     const tryPostFallback = async () => {
-      if (handled) return;
       try {
-        // 通过 apiClient.chat.send 调用后端 /api/chat 接口（非流式）
         const result = await apiClient.chat.send(content, { model });
-        handled = true;
         updateStreaming(result.content || '(空回复)');
       } catch {
-        handled = true;
         updateStreaming(simulateAiReply(content));
       } finally {
         setIsAiThinking(false);
       }
     };
 
-    // 尝试 WebSocket 流式聊天
+    // 构建历史消息（排除系统欢迎消息和空流式占位）
+    const history = chatMessagesRef.current
+      .filter((m) => (m.role === 'user' || m.role === 'assistant') && m.content.length > 0)
+      .map((m) => ({ role: m.role as 'user' | 'assistant', content: m.content }));
+
+    // 使用 SDK 的 chat.stream 进行流式聊天
     try {
-      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-      const wsUrl = `${protocol}//${window.location.host}/api/chat/ws`;
-      const ws = new WebSocket(wsUrl);
+      // 确保 WebSocket 已连接
+      if (!apiClient.ws.isConnected()) {
+        apiClient.ws.connect();
+        // 等待连接建立（最多 3 秒）
+        await new Promise<void>((resolve) => {
+          const timeout = setTimeout(() => resolve(), 3000);
+          apiClient.ws.on('open', () => {
+            clearTimeout(timeout);
+            resolve();
+          });
+        });
+      }
+
       let fullContent = '';
+      const finalContent = await apiClient.chat.stream(
+        content,
+        { model, history },
+        (delta: string) => {
+          fullContent += delta;
+          updateStreaming(fullContent);
+        },
+      );
 
-      // 连接超时回退（5秒）
-      const connectTimeout = setTimeout(() => {
-        if (!handled && ws.readyState !== WebSocket.OPEN) {
-          ws.close();
-          tryPostFallback();
-        }
-      }, 5000);
-
-      ws.onopen = () => {
-        clearTimeout(connectTimeout);
-        // 构建历史消息（排除系统欢迎消息和空流式占位）
-        const history = chatMessagesRef.current
-          .filter((m) => (m.role === 'user' || m.role === 'assistant') && m.content.length > 0)
-          .map((m) => ({ role: m.role, content: m.content }));
-        ws.send(JSON.stringify({ message: content, model, history }));
-      };
-
-      ws.onmessage = (event) => {
-        try {
-          const data = JSON.parse(event.data);
-          if (data.type === 'chunk') {
-            fullContent += data.content;
-            updateStreaming(fullContent);
-          } else if (data.type === 'done') {
-            handled = true;
-            updateStreaming(data.content || fullContent);
-            setIsAiThinking(false);
-            ws.close();
-          } else if (data.type === 'error') {
-            handled = true;
-            updateStreaming(`⚠️ ${data.error || 'AI 服务错误'}`);
-            setIsAiThinking(false);
-            ws.close();
-          }
-        } catch {
-          // 忽略解析错误
-        }
-      };
-
-      ws.onerror = () => {
-        clearTimeout(connectTimeout);
-        if (!handled) {
-          tryPostFallback();
-        }
-      };
-
-      ws.onclose = () => {
-        clearTimeout(connectTimeout);
-        if (!handled) {
-          tryPostFallback();
-        }
-      };
+      // 流式完成
+      updateStreaming(finalContent || fullContent);
+      setIsAiThinking(false);
     } catch {
-      tryPostFallback();
+      // 流式失败，回退到非流式
+      await tryPostFallback();
     }
   }, []);
 

@@ -2,7 +2,7 @@
 
 > **用途**：本文件是项目的"记忆大脑"。每次会话开始时优先读取此文件以恢复上下文，防止失忆。每次开发结束或重要节点更新此文件，并立即推送到 Gitee。
 >
-> **最后更新**：2026-08-02（集成完成：记忆系统注入 chat + 同步 WebSocket 路由 + 前端 editor/api 包迁移）
+> **最后更新**：2026-08-02（统一 WebSocket 网关 /ws + 前端流式聊天迁移到 @borealos/api SDK 的 chat.stream）
 
 ---
 
@@ -52,7 +52,7 @@ borealos/
 │   │   └── src/pwa.ts         # PWA Service Worker 注册
 │   │   └── public/            # manifest.json, sw.js
 │   ├── server/           # 后端 API（Fastify，端口 3001）
-│   │   └── src/routes/        # auth, chat, files, health, projects, terminal, usage, progress, sync
+│   │   └── src/routes/        # auth, chat, files, health, projects, terminal, usage, progress, sync, gateway
 │   │   └── src/auth/          # jwt.ts, middleware.ts, store.ts, types.ts
 │   │   └── src/db.ts          # 数据库初始化（MemoryAdapter / PostgresAdapter）
 │   ├── desktop/          # 桌面端（Tauri 2.0，端口 1420）
@@ -120,11 +120,12 @@ borealos/
 - [x] **实时同步 WebSocket 路由**（`/api/sync/ws`）— SyncServer 单例，处理文档更新、Awareness 状态、在线用户查询
 - [x] **前端编辑器迁移到 @borealos/editor** — Editor.tsx 使用 defineBorealOSThemes + DEFAULT_EDITOR_CONFIG + getMonacoLanguage；Terminal.tsx 使用 DEFAULT_TERMINAL_CONFIG + BOREALOS_DARK_THEME
 - [x] **前端 API SDK 迁移** — 创建 api-client.ts 单例，App.tsx 非流式回退使用 apiClient.chat.send()
+- [x] **统一 WebSocket 网关**（`/ws`）— 事件路由协议（`{event, data}`），支持 chat:send / terminal:input / ping，自动重连+心跳+消息队列
+- [x] **前端流式聊天迁移到 @borealos/api SDK** — App.tsx 使用 apiClient.chat.stream() 替代原生 WebSocket，SDK 管理连接生命周期
 
 ### 🚧 后续优化方向（非阻塞）
 - [ ] PostgreSQL + Redis 实际部署（代码已就绪，需配置环境变量）
 - [ ] Yjs CRDT 替换模拟实现为真实 yjs 库
-- [ ] 前端 WebSocket 流式聊天迁移到 @borealos/api 的 WebSocketClient
 - [ ] Tauri 桌面端打包发布（需安装 Rust 工具链）
 - [ ] Rust 网关编译部署（需安装 Rust 工具链）
 

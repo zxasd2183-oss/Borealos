@@ -599,6 +599,14 @@ export interface UpdateFileRequest {
   language?: string;
 }
 
+/** 简化的历史消息（用于聊天上下文） */
+export interface ChatHistoryEntry {
+  /** 消息角色 */
+  role: ChatRole;
+  /** 消息文本内容 */
+  content: string;
+}
+
 /** 聊天发送选项 */
 export interface ChatSendOptions {
   /** 所属项目 ID */
@@ -606,7 +614,7 @@ export interface ChatSendOptions {
   /** AI 模型 ID */
   model?: string;
   /** 历史消息列表 */
-  history?: ChatMessage[];
+  history?: ChatHistoryEntry[];
 }
 
 /** 流式聊天选项（与 ChatSendOptions 相同） */
