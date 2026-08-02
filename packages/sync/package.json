@@ -13,5 +13,8 @@
   },
   "devDependencies": {
     "typescript": "^5.7.0"
+  },
+  "dependencies": {
+    "yjs": "^13.6.31"
   }
 }

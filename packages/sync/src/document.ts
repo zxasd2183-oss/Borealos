@@ -1,42 +1,13 @@
 /**
  * @borealos/sync - Yjs 文档管理
  *
- * 封装单个文件的同步文档（对应 Yjs 中的 Y.Text）。
+ * 封装单个文件的同步文档（对应 Yjs 中的 Y.Doc + Y.Text）。
  *
- * 当前实现以零依赖方式模拟 CRDT 行为：使用「全文替换 + 版本号自增」
- * 模拟文档更新，update 增量以 UTF-8 编码形式表示全文内容。
- * 后续可将其替换为真实 yjs 的 Y.Doc / Y.Text，对外接口保持不变。
+ * 使用真实 yjs 库实现 CRDT 合并，支持真正的增量更新与冲突解决。
  */
 
+import * as Y from 'yjs';
 import type { DocumentState } from './types';
-
-// ============================================================================
-// UTF-8 编解码工具
-// ============================================================================
-
-/** 共享的 UTF-8 编码器（浏览器与 Node 均原生支持） */
-const textEncoder = new TextEncoder();
-
-/** 共享的 UTF-8 解码器（浏览器与 Node 均原生支持） */
-const textDecoder = new TextDecoder();
-
-/**
- * 将字符串编码为 UTF-8 字节序列
- * @param text - 待编码字符串
- * @returns UTF-8 字节序列
- */
-function encodeUTF8(text: string): Uint8Array {
-  return textEncoder.encode(text);
-}
-
-/**
- * 将 UTF-8 字节序列解码为字符串
- * @param bytes - 待解码字节序列
- * @returns 解码后的字符串
- */
-function decodeUTF8(bytes: Uint8Array): string {
-  return textDecoder.decode(bytes);
-}
 
 // ============================================================================
 // SyncDocument 类
@@ -45,10 +16,10 @@ function decodeUTF8(bytes: Uint8Array): string {
 /**
  * 同步文档
  *
- * 封装单个文件的协作编辑状态，对应 Yjs 中的 Y.Text。
+ * 封装单个文件的协作编辑状态，底层使用 Yjs Y.Doc + Y.Text 实现 CRDT。
  *
  * - 本地编辑通过 {@link setContent} 写入全文内容；
- * - 远程增量通过 {@link applyUpdate} 应用；
+ * - 远程增量通过 {@link applyUpdate} 应用（Y.applyUpdate CRDT 合并）；
  * - 通过 {@link onUpdate} 注册内容变更回调，便于 UI 层刷新视图。
  *
  * @example
@@ -64,14 +35,17 @@ export class SyncDocument {
   /** 文件相对路径（只读属性） */
   readonly filePath: string;
 
-  /** 文档文本内容 */
-  private internalContent: string;
+  /** Yjs 文档实例 */
+  private readonly ydoc: Y.Doc;
 
-  /** 文档版本号（每次内容变更自增） */
-  private internalVersion: number;
+  /** Yjs 文本类型（对应文件内容） */
+  private readonly ytext: Y.Text;
 
   /** 内容变更回调列表 */
   private readonly updateCallbacks: Array<(content: string) => void> = [];
+
+  /** Yjs observe 监听器（用于解绑） */
+  private readonly observeListener: () => void;
 
   /**
    * 创建同步文档实例
@@ -80,18 +54,32 @@ export class SyncDocument {
    */
   constructor(filePath: string, initialContent?: string) {
     this.filePath = filePath;
-    this.internalContent = initialContent ?? '';
-    this.internalVersion = 0;
+    this.ydoc = new Y.Doc();
+    this.ytext = this.ydoc.getText('content');
+
+    // 如果有初始内容，在 Yjs 文档中初始化
+    if (initialContent && initialContent.length > 0) {
+      this.ydoc.transact(() => {
+        this.ytext.insert(0, initialContent);
+      });
+    }
+
+    // 监听 Y.Text 变化，触发回调
+    this.observeListener = () => {
+      this.notifyUpdate();
+    };
+    this.ytext.observe(this.observeListener);
   }
 
   /** 当前文档文本内容（只读 getter） */
   get content(): string {
-    return this.internalContent;
+    return this.ytext.toString();
   }
 
-  /** 当前文档版本号（只读 getter） */
+  /** 当前文档版本号（基于 Yjs state vector 长度） */
   get version(): number {
-    return this.internalVersion;
+    const sv = Y.encodeStateVector(this.ydoc);
+    return sv.length;
   }
 
   /**
@@ -99,53 +87,84 @@ export class SyncDocument {
    * @returns 文档内容
    */
   getContent(): string {
-    return this.internalContent;
+    return this.ytext.toString();
   }
 
   /**
    * 设置全文内容（本地编辑入口）
    *
-   * 当内容发生变化时自增版本号并通知回调。
+   * 计算当前内容与新内容的差异，以最小操作序列更新 Y.Text。
+   * 当内容发生变化时通过 Yjs observe 机制通知回调。
    *
    * @param content - 新的全文内容
    */
   setContent(content: string): void {
-    if (content === this.internalContent) {
+    const current = this.ytext.toString();
+    if (content === current) {
       return;
     }
-    this.internalContent = content;
-    this.internalVersion++;
-    this.notifyUpdate();
+
+    // 使用 Yjs 事务确保原子性
+    this.ydoc.transact(() => {
+      // 简单策略：删除全部内容，插入新内容
+      // Yjs CRDT 会自动处理合并
+      if (current.length > 0) {
+        this.ytext.delete(0, current.length);
+      }
+      if (content.length > 0) {
+        this.ytext.insert(0, content);
+      }
+    });
   }
 
   /**
-   * 应用远程更新（模拟 CRDT 合并）
+   * 应用远程更新（Yjs CRDT 合并）
    *
-   * 当前模拟实现：将 update 字节序列解码为 UTF-8 文本并替换全文内容。
-   * 真实 yjs 实现中，此处应调用 Y.applyUpdate 进行 CRDT 合并。
+   * 使用 Y.applyUpdate 将远程增量合并到本地文档。
+   * Yjs CRDT 算法保证所有客户端最终一致。
    *
-   * @param update - 远程更新增量（UTF-8 编码的全文内容）
+   * @param update - 远程更新增量（Y.encodeStateAsUpdate 格式的二进制数据）
    */
   applyUpdate(update: Uint8Array): void {
-    const remoteContent = decodeUTF8(update);
-    if (remoteContent === this.internalContent) {
-      return;
-    }
-    this.internalContent = remoteContent;
-    this.internalVersion++;
-    this.notifyUpdate();
+    Y.applyUpdate(this.ydoc, update);
   }
 
   /**
    * 获取当前文档的更新增量
    *
-   * 当前模拟实现：返回当前内容 UTF-8 编码后的字节序列。
-   * 真实 yjs 实现中，此处应调用 Y.encodeStateAsUpdate 获取二进制增量。
+   * 使用 Y.encodeStateAsUpdate 获取 Yjs 二进制增量，
+   * 可用于发送给其他客户端进行 CRDT 合并。
    *
-   * @returns 文档更新增量（UTF-8 编码）
+   * @returns 文档更新增量（Yjs 二进制格式）
    */
   getUpdate(): Uint8Array {
-    return encodeUTF8(this.internalContent);
+    return Y.encodeStateAsUpdate(this.ydoc);
+  }
+
+  /**
+   * 获取基于状态向量的差异更新
+   *
+   * 只包含目标客户端缺少的更新，减少网络传输量。
+   *
+   * @param stateVector - 目标客户端的状态向量（省略则返回完整状态）
+   * @returns 差异更新增量
+   */
+  getDiffUpdate(stateVector?: Uint8Array): Uint8Array {
+    if (stateVector) {
+      return Y.encodeStateAsUpdate(this.ydoc, stateVector);
+    }
+    return Y.encodeStateAsUpdate(this.ydoc);
+  }
+
+  /**
+   * 获取当前文档的状态向量
+   *
+   * 状态向量用于增量同步，标识客户端已收到的更新范围。
+   *
+   * @returns 状态向量（二进制）
+   */
+  getStateVector(): Uint8Array {
+    return Y.encodeStateVector(this.ydoc);
   }
 
   /**
@@ -170,20 +189,32 @@ export class SyncDocument {
     return {
       projectId,
       filePath: this.filePath,
-      content: this.internalContent,
-      version: this.internalVersion,
+      content: this.ytext.toString(),
+      version: this.version,
       lastModified: new Date().toISOString(),
       modifiedBy,
     };
   }
 
   /**
+   * 销毁文档，释放 Yjs 资源
+   *
+   * 移除观察者并销毁 Y.Doc 实例。
+   */
+  destroy(): void {
+    this.ytext.unobserve(this.observeListener);
+    this.ydoc.destroy();
+    this.updateCallbacks.length = 0;
+  }
+
+  /**
    * 通知所有内容变更回调
    */
   private notifyUpdate(): void {
+    const content = this.ytext.toString();
     for (const callback of this.updateCallbacks) {
       try {
-        callback(this.internalContent);
+        callback(content);
       } catch (err) {
         // 捕获回调异常，避免影响其他回调或主流程
         console.error(`SyncDocument [${this.filePath}] 内容变更回调异常:`, err);

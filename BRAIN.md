@@ -2,7 +2,7 @@
 
 > **用途**：本文件是项目的"记忆大脑"。每次会话开始时优先读取此文件以恢复上下文，防止失忆。每次开发结束或重要节点更新此文件，并立即推送到 Gitee。
 >
-> **最后更新**：2026-08-02（统一 WebSocket 网关 /ws + 前端流式聊天迁移到 @borealos/api SDK 的 chat.stream）
+> **最后更新**：2026-08-02（Yjs 真实 CRDT 替换模拟实现 + 统一 WebSocket 网关 + SDK 流式聊天迁移）
 
 ---
 
@@ -34,7 +34,7 @@
 | 后端 | Node.js (Fastify) + JWT 认证 + 数据库抽象层 |
 | 数据库 | PostgreSQL（生产）+ MemoryAdapter（开发）+ Redis 缓存 |
 | AI 记忆 | MemGPT 分层记忆（核心/短期/长期）+ 向量嵌入 |
-| 实时同步 | Yjs CRDT 模拟 + Awareness 光标 |
+| 实时同步 | Yjs CRDT（Y.Doc + Y.Text）+ Awareness 光标 |
 | 桌面端 | Tauri 2.0（自定义标题栏 + 系统托盘） |
 | 本地网关 | Rust（Axum，代理 AI 模型调用，:8787） |
 | API SDK | @borealos/api（HTTP + WebSocket 客户端） |
@@ -122,10 +122,10 @@ borealos/
 - [x] **前端 API SDK 迁移** — 创建 api-client.ts 单例，App.tsx 非流式回退使用 apiClient.chat.send()
 - [x] **统一 WebSocket 网关**（`/ws`）— 事件路由协议（`{event, data}`），支持 chat:send / terminal:input / ping，自动重连+心跳+消息队列
 - [x] **前端流式聊天迁移到 @borealos/api SDK** — App.tsx 使用 apiClient.chat.stream() 替代原生 WebSocket，SDK 管理连接生命周期
+- [x] **Yjs 真实 CRDT 替换模拟实现** — SyncDocument 使用 Y.Doc + Y.Text，applyUpdate/getUpdate 使用 Y.applyUpdate/encodeStateAsUpdate，新增 getDiffUpdate/getStateVector 增量同步，文档销毁时释放 Yjs 资源
 
 ### 🚧 后续优化方向（非阻塞）
 - [ ] PostgreSQL + Redis 实际部署（代码已就绪，需配置环境变量）
-- [ ] Yjs CRDT 替换模拟实现为真实 yjs 库
 - [ ] Tauri 桌面端打包发布（需安装 Rust 工具链）
 - [ ] Rust 网关编译部署（需安装 Rust 工具链）
 

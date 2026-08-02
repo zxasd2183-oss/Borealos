@@ -94,6 +94,13 @@ export class SyncServer {
    * @param projectId - 项目 ID
    */
   unregisterProject(projectId: string): void {
+    const room = this.rooms.get(projectId);
+    if (room) {
+      // 销毁房间内所有同步文档，释放 Yjs 资源
+      for (const doc of room.documents.values()) {
+        doc.destroy();
+      }
+    }
     this.rooms.delete(projectId);
   }
 

@@ -149,6 +149,11 @@ export class SyncClient {
       this.provider.disconnect();
       this.provider = null;
     }
+    // 销毁所有同步文档，释放 Yjs 资源
+    for (const doc of this.documents.values()) {
+      doc.destroy();
+    }
+    this.documents.clear();
     this.setStatus('offline');
     this.emit('disconnected');
   }
@@ -178,6 +183,10 @@ export class SyncClient {
    * @param filePath - 文件相对路径
    */
   closeFile(filePath: string): void {
+    const doc = this.documents.get(filePath);
+    if (doc) {
+      doc.destroy();
+    }
     this.documents.delete(filePath);
   }
 
