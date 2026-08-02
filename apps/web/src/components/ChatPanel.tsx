@@ -2,13 +2,23 @@ import { useState, useRef, useEffect } from 'react';
 import type { FC } from 'react';
 import type { ChatMessage } from '../App';
 
+/** 模型信息（从后端获取） */
+interface ModelInfo {
+  id: string;
+  name: string;
+  description: string;
+  vision: boolean;
+  reasoning: boolean;
+  brand: string;
+}
+
 interface ChatPanelProps {
   /** 聊天消息列表 */
   messages: ChatMessage[];
   /** AI 是否正在生成回复 */
   isThinking: boolean;
   /** 发送消息回调 */
-  onSend: (content: string) => void;
+  onSend: (content: string, model?: string) => void;
 }
 
 /** 角色显示名称 */
@@ -35,13 +45,44 @@ function formatTime(timestamp: number): string {
 
 /**
  * AI 聊天面板组件
- * 支持发送消息、显示历史对话、AI 回复及"正在输入"动画。
- * 按 Enter 发送，Shift+Enter 换行。
+ * 支持模型选择、发送消息、流式显示回复
  */
 const ChatPanel: FC<ChatPanelProps> = ({ messages, isThinking, onSend }) => {
   const [input, setInput] = useState('');
+  const [selectedModel, setSelectedModel] = useState('qwen3.6-flash');
+  const [models, setModels] = useState<ModelInfo[]>([]);
+  const [showModelList, setShowModelList] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const modelListRef = useRef<HTMLDivElement>(null);
+
+  // 从后端获取模型列表
+  useEffect(() => {
+    fetch('/api/models')
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.success && data.data) {
+          setModels(data.data);
+        }
+      })
+      .catch(() => {
+        // 后端不可用时使用默认列表
+        setModels([
+          { id: 'qwen3.6-flash', name: 'Qwen3.6 Flash', description: '默认模型', vision: true, reasoning: true, brand: '千问' },
+        ]);
+      });
+  }, []);
+
+  // 点击外部关闭模型列表
+  useEffect(() => {
+    const handleClick = (e: MouseEvent) => {
+      if (modelListRef.current && !modelListRef.current.contains(e.target as Node)) {
+        setShowModelList(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, []);
 
   // 新消息或思考状态变化时，自动滚动到底部
   useEffect(() => {
@@ -64,9 +105,8 @@ const ChatPanel: FC<ChatPanelProps> = ({ messages, isThinking, onSend }) => {
   const handleSend = () => {
     const content = input.trim();
     if (!content || isThinking) return;
-    onSend(content);
+    onSend(content, selectedModel);
     setInput('');
-    // 重置输入框高度
     if (textareaRef.current) {
       textareaRef.current.style.height = '60px';
     }
@@ -80,13 +120,53 @@ const ChatPanel: FC<ChatPanelProps> = ({ messages, isThinking, onSend }) => {
     }
   };
 
+  // 当前选中的模型对象
+  const currentModel = models.find((m) => m.id === selectedModel);
+
   return (
     <div className="chat-panel">
-      {/* 标题栏 */}
+      {/* 标题栏 - 包含模型选择器 */}
       <div className="chat-header">
         <span className="chat-header__icon">AI</span>
         <span className="chat-header__title">AI 助手</span>
-        <span className="chat-header__model">GPT-4</span>
+        {/* 模型选择器 */}
+        <div className="model-selector" ref={modelListRef}>
+          <button
+            className="model-selector__button"
+            onClick={() => setShowModelList(!showModelList)}
+            title={currentModel?.description || '选择模型'}
+          >
+            <span className="model-selector__brand">{currentModel?.brand}</span>
+            <span className="model-selector__name">{currentModel?.name || '选择模型'}</span>
+            <span className={`model-selector__arrow ${showModelList ? 'model-selector__arrow--up' : ''}`}>▼</span>
+          </button>
+          {showModelList && (
+            <div className="model-selector__dropdown">
+              {models.map((m) => (
+                <div
+                  key={m.id}
+                  className={`model-option ${m.id === selectedModel ? 'model-option--active' : ''}`}
+                  onClick={() => {
+                    setSelectedModel(m.id);
+                    setShowModelList(false);
+                  }}
+                  title={m.description}
+                >
+                  <div className="model-option__header">
+                    <span className="model-option__brand">{m.brand}</span>
+                    <span className="model-option__name">{m.name}</span>
+                    {m.id === selectedModel && <span className="model-option__check">✓</span>}
+                  </div>
+                  <div className="model-option__desc">{m.description}</div>
+                  <div className="model-option__tags">
+                    {m.reasoning && <span className="model-tag model-tag--reasoning">推理</span>}
+                    {m.vision && <span className="model-tag model-tag--vision">视觉</span>}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
 
       {/* 消息列表 */}
@@ -116,12 +196,15 @@ const ChatPanel: FC<ChatPanelProps> = ({ messages, isThinking, onSend }) => {
                   }`}
                 >
                   {msg.content}
+                  {msg.role === 'assistant' && isThinking && msg.id === messages[messages.length - 1]?.id && (
+                    <span className="chat-cursor">▋</span>
+                  )}
                 </div>
               </div>
             ))}
 
-            {/* AI 正在输入动画 */}
-            {isThinking && (
+            {/* AI 正在输入动画（仅在还没开始输出时显示） */}
+            {isThinking && !messages.some((m) => m.id === 'streaming' && m.content.length > 0) && (
               <div className="chat-typing">
                 <span className="chat-typing__dot" />
                 <span className="chat-typing__dot" />
@@ -148,7 +231,9 @@ const ChatPanel: FC<ChatPanelProps> = ({ messages, isThinking, onSend }) => {
           disabled={isThinking}
         />
         <div className="chat-input-toolbar">
-          <span className="chat-input-hint">Enter 发送 · Shift+Enter 换行</span>
+          <span className="chat-input-hint">
+            {currentModel ? `${currentModel.brand} · ` : ''}Enter 发送 · Shift+Enter 换行
+          </span>
           <button
             className="chat-send-btn"
             onClick={handleSend}
