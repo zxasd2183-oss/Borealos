@@ -30,8 +30,8 @@ export default defineConfig({
     // Monaco Editor 体积较大，提高单块警告阈值
     chunkSizeWarningLimit: 2000,
   },
-  // 优化 Monaco Editor 的预构建依赖
+  // 优化 Monaco Editor 的预构建依赖（本地打包，不使用 CDN）
   optimizeDeps: {
-    include: ['react', 'react-dom'],
+    include: ['react', 'react-dom', 'monaco-editor'],
   },
 });
