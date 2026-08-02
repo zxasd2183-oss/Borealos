@@ -54,7 +54,7 @@ pub fn run() {
                 .tooltip("BorealOS")
                 .menu(&menu)
                 // 禁用左键直接触发菜单，由下方事件处理显示/隐藏
-                .menu_on_left_click(false)
+                .show_menu_on_left_click(false)
                 .on_menu_event(|app, event| match event.id.as_ref() {
                     // 显示窗口并聚焦
                     "show" => {

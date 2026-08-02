@@ -44,8 +44,8 @@ tmp/
 .temp/
 
 # Tauri / Rust (apps/desktop)
-src-tauri/target/
-src-tauri/gen/
+**/src-tauri/target/
+**/src-tauri/gen/
 *.rs.bk
 
 # Rust build artifacts (apps/gateway)

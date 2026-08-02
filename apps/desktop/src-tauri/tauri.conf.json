@@ -4,9 +4,9 @@
   "version": "0.1.0",
   "identifier": "dev.borealos.desktop",
   "build": {
-    "beforeDevCommand": "pnpm dev",
+    "beforeDevCommand": "node node_modules/vite/bin/vite.js",
     "devUrl": "http://localhost:1420",
-    "beforeBuildCommand": "pnpm build",
+    "beforeBuildCommand": "node node_modules/vite/bin/vite.js build",
     "frontendDist": "../dist"
   },
   "app": {
@@ -29,7 +29,7 @@
   },
   "bundle": {
     "active": true,
-    "targets": ["deb", "appimage", "msi", "app", "dmg"],
+    "targets": ["deb", "appimage"],
     "icon": ["icons/icon.png", "icons/icon.ico"]
   }
 }

@@ -2,7 +2,7 @@
 
 > **用途**：本文件是项目的"记忆大脑"。每次会话开始时优先读取此文件以恢复上下文，防止失忆。每次开发结束或重要节点更新此文件，并立即推送到 Gitee。
 >
-> **最后更新**：2026-08-02（Rust AI 网关编译成功 + 前后端运行验证 + Yjs CRDT + 统一网关 + SDK 迁移）
+> **最后更新**：2026-08-02（Tauri 桌面端打包成功 + Rust 升级到 1.97.1 + deb/AppImage 产物）
 
 ---
 
@@ -123,13 +123,13 @@ borealos/
 - [x] **统一 WebSocket 网关**（`/ws`）— 事件路由协议（`{event, data}`），支持 chat:send / terminal:input / ping，自动重连+心跳+消息队列
 - [x] **前端流式聊天迁移到 @borealos/api SDK** — App.tsx 使用 apiClient.chat.stream() 替代原生 WebSocket，SDK 管理连接生命周期
 - [x] **Yjs 真实 CRDT 替换模拟实现** — SyncDocument 使用 Y.Doc + Y.Text，applyUpdate/getUpdate 使用 Y.applyUpdate/encodeStateAsUpdate，新增 getDiffUpdate/getStateVector 增量同步，文档销毁时释放 Yjs 资源
-- [x] **Rust 工具链安装** — Rust 1.75.0 (apt)，编译时通过 Cargo.lock 约束依赖版本兼容 Rust 1.75
+- [x] **Rust 工具链安装** — Rust 1.97.1 (rustup stable)，支持 edition 2024 依赖
 - [x] **Rust AI 网关编译成功** — reqwest 改用 rustls-tls（避免 OpenSSL 依赖），TraceLayer 泛型修复，release 优化构建 23MB ELF 二进制
 - [x] **前后端运行验证** — 后端 Fastify:3001 启动成功（数据库初始化 + 认证中间件 + SPA 静态文件），API 测试通过（health/usage/progress/models/auth/chat），前端 Vite 构建成功（70 模块 3.71 秒）
+- [x] **Tauri 桌面端打包成功** — Rust 1.97.1 + Tauri 2.11.5 编译 6 分 25 秒，生成 deb (4.5MB) + AppImage (79MB) 安装包，二进制 20MB
 
 ### 🚧 后续优化方向（非阻塞）
 - [ ] PostgreSQL + Redis 实际部署（代码已就绪，需配置环境变量）
-- [ ] Tauri 桌面端打包发布（需 webkit2gtk 等系统依赖）
 
 ## 七、开发流程规范（重要）
 
