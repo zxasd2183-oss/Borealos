@@ -1,6 +1,15 @@
 import { useState } from 'react';
 import type { FC } from 'react';
 import type { FileNode } from '../App';
+import {
+  ChevronRightIcon,
+  PlusIcon,
+  RefreshIcon,
+  CollapseIcon,
+  FolderIcon,
+  FolderOpenIcon,
+  getFileTypeIcon,
+} from './Icons';
 
 interface FileTreeProps {
   /** 文件树数据 */
@@ -21,37 +30,6 @@ interface TreeNodeProps {
 }
 
 /**
- * 根据文件扩展名获取图标
- */
-function getFileIcon(name: string, type: 'file' | 'directory', expanded: boolean): string {
-  if (type === 'directory') {
-    return expanded ? '📂' : '📁';
-  }
-  const ext = name.split('.').pop()?.toLowerCase();
-  switch (ext) {
-    case 'tsx':
-    case 'ts':
-      return '🟦';
-    case 'jsx':
-    case 'js':
-      return '🟨';
-    case 'json':
-      return '📋';
-    case 'css':
-      return '🎨';
-    case 'html':
-      return '🌐';
-    case 'md':
-      return '📝';
-    case 'svg':
-    case 'xml':
-      return '🖼️';
-    default:
-      return '📄';
-  }
-}
-
-/**
  * 递归渲染单个树节点
  */
 const TreeNode: FC<TreeNodeProps> = ({
@@ -66,6 +44,10 @@ const TreeNode: FC<TreeNodeProps> = ({
   const isExpanded = expandedPaths.has(node.path);
   const isActive = activePath === node.path;
   const indentClass = `tree-node--indent-${Math.min(depth, 5)}`;
+
+  // 根据节点类型选择图标组件
+  const FileIcon = getFileTypeIcon(node.name);
+  const Icon = isDirectory ? (isExpanded ? FolderOpenIcon : FolderIcon) : FileIcon;
 
   const handleClick = () => {
     if (isDirectory) {
@@ -92,10 +74,10 @@ const TreeNode: FC<TreeNodeProps> = ({
               : 'tree-node__chevron--leaf'
           }`}
         >
-          ▶
+          <ChevronRightIcon size={14} />
         </span>
         {/* 文件/文件夹图标 */}
-        <span className="tree-node__icon">{getFileIcon(node.name, node.type, isExpanded)}</span>
+        <span className="tree-node__icon"><Icon size={16} /></span>
         {/* 名称 */}
         <span className="tree-node__label">{node.name}</span>
       </div>
@@ -149,13 +131,13 @@ const FileTree: FC<FileTreeProps> = ({ treeData, onOpenFile, activePath }) => {
         <span>资源管理器</span>
         <div className="file-tree__actions">
           <button className="file-tree__icon-btn" title="新建文件" onClick={() => onOpenFile({ name: 'untitled.txt', path: `/untitled-${Date.now()}.txt`, type: 'file', language: 'plaintext' })}>
-            ＋
+            <PlusIcon size={14} />
           </button>
           <button className="file-tree__icon-btn" title="刷新" onClick={() => toggleExpand('__refresh__')}>
-            ↻
+            <RefreshIcon size={14} />
           </button>
           <button className="file-tree__icon-btn" title="折叠全部" onClick={() => setExpandedPaths(new Set())}>
-            ⇽
+            <CollapseIcon size={14} />
           </button>
         </div>
       </div>
