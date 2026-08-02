@@ -2,7 +2,7 @@
 
 > **用途**：本文件是项目的"记忆大脑"。每次会话开始时优先读取此文件以恢复上下文，防止失忆。每次开发结束或重要节点更新此文件，并立即推送到 Gitee。
 >
-> **最后更新**：2026-08-02（全模块补全：7 个包 + 桌面端 + 网关 + 认证 + 持久化 + PWA）
+> **最后更新**：2026-08-02（集成完成：记忆系统注入 chat + 同步 WebSocket 路由 + 前端 editor/api 包迁移）
 
 ---
 
@@ -52,7 +52,7 @@ borealos/
 │   │   └── src/pwa.ts         # PWA Service Worker 注册
 │   │   └── public/            # manifest.json, sw.js
 │   ├── server/           # 后端 API（Fastify，端口 3001）
-│   │   └── src/routes/        # auth, chat, files, health, projects, terminal, usage, progress
+│   │   └── src/routes/        # auth, chat, files, health, projects, terminal, usage, progress, sync
 │   │   └── src/auth/          # jwt.ts, middleware.ts, store.ts, types.ts
 │   │   └── src/db.ts          # 数据库初始化（MemoryAdapter / PostgresAdapter）
 │   ├── desktop/          # 桌面端（Tauri 2.0，端口 1420）
@@ -116,14 +116,15 @@ borealos/
 - [x] **数据持久化迁移** — db.ts 初始化 + store.ts write-through 同步 + loadFromDatabase/syncToDatabase
 - [x] **PWA 移动端** — manifest.json + Service Worker（网络优先/缓存优先策略）+ 注册脚本 + Apple 触摸图标 meta
 - [x] 服务器优雅关闭（SIGINT/SIGTERM → closeDatabase）
+- [x] **记忆系统集成到 chat 路由** — MemoryManager 单例，buildContext 注入 system prompt，短期/长期记忆召回注入 messages，AI 回复自动存入记忆
+- [x] **实时同步 WebSocket 路由**（`/api/sync/ws`）— SyncServer 单例，处理文档更新、Awareness 状态、在线用户查询
+- [x] **前端编辑器迁移到 @borealos/editor** — Editor.tsx 使用 defineBorealOSThemes + DEFAULT_EDITOR_CONFIG + getMonacoLanguage；Terminal.tsx 使用 DEFAULT_TERMINAL_CONFIG + BOREALOS_DARK_THEME
+- [x] **前端 API SDK 迁移** — 创建 api-client.ts 单例，App.tsx 非流式回退使用 apiClient.chat.send()
 
 ### 🚧 后续优化方向（非阻塞）
 - [ ] PostgreSQL + Redis 实际部署（代码已就绪，需配置环境变量）
 - [ ] Yjs CRDT 替换模拟实现为真实 yjs 库
-- [ ] 编辑器组件迁移到使用 @borealos/editor 包
-- [ ] 前端迁移到使用 @borealos/api SDK
-- [ ] 记忆系统集成到 chat 路由（buildContext 注入 system prompt）
-- [ ] 实时同步集成到 WebSocket 路由
+- [ ] 前端 WebSocket 流式聊天迁移到 @borealos/api 的 WebSocketClient
 - [ ] Tauri 桌面端打包发布（需安装 Rust 工具链）
 - [ ] Rust 网关编译部署（需安装 Rust 工具链）
 

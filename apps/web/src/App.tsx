@@ -1,4 +1,5 @@
 import { useState, useCallback, useRef } from 'react';
+import { apiClient } from './lib/api-client';
 import MenuBar from './components/MenuBar';
 import ActivityBar from './components/ActivityBar';
 import type { ActivityView } from './components/ActivityBar';
@@ -272,22 +273,14 @@ const App: React.FC = () => {
       );
     };
 
-    /** 回退到 POST 非流式接口 */
+    /** 回退到 POST 非流式接口（使用 @borealos/api 的 BorealOSClient） */
     const tryPostFallback = async () => {
       if (handled) return;
       try {
-        const response = await fetch('/api/chat', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ message: content, model }),
-        });
-        if (response.ok) {
-          const json = await response.json();
-          handled = true;
-          updateStreaming(json.data?.content ?? json.reply ?? '(空回复)');
-        } else {
-          throw new Error('接口返回错误');
-        }
+        // 通过 apiClient.chat.send 调用后端 /api/chat 接口（非流式）
+        const result = await apiClient.chat.send(content, { model });
+        handled = true;
+        updateStreaming(result.content || '(空回复)');
       } catch {
         handled = true;
         updateStreaming(simulateAiReply(content));

@@ -20,6 +20,7 @@ import terminalRoutes from './routes/terminal';
 import usageRoutes from './routes/usage';
 import progressRoutes from './routes/progress';
 import authRoutes from './routes/auth';
+import syncRoutes from './routes/sync';
 import { createAuthMiddleware } from './auth/middleware';
 import { initDatabase, closeDatabase } from './db';
 import { seedData } from './store';
@@ -78,6 +79,7 @@ async function main() {
   await fastify.register(terminalRoutes); // /api/terminal/ws
   await fastify.register(usageRoutes); // /api/usage
   await fastify.register(progressRoutes); // /api/progress
+  await fastify.register(syncRoutes); // /api/sync/ws
 
   // ==================== 服务前端静态文件 ====================
 

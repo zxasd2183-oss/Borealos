@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from 'react';
 import type { FC } from 'react';
 import { Terminal as XTermTerminal } from '@xterm/xterm';
 import { FitAddon } from '@xterm/addon-fit';
+// BorealOS 编辑器包：终端默认配置与暗色主题
+import { DEFAULT_TERMINAL_CONFIG, BOREALOS_DARK_THEME } from '@borealos/editor';
 // 引入 xterm 样式
 import '@xterm/xterm/css/xterm.css';
 import { TerminalIcon, RefreshIcon } from './Icons';
@@ -22,35 +24,22 @@ const Terminal: FC = () => {
     if (!container) return;
 
     // 创建 xterm 终端实例
+    // 显示相关配置取自 @borealos/editor 的 DEFAULT_TERMINAL_CONFIG，
+    // 终端主题使用 BOREALOS_DARK_THEME（替代原先硬编码的颜色）
     const term = new XTermTerminal({
-      fontFamily: "'Cascadia Code', 'Fira Code', Consolas, 'Courier New', monospace",
-      fontSize: 13,
-      lineHeight: 1.2,
-      cursorBlink: true,
-      cursorStyle: 'bar',
-      allowProposedApi: true,
+      fontFamily: DEFAULT_TERMINAL_CONFIG.fontFamily,
+      fontSize: DEFAULT_TERMINAL_CONFIG.fontSize,
+      cursorBlink: DEFAULT_TERMINAL_CONFIG.cursorBlink,
+      cursorStyle: DEFAULT_TERMINAL_CONFIG.cursorStyle,
+      scrollback: DEFAULT_TERMINAL_CONFIG.scrollback,
       theme: {
-        background: '#1e1e1e',
-        foreground: '#cccccc',
-        cursor: '#aeafad',
-        selectionBackground: '#264f78',
-        black: '#000000',
-        red: '#f48771',
-        green: '#4ec9b0',
-        yellow: '#dcdcaa',
-        blue: '#569cd6',
-        magenta: '#c586c0',
-        cyan: '#9cdcfe',
-        white: '#cccccc',
-        brightBlack: '#666666',
-        brightRed: '#f48771',
-        brightGreen: '#4ec9b0',
-        brightYellow: '#dcdcaa',
-        brightBlue: '#569cd6',
-        brightMagenta: '#c586c0',
-        brightCyan: '#9cdcfe',
-        brightWhite: '#ffffff',
+        ...BOREALOS_DARK_THEME,
+        // xterm 使用 selectionBackground 字段，这里从主题的 selection 字段映射
+        selectionBackground: BOREALOS_DARK_THEME.selection,
       },
+      // 以下为现有 Terminal.tsx 保留的额外配置
+      lineHeight: 1.2,
+      allowProposedApi: true,
     });
     termRef.current = term;
 

@@ -9,6 +9,10 @@ export default defineConfig({
     alias: {
       // 路径别名，方便组件引用
       '@': fileURLToPath(new URL('./src', import.meta.url)),
+      // @borealos/editor 与 @borealos/api 通过源码路径解析（与 tsconfig.json 路径别名保持一致）
+      // pnpm 严格隔离，web 未声明这两个包为依赖，故在此显式指向源码入口
+      '@borealos/editor': fileURLToPath(new URL('../../packages/editor/src/index.ts', import.meta.url)),
+      '@borealos/api': fileURLToPath(new URL('../../packages/api/src/index.ts', import.meta.url)),
     },
   },
   server: {

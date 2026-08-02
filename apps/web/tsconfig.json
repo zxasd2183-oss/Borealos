@@ -29,7 +29,11 @@
     "paths": {
       "@/*": ["src/*"],
       "@borealos/shared": ["../../packages/shared/src/index.ts"],
-      "@borealos/shared/*": ["../../packages/shared/src/*"]
+      "@borealos/shared/*": ["../../packages/shared/src/*"],
+      "@borealos/editor": ["../../packages/editor/src/index.ts"],
+      "@borealos/editor/*": ["../../packages/editor/src/*"],
+      "@borealos/api": ["../../packages/api/src/index.ts"],
+      "@borealos/api/*": ["../../packages/api/src/*"]
     }
   },
   "include": ["src", "vite.config.ts"]

@@ -21,7 +21,11 @@
     "baseUrl": ".",
     "paths": {
       "@borealos/database": ["../../packages/database/src/index.ts"],
-      "@borealos/database/*": ["../../packages/database/src/*"]
+      "@borealos/database/*": ["../../packages/database/src/*"],
+      "@borealos/memory": ["../../packages/memory/src/index.ts"],
+      "@borealos/memory/*": ["../../packages/memory/src/*"],
+      "@borealos/sync": ["../../packages/sync/src/index.ts"],
+      "@borealos/sync/*": ["../../packages/sync/src/*"]
     }
   },
   "include": ["src/**/*"],

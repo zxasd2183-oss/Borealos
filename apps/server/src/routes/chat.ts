@@ -17,10 +17,43 @@ import {
   type AIModel,
   type ChatAPIMessage,
 } from '../ai';
+import { MemoryManager, type MemoryEntry, type MemorySearchResult } from '@borealos/memory';
 
 /** 查找模型信息 */
 function findModel(modelId: string): AIModel | undefined {
   return AVAILABLE_MODELS.find((m) => m.id === modelId);
+}
+
+/**
+ * 记忆管理器（模块级单例）
+ *
+ * 基于 MemGPT 分层记忆架构，统一管理核心/短期/长期三层记忆，
+ * 为聊天路由提供上下文构建与对话归档能力。
+ */
+const memoryManager = new MemoryManager();
+
+/**
+ * 将短期记忆格式化为可注入 LLM 的 system 消息文本
+ *
+ * @param memories 短期记忆条目列表
+ * @returns 格式化后的 system 消息内容
+ */
+function formatShortTermMemory(memories: MemoryEntry[]): string {
+  const lines = memories.map((m) => `- ${m.content}`);
+  return `# 短期记忆召回（近期对话）\n${lines.join('\n')}`;
+}
+
+/**
+ * 将长期记忆召回结果格式化为可注入 LLM 的 system 消息文本
+ *
+ * @param memories 长期记忆召回结果列表
+ * @returns 格式化后的 system 消息内容
+ */
+function formatLongTermMemory(memories: MemorySearchResult[]): string {
+  const lines = memories.map(
+    (r) => `- [相关度 ${(r.score * 100).toFixed(1)}%] ${r.entry.content}`,
+  );
+  return `# 长期记忆召回（相关历史）\n${lines.join('\n')}`;
 }
 
 const chatRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) => {
@@ -45,10 +78,24 @@ const chatRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) => {
       // 保存用户消息
       store.addChatMessage({ role: 'user', content: message, projectId });
 
-      // 构建消息列表
+      // 构建记忆上下文（在保存用户消息后、构建消息列表之前）
+      // 注意：先构建上下文再写入记忆，避免当前消息在短期记忆召回中重复出现
+      const memContext = await memoryManager.buildContext(projectId || 'default', message);
+      // 将用户消息归档到记忆系统（用于后续对话的上下文召回）
+      memoryManager.addMessage(projectId || 'default', 'user', message);
+
+      // 构建消息列表（使用记忆系统生成的系统提示词替代硬编码提示）
       const messages: ChatAPIMessage[] = [
-        { role: 'system', content: '你是 BorealOS IDE 的 AI 助手，帮助用户编写和调试代码。请用中文回复。' },
+        { role: 'system', content: memContext.systemPrompt },
       ];
+      // 插入短期记忆召回（如有内容，作为额外的 system 消息）
+      if (memContext.shortTermMemories.length > 0) {
+        messages.push({ role: 'system', content: formatShortTermMemory(memContext.shortTermMemories) });
+      }
+      // 插入长期记忆召回（如有内容，作为额外的 system 消息）
+      if (memContext.longTermMemories.length > 0) {
+        messages.push({ role: 'system', content: formatLongTermMemory(memContext.longTermMemories) });
+      }
       // 加入历史消息
       if (history && history.length > 0) {
         for (const h of history) {
@@ -85,6 +132,9 @@ const chatRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) => {
           content: result.content,
           projectId,
         });
+
+        // 将 AI 回复归档到记忆系统
+        memoryManager.addMessage(projectId || 'default', 'assistant', result.content);
 
         return reply.send({
           success: true,
@@ -141,10 +191,24 @@ const chatRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) => {
         // 保存用户消息
         store.addChatMessage({ role: 'user', content: message, projectId });
 
-        // 构建消息列表
+        // 构建记忆上下文（在保存用户消息后、构建消息列表之前）
+        // 注意：先构建上下文再写入记忆，避免当前消息在短期记忆召回中重复出现
+        const memContext = await memoryManager.buildContext(projectId || 'default', message);
+        // 将用户消息归档到记忆系统（用于后续对话的上下文召回）
+        memoryManager.addMessage(projectId || 'default', 'user', message);
+
+        // 构建消息列表（使用记忆系统生成的系统提示词替代硬编码提示）
         const messages: ChatAPIMessage[] = [
-          { role: 'system', content: '你是 BorealOS IDE 的 AI 助手，帮助用户编写和调试代码。请用中文回复。' },
+          { role: 'system', content: memContext.systemPrompt },
         ];
+        // 插入短期记忆召回（如有内容，作为额外的 system 消息）
+        if (memContext.shortTermMemories.length > 0) {
+          messages.push({ role: 'system', content: formatShortTermMemory(memContext.shortTermMemories) });
+        }
+        // 插入长期记忆召回（如有内容，作为额外的 system 消息）
+        if (memContext.longTermMemories.length > 0) {
+          messages.push({ role: 'system', content: formatLongTermMemory(memContext.longTermMemories) });
+        }
         if (history && history.length > 0) {
           for (const h of history) {
             if (h.role === 'user' || h.role === 'assistant') {
@@ -200,6 +264,9 @@ const chatRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) => {
               content: fullContent,
               projectId,
             });
+
+            // 将 AI 回复归档到记忆系统
+            memoryManager.addMessage(projectId || 'default', 'assistant', fullContent);
           }
         } catch (err) {
           const errorMsg = err instanceof Error ? err.message : 'AI 流式调用失败';

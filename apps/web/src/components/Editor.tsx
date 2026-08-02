@@ -1,5 +1,6 @@
 import { useRef } from 'react';
 import Editor, { type OnMount, type BeforeMount } from '@monaco-editor/react';
+import { defineBorealOSThemes, DEFAULT_EDITOR_CONFIG, getMonacoLanguage } from '@borealos/editor';
 import type { FC } from 'react';
 import { getFileTypeIcon, CloseIcon, BorealOsLogo } from './Icons';
 import type { EditorTab, CursorPosition } from '../App';
@@ -37,41 +38,9 @@ const EditorPane: FC<EditorProps> = ({
 
   const activeTab = tabs.find((tab) => tab.path === activeTabPath) ?? null;
 
-  /** Monaco 挂载前：定义自定义暗色主题 */
+  /** Monaco 挂载前：注册 BorealOS 自定义主题（暗色/亮色） */
   const handleBeforeMount: BeforeMount = (monaco) => {
-    monaco.editor.defineTheme('borealos-dark', {
-      base: 'vs-dark',
-      inherit: true,
-      rules: [
-        { token: 'comment', foreground: '6a9955', fontStyle: 'italic' },
-        { token: 'keyword', foreground: '569cd6' },
-        { token: 'string', foreground: 'ce9178' },
-        { token: 'number', foreground: 'b5cea8' },
-        { token: 'type', foreground: '4ec9b0' },
-        { token: 'function', foreground: 'dcdcaa' },
-        { token: 'variable', foreground: '9cdcfe' },
-        { token: 'tag', foreground: '569cd6' },
-        { token: 'attribute.name', foreground: '9cdcfe' },
-        { token: 'attribute.value', foreground: 'ce9178' },
-      ],
-      colors: {
-        'editor.background': '#1e1e1e',
-        'editor.foreground': '#cccccc',
-        'editorLineNumber.foreground': '#858585',
-        'editorLineNumber.activeForeground': '#c6c6c6',
-        'editor.selectionBackground': '#264f78',
-        'editor.lineHighlightBackground': '#2a2d2e',
-        'editor.lineHighlightBorder': '#00000000',
-        'editorCursor.foreground': '#aeafad',
-        'editorIndentGuide.background': '#404040',
-        'editorIndentGuide.activeBackground': '#707070',
-        'editorWidget.background': '#252526',
-        'editorWidget.border': '#454545',
-        'editorSuggestWidget.background': '#252526',
-        'editorSuggestWidget.selectedBackground': '#094771',
-        'editorGutter.background': '#1e1e1e',
-      },
-    });
+    defineBorealOSThemes(monaco);
   };
 
   /** Monaco 挂载后：注册光标位置监听 */
@@ -134,31 +103,39 @@ const EditorPane: FC<EditorProps> = ({
         {activeTab ? (
           <Editor
             path={activeTab.path}
-            language={activeTab.language}
+            language={getMonacoLanguage(activeTab.language)}
             value={activeTab.content}
-            theme="borealos-dark"
+            theme={DEFAULT_EDITOR_CONFIG.theme}
             beforeMount={handleBeforeMount}
             onMount={handleMount}
             onChange={(value) => onContentChange(activeTab.path, value ?? '')}
             loading={<div style={{ padding: 20, color: '#9d9d9d' }}>正在加载编辑器...</div>}
             options={{
-              fontSize: 14,
-              fontFamily: "'Cascadia Code', 'Fira Code', Consolas, 'Courier New', monospace",
-              fontLigatures: true,
+              // 以下配置取自 @borealos/editor 的 DEFAULT_EDITOR_CONFIG（与现有配置合并）
+              fontSize: DEFAULT_EDITOR_CONFIG.fontSize,
+              fontFamily: DEFAULT_EDITOR_CONFIG.fontFamily,
+              fontLigatures: DEFAULT_EDITOR_CONFIG.fontLigatures,
+              tabSize: DEFAULT_EDITOR_CONFIG.tabSize,
+              lineNumbers: DEFAULT_EDITOR_CONFIG.lineNumbers,
+              wordWrap: DEFAULT_EDITOR_CONFIG.wordWrap,
+              scrollBeyondLastLine: DEFAULT_EDITOR_CONFIG.scrollBeyondLastLine,
+              automaticLayout: DEFAULT_EDITOR_CONFIG.automaticLayout,
+              renderWhitespace: DEFAULT_EDITOR_CONFIG.renderWhitespace,
+              smoothScrolling: DEFAULT_EDITOR_CONFIG.smoothScrolling,
+              cursorBlinking: DEFAULT_EDITOR_CONFIG.cursorBlinking,
+              // Monaco 接受 'on' | 'off' | 'explicit'，这里由布尔值映射
+              cursorSmoothCaretAnimation: DEFAULT_EDITOR_CONFIG.cursorSmoothCaretAnimation
+                ? 'on'
+                : 'off',
+              minimap: { enabled: DEFAULT_EDITOR_CONFIG.minimap, scale: 1 },
+              bracketPairColorization: {
+                enabled: DEFAULT_EDITOR_CONFIG.bracketPairColorization,
+              },
+              guides: DEFAULT_EDITOR_CONFIG.guides,
+              // 以下为现有 Editor.tsx 保留的额外配置
               lineHeight: 21,
-              minimap: { enabled: true, scale: 1 },
-              scrollBeyondLastLine: false,
-              automaticLayout: true,
-              tabSize: 2,
               insertSpaces: true,
-              wordWrap: 'off',
-              renderWhitespace: 'selection',
               renderLineHighlight: 'all',
-              bracketPairColorization: { enabled: true },
-              guides: { bracketPairs: true, indentation: true },
-              smoothScrolling: true,
-              cursorBlinking: 'smooth',
-              cursorSmoothCaretAnimation: 'on',
               padding: { top: 8 },
               scrollbar: {
                 verticalScrollbarSize: 10,
