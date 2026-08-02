@@ -103,8 +103,8 @@ const UsagePanel: FC = () => {
 
   const tokenPercent = Math.min((usage.totalTokens / usage.tokenLimit) * 100, 100);
   const monthlyPercent = Math.min((usage.monthlyUsed / usage.monthlyLimit) * 100, 100);
-  const maxModelTokens = Math.max(...usage.modelBreakdown.map((m) => m.tokens));
-  const maxDailyTokens = Math.max(...usage.dailyTrend.map((d) => d.tokens));
+  const maxModelTokens = Math.max(...usage.modelBreakdown.map((m) => m.tokens), 1);
+  const maxDailyTokens = Math.max(...usage.dailyTrend.map((d) => d.tokens), 1);
 
   return (
     <div className="usage-panel">

@@ -18,6 +18,11 @@ import {
   type ChatAPIMessage,
 } from '../ai';
 
+/** 查找模型信息 */
+function findModel(modelId: string): AIModel | undefined {
+  return AVAILABLE_MODELS.find((m) => m.id === modelId);
+}
+
 const chatRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) => {
   // GET /api/models - 获取可用模型列表
   fastify.get('/api/models', async () => {
@@ -56,9 +61,24 @@ const chatRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) => {
       messages.push({ role: 'user', content: message });
 
       const useModel = model || DEFAULT_MODEL;
+      const modelInfo = findModel(useModel);
+      const startTime = Date.now();
 
       try {
         const result = await chatCompletion(useModel, messages);
+        const latency = Date.now() - startTime;
+
+        // 记录用量
+        store.addUsageRecord({
+          model: useModel,
+          brand: modelInfo?.brand ?? '未知',
+          modelName: modelInfo?.name ?? useModel,
+          promptTokens: result.usage.prompt_tokens,
+          completionTokens: result.usage.completion_tokens,
+          totalTokens: result.usage.total_tokens,
+          latency,
+          success: true,
+        });
 
         const assistantMessage = store.addChatMessage({
           role: 'assistant',
@@ -72,7 +92,20 @@ const chatRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) => {
         } as ApiResponse<ChatMessage>);
       } catch (err) {
         const errorMsg = err instanceof Error ? err.message : 'AI 服务调用失败';
+        const latency = Date.now() - startTime;
         fastify.log.error(`AI 聊天错误: ${errorMsg}`);
+
+        // 记录失败的用量
+        store.addUsageRecord({
+          model: useModel,
+          brand: modelInfo?.brand ?? '未知',
+          modelName: modelInfo?.name ?? useModel,
+          promptTokens: 0,
+          completionTokens: 0,
+          totalTokens: 0,
+          latency,
+          success: false,
+        });
 
         // 回退到模拟回复
         const fallback = `⚠️ AI 服务暂时不可用：${errorMsg}\n\n以下是模拟回复：\n收到你的消息："${message}"`;
@@ -122,6 +155,8 @@ const chatRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) => {
         messages.push({ role: 'user', content: message });
 
         const useModel = model || DEFAULT_MODEL;
+        const modelInfo = findModel(useModel);
+        const startTime = Date.now();
 
         try {
           let fullContent = '';
@@ -134,6 +169,25 @@ const chatRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) => {
             const chunkMsg: ChatWsOutput = { type: 'chunk', content: chunk };
             socket.send(JSON.stringify(chunkMsg));
           }
+
+          const latency = Date.now() - startTime;
+
+          // 流式 API 不返回 usage，用字符数近似估算 Token（中文约 1.5 字/token，英文约 4 字/token）
+          const inputText = messages.map((m) => m.content).join('');
+          const estPromptTokens = Math.ceil(inputText.length / 2);
+          const estCompletionTokens = Math.ceil(fullContent.length / 2);
+
+          // 记录用量
+          store.addUsageRecord({
+            model: useModel,
+            brand: modelInfo?.brand ?? '未知',
+            modelName: modelInfo?.name ?? useModel,
+            promptTokens: estPromptTokens,
+            completionTokens: estCompletionTokens,
+            totalTokens: estPromptTokens + estCompletionTokens,
+            latency,
+            success: true,
+          });
 
           // 发送完成信号
           if (socket.readyState === 1) {
@@ -149,7 +203,20 @@ const chatRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) => {
           }
         } catch (err) {
           const errorMsg = err instanceof Error ? err.message : 'AI 流式调用失败';
+          const latency = Date.now() - startTime;
           fastify.log.error(`AI 流式聊天错误: ${errorMsg}`);
+
+          // 记录失败的用量
+          store.addUsageRecord({
+            model: useModel,
+            brand: modelInfo?.brand ?? '未知',
+            modelName: modelInfo?.name ?? useModel,
+            promptTokens: 0,
+            completionTokens: 0,
+            totalTokens: 0,
+            latency,
+            success: false,
+          });
 
           if (socket.readyState === 1) {
             const errOut: ChatWsOutput = {

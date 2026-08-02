@@ -18,6 +18,9 @@ const files = new Map<string, FileNode>();
 /** 聊天消息存储（key: 消息 ID） */
 const chatMessages = new Map<string, ChatMessage>();
 
+/** 用量记录存储（按时间顺序追加） */
+const usageRecords: UsageRecord[] = [];
+
 // ==================== 工具函数 ====================
 
 /** 生成唯一 ID（基于时间戳 + 随机字符串） */
@@ -240,6 +243,64 @@ export function addChatMessage(data: {
   };
   chatMessages.set(message.id, message);
   return message;
+}
+
+// ==================== 用量记录 ====================
+
+/** 单次 AI 调用用量记录 */
+export interface UsageRecord {
+  /** 记录 ID */
+  id: string;
+  /** 模型 ID */
+  model: string;
+  /** 模型品牌 */
+  brand: string;
+  /** 模型显示名 */
+  modelName: string;
+  /** 输入 Token 数 */
+  promptTokens: number;
+  /** 输出 Token 数 */
+  completionTokens: number;
+  /** 总 Token 数 */
+  totalTokens: number;
+  /** 响应延迟（毫秒） */
+  latency: number;
+  /** 调用是否成功 */
+  success: boolean;
+  /** 时间戳（ISO 格式） */
+  timestamp: string;
+}
+
+/** 记录一次 AI 调用用量 */
+export function addUsageRecord(data: {
+  model: string;
+  brand: string;
+  modelName: string;
+  promptTokens: number;
+  completionTokens: number;
+  totalTokens: number;
+  latency: number;
+  success: boolean;
+}): UsageRecord {
+  const record: UsageRecord = {
+    id: generateId(),
+    model: data.model,
+    brand: data.brand,
+    modelName: data.modelName,
+    promptTokens: data.promptTokens,
+    completionTokens: data.completionTokens,
+    totalTokens: data.totalTokens,
+    latency: data.latency,
+    success: data.success,
+    timestamp: now(),
+  };
+  usageRecords.push(record);
+  return record;
+}
+
+/** 获取所有用量记录 */
+export function getAllUsageRecords(): UsageRecord[] {
+  return usageRecords;
 }
 
 // ==================== 数据初始化 ====================

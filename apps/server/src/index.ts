@@ -17,6 +17,8 @@ import projectRoutes from './routes/projects';
 import fileRoutes from './routes/files';
 import chatRoutes from './routes/chat';
 import terminalRoutes from './routes/terminal';
+import usageRoutes from './routes/usage';
+import progressRoutes from './routes/progress';
 import { seedData } from './store';
 
 /** 服务器监听端口 */
@@ -56,6 +58,8 @@ async function main() {
   await fastify.register(fileRoutes); // /api/files
   await fastify.register(chatRoutes); // /api/chat, /api/chat/ws
   await fastify.register(terminalRoutes); // /api/terminal/ws
+  await fastify.register(usageRoutes); // /api/usage
+  await fastify.register(progressRoutes); // /api/progress
 
   // ==================== 服务前端静态文件 ====================
 

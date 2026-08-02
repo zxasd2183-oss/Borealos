@@ -2,7 +2,7 @@
 
 > **用途**：本文件是项目的"记忆大脑"。每次会话开始时优先读取此文件以恢复上下文，防止失忆。每次开发结束或重要节点更新此文件，并立即推送到 Gitee。
 >
-> **最后更新**：2026-08-02（UI 改造：用量面板 + 项目进度面板）
+> **最后更新**：2026-08-02（真实数据对接：后端用量/进度 API + 前端实时获取）
 
 ---
 
@@ -46,7 +46,7 @@ borealos/
 │   ├── web/          # Web 前端（Vite + React，端口 5173）
 │   │   └── src/components/  # ActivityBar, ChatPanel, Editor, FileTree, Icons, MenuBar, StatusBar, Terminal
 │   ├── server/       # 后端 API（Fastify，端口 3001）
-│   │   └── src/routes/      # chat, files, health, projects, terminal
+│   │   └── src/routes/      # chat, files, health, projects, terminal, usage, progress
 │   ├── desktop/      # 桌面端（Tauri 2.0）— 待开发
 │   └── gateway/      # Rust AI 网关（端口 8787）— 待开发
 ├── packages/
@@ -84,6 +84,10 @@ borealos/
 - [x] **用量显示面板**（UsagePanel）— Token 用量、API 调用统计、额度进度条、7天趋势柱状图、模型用量分布
 - [x] **项目进度面板**（ProgressPanel）— 总进度环、模块完成度、里程碑时间线、可勾选待办任务
 - [x] 活动栏新增"用量统计"和"项目进度"两个视图入口
+- [x] **后端用量统计 API**（`/api/usage`）— 基于 `store.ts` 中的真实 AI 调用记录聚合，计算总 Token、月用量、模型分布、7 天趋势
+- [x] **后端项目进度 API**（`/api/progress`）— 基于文件系统检测模块完成度，12 个模块定义、6 个里程碑、8 项待办任务
+- [x] **前端真实数据对接** — UsagePanel 和 ProgressPanel 均从后端 API 获取实时数据，后端不可用时回退默认值
+- [x] **用量记录系统**（`store.ts`）— `UsageRecord` 类型 + `addUsageRecord` / `getAllUsageRecords`，chat 路由每次调用自动记录
 
 ### 🚧 待开发
 - [ ] `apps/desktop`（Tauri 2.0 桌面端）
@@ -136,6 +140,7 @@ pnpm lint                             # 类型检查
 ## 九、最近提交脉络
 
 最新提交（master HEAD）：
+- 真实数据对接：后端 usage/progress API + 前端实时获取 + 用量记录系统
 - UI 改造：UsagePanel + ProgressPanel + 新图标 + 样式
 - `18489e7` create: ActivityBar.tsx
 - `59c03fd` create: Icons.tsx

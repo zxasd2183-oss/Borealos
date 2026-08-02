@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import type { FC } from 'react';
 import {
   RocketIcon,
@@ -40,43 +40,27 @@ interface TaskItem {
   done: boolean;
 }
 
-/** 模块数据 */
-const MODULES: ProjectModule[] = [
-  { id: 'monorepo', name: 'Monorepo 骨架', path: '根目录', status: 'done', progress: 100, description: 'pnpm + Turborepo + tsconfig' },
-  { id: 'shared', name: '共享类型包', path: 'packages/shared', status: 'done', progress: 100, description: '类型定义与常量' },
-  { id: 'server', name: '后端 API', path: 'apps/server', status: 'done', progress: 100, description: 'Fastify + 5 路由 + AI 模块' },
-  { id: 'web', name: 'Web 前端', path: 'apps/web', status: 'in-progress', progress: 75, description: 'React + Monaco + 终端 + 聊天' },
-  { id: 'ai', name: 'AI 服务模块', path: 'apps/server/src/ai.ts', status: 'done', progress: 100, description: '16 模型 + WebSocket 流式' },
-  { id: 'memory', name: 'MemGPT 记忆系统', path: 'packages/memory', status: 'pending', progress: 0, description: '分层记忆 + pgvector RAG' },
-  { id: 'sync', name: 'Yjs 实时同步', path: 'packages/sync', status: 'pending', progress: 0, description: 'CRDT 多平台同步' },
-  { id: 'editor', name: '编辑器核心', path: 'packages/editor', status: 'pending', progress: 0, description: 'Monaco + xterm 封装' },
-  { id: 'api-sdk', name: 'API SDK', path: 'packages/api', status: 'pending', progress: 0, description: 'fetch + WebSocket 客户端' },
-  { id: 'database', name: '数据层', path: 'packages/database', status: 'pending', progress: 0, description: 'PostgreSQL + Redis + R2' },
-  { id: 'desktop', name: '桌面端', path: 'apps/desktop', status: 'pending', progress: 0, description: 'Tauri 2.0' },
-  { id: 'gateway', name: 'Rust 网关', path: 'apps/gateway', status: 'pending', progress: 0, description: 'AI 模型代理 :8787' },
-];
+/** 后端返回的进度数据 */
+interface ProgressData {
+  modules: ProjectModule[];
+  milestones: Milestone[];
+  tasks: TaskItem[];
+  overallProgress: number;
+  doneCount: number;
+  inProgressCount: number;
+  pendingCount: number;
+}
 
-/** 里程碑数据 */
-const MILESTONES: Milestone[] = [
-  { id: 'm1', title: '项目骨架', date: '2026-08-01', status: 'done', description: 'Monorepo + 共享类型 + 基础组件' },
-  { id: 'm2', title: 'AI 服务集成', date: '2026-08-01', status: 'done', description: '16 模型接入 + WebSocket 流式' },
-  { id: 'm3', title: 'UI 重构', date: '2026-08-02', status: 'current', description: '活动栏 + 图标 + 用量面板 + 进度面板' },
-  { id: 'm4', title: '记忆系统', date: '2026-08-05', status: 'upcoming', description: 'MemGPT 分层记忆 + 向量检索' },
-  { id: 'm5', title: '实时协作', date: '2026-08-10', status: 'upcoming', description: 'Yjs CRDT + Awareness 光标' },
-  { id: 'm6', title: '桌面端 MVP', date: '2026-08-15', status: 'upcoming', description: 'Tauri 2.0 打包发布' },
-];
-
-/** 待办任务 */
-const INITIAL_TASKS: TaskItem[] = [
-  { id: 't1', title: 'MemGPT 分层记忆系统', module: 'packages/memory', priority: 'high', done: false },
-  { id: 't2', title: 'Yjs CRDT 多平台同步', module: 'packages/sync', priority: 'high', done: false },
-  { id: 't3', title: '编辑器核心封装', module: 'packages/editor', priority: 'high', done: false },
-  { id: 't4', title: 'API SDK 客户端', module: 'packages/api', priority: 'medium', done: false },
-  { id: 't5', title: 'PostgreSQL + Redis 部署', module: 'packages/database', priority: 'medium', done: false },
-  { id: 't6', title: '用户认证系统', module: 'apps/server', priority: 'medium', done: false },
-  { id: 't7', title: 'Tauri 桌面端', module: 'apps/desktop', priority: 'low', done: false },
-  { id: 't8', title: 'Rust AI 网关', module: 'apps/gateway', priority: 'low', done: false },
-];
+/** 默认数据（后端不可用时显示） */
+const DEFAULT_DATA: ProgressData = {
+  modules: [],
+  milestones: [],
+  tasks: [],
+  overallProgress: 0,
+  doneCount: 0,
+  inProgressCount: 0,
+  pendingCount: 0,
+};
 
 /** 优先级标签 */
 const PRIORITY_LABELS: Record<TaskItem['priority'], string> = {
@@ -119,14 +103,28 @@ function ProgressRing({ percent, size = 80 }: { percent: number; size?: number }
  * 展示总进度、模块完成度、里程碑时间线、待办任务
  */
 const ProgressPanel: FC = () => {
-  const [tasks, setTasks] = useState<TaskItem[]>(INITIAL_TASKS);
+  const [data, setData] = useState<ProgressData>(DEFAULT_DATA);
+  const [tasks, setTasks] = useState<TaskItem[]>([]);
 
-  const doneCount = MODULES.filter((m) => m.status === 'done').length;
-  const inProgressCount = MODULES.filter((m) => m.status === 'in-progress').length;
-  const overallProgress = Math.round(MODULES.reduce((sum, m) => sum + m.progress, 0) / MODULES.length);
+  // 从后端获取进度数据
+  useEffect(() => {
+    fetch('/api/progress')
+      .then((res) => res.json())
+      .then((result) => {
+        if (result.success && result.data) {
+          setData(result.data);
+          setTasks(result.data.tasks ?? []);
+        }
+      })
+      .catch(() => {
+        // 后端不可用时使用默认数据
+      });
+  }, []);
+
+  const { modules, milestones, overallProgress, doneCount, inProgressCount, pendingCount } = data;
   const taskDoneCount = tasks.filter((t) => t.done).length;
 
-  /** 切换任务完成状态 */
+  /** 切换任务完成状态（前端本地切换） */
   const toggleTask = (id: string) => {
     setTasks((prev) => prev.map((t) => (t.id === id ? { ...t, done: !t.done } : t)));
   };
@@ -154,7 +152,7 @@ const ProgressPanel: FC = () => {
               <span className="progress-stat__label">开发中</span>
             </div>
             <div className="progress-stat">
-              <span className="progress-stat__value progress-stat__value--muted">{MODULES.length - doneCount - inProgressCount}</span>
+              <span className="progress-stat__value progress-stat__value--muted">{pendingCount}</span>
               <span className="progress-stat__label">待开发</span>
             </div>
           </div>
@@ -166,7 +164,7 @@ const ProgressPanel: FC = () => {
             <LayersIcon size={13} /> 模块完成度
           </div>
           <div className="progress-modules">
-            {MODULES.map((m) => (
+            {modules.map((m) => (
               <div key={m.id} className="progress-module">
                 <div className="progress-module__header">
                   <span className={`progress-module__status progress-module__status--${m.status}`}>
@@ -196,7 +194,7 @@ const ProgressPanel: FC = () => {
             <TargetIcon size={13} /> 里程碑
           </div>
           <div className="progress-timeline">
-            {MILESTONES.map((ms) => (
+            {milestones.map((ms) => (
               <div key={ms.id} className={`progress-milestone progress-milestone--${ms.status}`}>
                 <div className="progress-milestone__dot" />
                 <div className="progress-milestone__body">
