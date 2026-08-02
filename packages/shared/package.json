@@ -1,0 +1,17 @@
+{
+  "name": "@borealos/shared",
+  "version": "0.1.0",
+  "private": true,
+  "description": "BorealOS 共享类型和常量 - 供各应用和包统一引用",
+  "license": "MIT",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "scripts": {
+    "build": "tsc",
+    "lint": "tsc --noEmit",
+    "clean": "rimraf dist"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.0"
+  }
+}
