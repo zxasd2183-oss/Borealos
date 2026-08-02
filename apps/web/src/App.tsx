@@ -1,10 +1,49 @@
 import { useState, useCallback, useRef } from 'react';
 import MenuBar from './components/MenuBar';
+import ActivityBar from './components/ActivityBar';
+import type { ActivityView } from './components/ActivityBar';
 import FileTree from './components/FileTree';
 import Editor from './components/Editor';
 import Terminal from './components/Terminal';
 import ChatPanel from './components/ChatPanel';
 import StatusBar from './components/StatusBar';
+import { SearchIcon, GitIcon, SettingsIcon } from './components/Icons';
+
+/* ============================================================
+ * 前端本地类型定义（简化版，供组件间共享）
+ * ============================================================ */
+
+/** 文件树节点 */
+export interface FileNode {
+  name: string;
+  path: string;
+  type: 'file' | 'directory';
+  language?: string;
+  children?: FileNode[];
+}
+
+/** 编辑器标签页 */
+export interface EditorTab {
+  path: string;
+  name: string;
+  language: string;
+  content: string;
+  isDirty: boolean;
+}
+
+/** 聊天消息 */
+export interface ChatMessage {
+  id: string;
+  role: 'user' | 'assistant' | 'system';
+  content: string;
+  timestamp: number;
+}
+
+/** 光标位置 */
+export interface CursorPosition {
+  lineNumber: number;
+  column: number;
+}
 
 /* ============================================================
  * 模拟文件树数据（实际项目中由后端 API 提供）
@@ -116,6 +155,9 @@ const App: React.FC = () => {
     },
   ]);
   const [isAiThinking, setIsAiThinking] = useState(false);
+
+  // ---- 活动栏视图状态 ----
+  const [activeView, setActiveView] = useState<ActivityView>('explorer');
 
   // ---- 状态栏信息 ----
   const [cursorPosition, setCursorPosition] = useState<CursorPosition>({
@@ -351,10 +393,42 @@ const App: React.FC = () => {
       {/* 顶部菜单栏 */}
       <MenuBar onAction={handleMenuAction} />
 
-      {/* 主体区域：文件树 + 编辑器/终端 + 聊天面板 */}
+      {/* 主体区域：活动栏 + 侧边栏 + 编辑器/终端 + 聊天面板 */}
       <div className="app-body">
-        {/* 左侧文件树 */}
-        <FileTree treeData={MOCK_FILE_TREE} onOpenFile={handleOpenFile} activePath={activeTabPath} />
+        {/* 活动栏（最左侧垂直图标栏） */}
+        <ActivityBar activeView={activeView} onViewChange={setActiveView} />
+
+        {/* 左侧侧边栏 - 根据活动栏视图切换内容 */}
+        {activeView === 'explorer' && (
+          <FileTree treeData={MOCK_FILE_TREE} onOpenFile={handleOpenFile} activePath={activeTabPath} />
+        )}
+        {activeView === 'search' && (
+          <div className="sidebar-placeholder">
+            <div className="sidebar-placeholder__header">搜索</div>
+            <div className="sidebar-placeholder__body">
+              <SearchIcon size={48} />
+              <p>搜索功能开发中</p>
+            </div>
+          </div>
+        )}
+        {activeView === 'git' && (
+          <div className="sidebar-placeholder">
+            <div className="sidebar-placeholder__header">源代码管理</div>
+            <div className="sidebar-placeholder__body">
+              <GitIcon size={48} />
+              <p>当前没有更改</p>
+            </div>
+          </div>
+        )}
+        {activeView === 'settings' && (
+          <div className="sidebar-placeholder">
+            <div className="sidebar-placeholder__header">设置</div>
+            <div className="sidebar-placeholder__body">
+              <SettingsIcon size={48} />
+              <p>设置功能开发中</p>
+            </div>
+          </div>
+        )}
 
         {/* 中间区域：编辑器 + 终端 */}
         <div className="center-pane">
