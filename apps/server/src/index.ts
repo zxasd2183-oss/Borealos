@@ -78,7 +78,7 @@ async function main() {
       ) {
         return reply.sendFile('index.html');
       }
-      reply.code(404).send({ error: 'Not Found' });
+      return reply.code(404).send({ error: 'Not Found' });
     });
 
     fastify.log.info(`前端静态文件目录: ${webDistDir}`);
