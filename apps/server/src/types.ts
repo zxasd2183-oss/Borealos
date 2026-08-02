@@ -114,6 +114,7 @@ export interface UpdateFileBody {
 export interface ChatRequestBody {
   message: string;
   projectId?: string;
+  model?: string;
   history?: ChatMessage[];
 }
 
