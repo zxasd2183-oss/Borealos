@@ -1,0 +1,35 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "declaration": true,
+    "declarationMap": true,
+    "sourceMap": true,
+    "noUnusedLocals": false,
+    "noUnusedParameters": false,
+    "noImplicitReturns": true,
+    "noFallthroughCasesInSwitch": true,
+    "baseUrl": ".",
+    "paths": {
+      "@borealos/shared": ["packages/shared/src/index.ts"],
+      "@borealos/shared/*": ["packages/shared/src/*"],
+      "@borealos/editor": ["packages/editor/src/index.ts"],
+      "@borealos/editor/*": ["packages/editor/src/*"],
+      "@borealos/api": ["packages/api/src/index.ts"],
+      "@borealos/api/*": ["packages/api/src/*"],
+      "@borealos/memory": ["packages/memory/src/index.ts"],
+      "@borealos/memory/*": ["packages/memory/src/*"],
+      "@borealos/sync": ["packages/sync/src/index.ts"],
+      "@borealos/sync/*": ["packages/sync/src/*"]
+    }
+  },
+  "exclude": ["node_modules", "dist", "build"]
+}
