@@ -22,12 +22,6 @@ import { seedData } from './store';
 /** 服务器监听端口 */
 const PORT = 3001;
 
-/** 允许的跨域来源（前端开发服务器地址） */
-const CORS_ORIGINS = [
-  'http://localhost:5173',
-  'http://127.0.0.1:5173',
-];
-
 async function main() {
   // 创建 Fastify 实例，启用日志
   const fastify = Fastify({
@@ -36,9 +30,9 @@ async function main() {
 
   // ==================== 注册插件 ====================
 
-  // 注册 CORS 插件 - 允许前端跨域访问
+  // 注册 CORS 插件 - 允许所有来源（需通过公网 IP 访问）
   await fastify.register(cors, {
-    origin: CORS_ORIGINS,
+    origin: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
     credentials: true,
   });
@@ -52,6 +46,7 @@ async function main() {
   await fastify.register(fastifyStatic, {
     root: publicDir,
     prefix: '/static/',
+    decorateReply: false, // 不装饰 reply.sendFile，留给前端 dist 注册使用
   });
 
   // ==================== 注册路由 ====================
@@ -61,6 +56,35 @@ async function main() {
   await fastify.register(fileRoutes); // /api/files
   await fastify.register(chatRoutes); // /api/chat, /api/chat/ws
   await fastify.register(terminalRoutes); // /api/terminal/ws
+
+  // ==================== 服务前端静态文件 ====================
+
+  // 前端构建产物目录：apps/web/dist
+  const webDistDir = path.join(__dirname, '../../web/dist');
+  if (fs.existsSync(webDistDir)) {
+    await fastify.register(fastifyStatic, {
+      root: webDistDir,
+      prefix: '/',
+      // 默认 decorateReply: true，使 reply.sendFile 指向 webDistDir
+      // （/static/ 注册已显式关闭 decorateReply 以避免装饰冲突）
+    });
+
+    // SPA fallback: 所有未匹配的非 API、非静态资源 GET 请求返回 index.html
+    fastify.setNotFoundHandler((request, reply) => {
+      if (
+        request.method === 'GET' &&
+        !request.url.startsWith('/api/') &&
+        !request.url.startsWith('/static/')
+      ) {
+        return reply.sendFile('index.html');
+      }
+      reply.code(404).send({ error: 'Not Found' });
+    });
+
+    fastify.log.info(`前端静态文件目录: ${webDistDir}`);
+  } else {
+    fastify.log.warn(`前端构建目录不存在: ${webDistDir}，仅提供 API 服务`);
+  }
 
   // ==================== 初始化数据 ====================
 
