@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import type { FC } from 'react';
+import { BorealOsLogo, SearchIcon, SettingsIcon } from './Icons';
 
 /** 菜单项类型 */
 interface MenuItem {
@@ -100,7 +101,7 @@ const MenuBar: FC<MenuBarProps> = ({ onAction }) => {
     <div className="menu-bar" ref={containerRef}>
       {/* 应用 Logo */}
       <div className="menu-bar__logo">
-        <span className="menu-bar__logo-icon">B</span>
+        <span className="menu-bar__logo-icon"><BorealOsLogo size={20} /></span>
         <span>BorealOS</span>
       </div>
 
@@ -149,14 +150,14 @@ const MenuBar: FC<MenuBarProps> = ({ onAction }) => {
           title="搜索"
           onClick={() => onAction('search')}
         >
-          🔍
+          <SearchIcon size={16} />
         </button>
         <button
           className="menu-bar__action-btn"
           title="设置"
           onClick={() => onAction('settings')}
         >
-          ⚙
+          <SettingsIcon size={16} />
         </button>
       </div>
     </div>
