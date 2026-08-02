@@ -28,7 +28,7 @@ pub fn cors_layer() -> CorsLayer {
 /// 创建 HTTP 追踪层
 ///
 /// 基于 `tower-http` 的 `TraceLayer`，自动记录请求和响应的追踪信息。
-pub fn trace_layer() -> TraceLayer {
+pub fn trace_layer() -> TraceLayer<tower_http::classify::SharedClassifier<tower_http::classify::ServerErrorsAsFailures>> {
     TraceLayer::new_for_http()
 }
 

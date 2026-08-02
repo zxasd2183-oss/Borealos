@@ -2,7 +2,7 @@
 
 > **用途**：本文件是项目的"记忆大脑"。每次会话开始时优先读取此文件以恢复上下文，防止失忆。每次开发结束或重要节点更新此文件，并立即推送到 Gitee。
 >
-> **最后更新**：2026-08-02（Yjs 真实 CRDT 替换模拟实现 + 统一 WebSocket 网关 + SDK 流式聊天迁移）
+> **最后更新**：2026-08-02（Rust AI 网关编译成功 + 前后端运行验证 + Yjs CRDT + 统一网关 + SDK 迁移）
 
 ---
 
@@ -36,7 +36,7 @@
 | AI 记忆 | MemGPT 分层记忆（核心/短期/长期）+ 向量嵌入 |
 | 实时同步 | Yjs CRDT（Y.Doc + Y.Text）+ Awareness 光标 |
 | 桌面端 | Tauri 2.0（自定义标题栏 + 系统托盘） |
-| 本地网关 | Rust（Axum，代理 AI 模型调用，:8787） |
+| 本地网关 | Rust（Axum + rustls-tls，代理 AI 模型调用，:8787，已编译验证） |
 | API SDK | @borealos/api（HTTP + WebSocket 客户端） |
 | 编辑器核心 | @borealos/editor（Monaco/xterm 封装 + 主题 + Hooks） |
 | Monorepo | pnpm + Turborepo |
@@ -123,11 +123,13 @@ borealos/
 - [x] **统一 WebSocket 网关**（`/ws`）— 事件路由协议（`{event, data}`），支持 chat:send / terminal:input / ping，自动重连+心跳+消息队列
 - [x] **前端流式聊天迁移到 @borealos/api SDK** — App.tsx 使用 apiClient.chat.stream() 替代原生 WebSocket，SDK 管理连接生命周期
 - [x] **Yjs 真实 CRDT 替换模拟实现** — SyncDocument 使用 Y.Doc + Y.Text，applyUpdate/getUpdate 使用 Y.applyUpdate/encodeStateAsUpdate，新增 getDiffUpdate/getStateVector 增量同步，文档销毁时释放 Yjs 资源
+- [x] **Rust 工具链安装** — Rust 1.75.0 (apt)，编译时通过 Cargo.lock 约束依赖版本兼容 Rust 1.75
+- [x] **Rust AI 网关编译成功** — reqwest 改用 rustls-tls（避免 OpenSSL 依赖），TraceLayer 泛型修复，release 优化构建 23MB ELF 二进制
+- [x] **前后端运行验证** — 后端 Fastify:3001 启动成功（数据库初始化 + 认证中间件 + SPA 静态文件），API 测试通过（health/usage/progress/models/auth/chat），前端 Vite 构建成功（70 模块 3.71 秒）
 
 ### 🚧 后续优化方向（非阻塞）
 - [ ] PostgreSQL + Redis 实际部署（代码已就绪，需配置环境变量）
-- [ ] Tauri 桌面端打包发布（需安装 Rust 工具链）
-- [ ] Rust 网关编译部署（需安装 Rust 工具链）
+- [ ] Tauri 桌面端打包发布（需 webkit2gtk 等系统依赖）
 
 ## 七、开发流程规范（重要）
 
