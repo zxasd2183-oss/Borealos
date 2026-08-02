@@ -1,0 +1,22 @@
+[package]
+name = "borealos-gateway"
+version = "0.1.0"
+edition = "2021"
+description = "BorealOS AI Gateway - Rust 高性能 AI 模型代理"
+
+[dependencies]
+tokio = { version = "1", features = ["full"] }
+axum = "0.7"
+tower = "0.4"
+tower-http = { version = "0.5", features = ["cors", "trace"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+reqwest = { version = "0.12", features = ["json", "stream"] }
+futures = "0.3"
+tokio-stream = "0.1"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+dotenvy = "0.15"
+uuid = { version = "1", features = ["v4"] }
+chrono = { version = "0.4", features = ["serde"] }
+bytes = "1"

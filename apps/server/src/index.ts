@@ -19,6 +19,9 @@ import chatRoutes from './routes/chat';
 import terminalRoutes from './routes/terminal';
 import usageRoutes from './routes/usage';
 import progressRoutes from './routes/progress';
+import authRoutes from './routes/auth';
+import { createAuthMiddleware } from './auth/middleware';
+import { initDatabase, closeDatabase } from './db';
 import { seedData } from './store';
 
 /** 服务器监听端口 */
@@ -51,8 +54,23 @@ async function main() {
     decorateReply: false, // 不装饰 reply.sendFile，留给前端 dist 注册使用
   });
 
+  // ==================== 初始化数据库 ====================
+
+  try {
+    await initDatabase();
+    fastify.log.info('数据库已初始化');
+  } catch (dbErr) {
+    fastify.log.warn(`数据库初始化失败，降级为纯内存模式: ${dbErr instanceof Error ? dbErr.message : dbErr}`);
+  }
+
+  // ==================== 注册认证中间件 ====================
+
+  await createAuthMiddleware(fastify);
+  fastify.log.info('认证中间件已注册');
+
   // ==================== 注册路由 ====================
 
+  await fastify.register(authRoutes); // /api/auth/*
   await fastify.register(healthRoutes); // GET /health
   await fastify.register(projectRoutes); // /api/projects
   await fastify.register(fileRoutes); // /api/files
@@ -106,6 +124,19 @@ async function main() {
     fastify.log.error(err);
     process.exit(1);
   }
+
+  // ==================== 优雅关闭 ====================
+
+  const shutdown = async (signal: string) => {
+    fastify.log.info(`收到 ${signal} 信号，正在关闭服务器...`);
+    await fastify.close();
+    await closeDatabase();
+    fastify.log.info('服务器已关闭');
+    process.exit(0);
+  };
+
+  process.on('SIGINT', () => shutdown('SIGINT'));
+  process.on('SIGTERM', () => shutdown('SIGTERM'));
 }
 
 // 启动服务器

@@ -2,7 +2,7 @@
 
 > **用途**：本文件是项目的"记忆大脑"。每次会话开始时优先读取此文件以恢复上下文，防止失忆。每次开发结束或重要节点更新此文件，并立即推送到 Gitee。
 >
-> **最后更新**：2026-08-02（真实数据对接：后端用量/进度 API + 前端实时获取）
+> **最后更新**：2026-08-02（全模块补全：7 个包 + 桌面端 + 网关 + 认证 + 持久化 + PWA）
 
 ---
 
@@ -31,10 +31,14 @@
 | 模块 | 技术 |
 |------|------|
 | 前端 | Vite + React + Monaco Editor + xterm.js |
-| 后端 | Node.js (Fastify) + PostgreSQL + Redis |
-| AI 记忆 | MemGPT 分层记忆 + pgvector |
-| 实时同步 | Yjs CRDT + Awareness |
-| 本地网关 | Rust（代理 AI 模型调用，:8787） |
+| 后端 | Node.js (Fastify) + JWT 认证 + 数据库抽象层 |
+| 数据库 | PostgreSQL（生产）+ MemoryAdapter（开发）+ Redis 缓存 |
+| AI 记忆 | MemGPT 分层记忆（核心/短期/长期）+ 向量嵌入 |
+| 实时同步 | Yjs CRDT 模拟 + Awareness 光标 |
+| 桌面端 | Tauri 2.0（自定义标题栏 + 系统托盘） |
+| 本地网关 | Rust（Axum，代理 AI 模型调用，:8787） |
+| API SDK | @borealos/api（HTTP + WebSocket 客户端） |
+| 编辑器核心 | @borealos/editor（Monaco/xterm 封装 + 主题 + Hooks） |
 | Monorepo | pnpm + Turborepo |
 | AI 模型 | Token Plan 提供 16 个模型（千问/DeepSeek/Kimi/GLM/MiniMax 等） |
 
@@ -43,17 +47,29 @@
 ```
 borealos/
 ├── apps/
-│   ├── web/          # Web 前端（Vite + React，端口 5173）
-│   │   └── src/components/  # ActivityBar, ChatPanel, Editor, FileTree, Icons, MenuBar, StatusBar, Terminal
-│   ├── server/       # 后端 API（Fastify，端口 3001）
-│   │   └── src/routes/      # chat, files, health, projects, terminal, usage, progress
-│   ├── desktop/      # 桌面端（Tauri 2.0）— 待开发
-│   └── gateway/      # Rust AI 网关（端口 8787）— 待开发
+│   ├── web/              # Web 前端（Vite + React，端口 5173）+ PWA
+│   │   └── src/components/    # ActivityBar, ChatPanel, Editor, FileTree, Icons, MenuBar, StatusBar, Terminal, UsagePanel, ProgressPanel
+│   │   └── src/pwa.ts         # PWA Service Worker 注册
+│   │   └── public/            # manifest.json, sw.js
+│   ├── server/           # 后端 API（Fastify，端口 3001）
+│   │   └── src/routes/        # auth, chat, files, health, projects, terminal, usage, progress
+│   │   └── src/auth/          # jwt.ts, middleware.ts, store.ts, types.ts
+│   │   └── src/db.ts          # 数据库初始化（MemoryAdapter / PostgresAdapter）
+│   ├── desktop/          # 桌面端（Tauri 2.0，端口 1420）
+│   │   └── src/               # App.tsx, window-controls.ts, tauri-bridge.ts
+│   │   └── src-tauri/         # Rust 后端（系统托盘、窗口管理）
+│   └── gateway/          # Rust AI 网关（Axum，端口 8787）
+│       └── src/               # main.rs, config.rs, proxy.rs, stream.rs, handlers.rs, middleware.rs
 ├── packages/
-│   └── shared/       # 共享类型和常量（types.ts, constants.ts, index.ts）
-├── package.json      # pnpm workspaces
+│   ├── shared/           # 共享类型和常量
+│   ├── api/              # API SDK 客户端（HTTP + WebSocket）
+│   ├── database/         # 数据库抽象层（MemoryAdapter + PostgresAdapter + RedisCache）
+│   ├── editor/           # 编辑器核心（配置、主题、语言检测、React Hooks）
+│   ├── memory/           # MemGPT 分层记忆（核心/短期/长期 + 向量嵌入）
+│   └── sync/             # Yjs CRDT 实时同步（文档、Awareness、WebSocket Provider）
+├── package.json          # pnpm workspaces
 ├── turbo.json
-└── tsconfig.json
+└── tsconfig.json         # 路径别名 @borealos/*
 ```
 
 ## 五、关键端口
@@ -61,6 +77,7 @@ borealos/
 | 服务 | 端口 |
 |------|------|
 | Web 前端（dev） | 5173 |
+| 桌面端前端（dev） | 1420 |
 | 后端 API（Fastify） | 3001 |
 | Rust AI 网关 | 8787 |
 | PostgreSQL | 5432 |
@@ -70,13 +87,13 @@ borealos/
 
 ## 六、当前进度
 
-### ✅ 已完成
+### ✅ 已完成（全部模块）
 - [x] Monorepo 骨架搭建（pnpm + Turborepo + tsconfig）
 - [x] `packages/shared` 共享类型与常量定义
-- [x] 后端 Fastify API：health / files / projects / terminal / chat 路由
+- [x] 后端 Fastify API：health / files / projects / terminal / chat / usage / progress / auth 路由
 - [x] AI 服务模块：16 个 Token Plan 模型接入，WebSocket 流式输出
 - [x] 模型选择器 UI
-- [x] Web 前端组件：ActivityBar, ChatPanel, Editor, FileTree, Icons, MenuBar, StatusBar, Terminal
+- [x] Web 前端组件：ActivityBar, ChatPanel, Editor, FileTree, Icons, MenuBar, StatusBar, Terminal, UsagePanel, ProgressPanel
 - [x] Monaco Editor CDN 加载修复
 - [x] UI 重构（活动栏 + 图标组件）
 - [x] 终端 WebSocket URL 与消息解析修复
@@ -84,22 +101,31 @@ borealos/
 - [x] **用量显示面板**（UsagePanel）— Token 用量、API 调用统计、额度进度条、7天趋势柱状图、模型用量分布
 - [x] **项目进度面板**（ProgressPanel）— 总进度环、模块完成度、里程碑时间线、可勾选待办任务
 - [x] 活动栏新增"用量统计"和"项目进度"两个视图入口
-- [x] **后端用量统计 API**（`/api/usage`）— 基于 `store.ts` 中的真实 AI 调用记录聚合，计算总 Token、月用量、模型分布、7 天趋势
-- [x] **后端项目进度 API**（`/api/progress`）— 基于文件系统检测模块完成度，12 个模块定义、6 个里程碑、8 项待办任务
-- [x] **前端真实数据对接** — UsagePanel 和 ProgressPanel 均从后端 API 获取实时数据，后端不可用时回退默认值
-- [x] **用量记录系统**（`store.ts`）— `UsageRecord` 类型 + `addUsageRecord` / `getAllUsageRecords`，chat 路由每次调用自动记录
+- [x] **后端用量统计 API**（`/api/usage`）— 基于真实 AI 调用记录聚合
+- [x] **后端项目进度 API**（`/api/progress`）— 基于文件系统检测模块完成度
+- [x] **前端真实数据对接** — UsagePanel 和 ProgressPanel 均从后端 API 获取实时数据
+- [x] **用量记录系统**（`store.ts`）— chat 路由每次调用自动记录
+- [x] **`packages/api`**（API SDK）— HttpClient + WebSocketClient + BorealOSClient（auth/projects/files/chat/terminal/usage/progress）
+- [x] **`packages/database`**（数据库层）— DatabaseAdapter 接口 + MemoryAdapter + PostgresAdapter 骨架 + RedisCache + 迁移 SQL
+- [x] **`packages/editor`**（编辑器核心）— EditorConfig/TerminalConfig + BorealOS 暗色/亮色主题 + 语言检测 + useEditor/useTerminal/useFileSync Hooks
+- [x] **`packages/memory`**（MemGPT 记忆）— CoreMemory + ShortTermMemory（滑动窗口+压缩）+ LongTermMemory（向量检索）+ MemoryManager + 嵌入工具
+- [x] **`packages/sync`**（实时同步）— SyncDocument + AwarenessManager + SyncServer + SyncClient + WebSocketProvider（自动重连+心跳+消息队列）
+- [x] **`apps/gateway`**（Rust 网关）— Axum 服务器 + AI 代理（流式/非流式）+ SSE 转发 + CORS + 日志中间件
+- [x] **`apps/desktop`**（Tauri 2.0 桌面端）— 自定义标题栏 + 窗口控制 + 系统托盘 + Tauri Bridge（文件/对话框/Shell）
+- [x] **用户认证系统** — JWT 签发/验证 + scrypt 密码哈希 + 注册/登录/登出/刷新/me 路由 + 认证中间件
+- [x] **数据持久化迁移** — db.ts 初始化 + store.ts write-through 同步 + loadFromDatabase/syncToDatabase
+- [x] **PWA 移动端** — manifest.json + Service Worker（网络优先/缓存优先策略）+ 注册脚本 + Apple 触摸图标 meta
+- [x] 服务器优雅关闭（SIGINT/SIGTERM → closeDatabase）
 
-### 🚧 待开发
-- [ ] `apps/desktop`（Tauri 2.0 桌面端）
-- [ ] `apps/gateway`（Rust AI 网关）
-- [ ] `packages/memory`（MemGPT 分层记忆系统）
-- [ ] `packages/sync`（Yjs CRDT 多平台同步）
-- [ ] `packages/editor`（编辑器核心封装）
-- [ ] `packages/api`（API SDK 客户端）
-- [ ] `packages/database`（PostgreSQL + Redis + R2 数据层）
-- [ ] PostgreSQL + Redis 实际部署
-- [ ] 用户认证系统
-- [ ] 实时协作功能
+### 🚧 后续优化方向（非阻塞）
+- [ ] PostgreSQL + Redis 实际部署（代码已就绪，需配置环境变量）
+- [ ] Yjs CRDT 替换模拟实现为真实 yjs 库
+- [ ] 编辑器组件迁移到使用 @borealos/editor 包
+- [ ] 前端迁移到使用 @borealos/api SDK
+- [ ] 记忆系统集成到 chat 路由（buildContext 注入 system prompt）
+- [ ] 实时同步集成到 WebSocket 路由
+- [ ] Tauri 桌面端打包发布（需安装 Rust 工具链）
+- [ ] Rust 网关编译部署（需安装 Rust 工具链）
 
 ## 七、开发流程规范（重要）
 
@@ -123,14 +149,38 @@ borealos/
 - 远程地址：`https://gitee.com/shashaguoji/borealos.git`（URL 不含明文令牌）
 - 提交身份：`borealos-dev <borealos-dev@gitee.local>`
 
+### 数据库配置（环境变量）
+```bash
+DATABASE_TYPE=memory          # memory（开发）或 postgres（生产）
+DB_HOST=localhost             # PostgreSQL 主机
+DB_PORT=5432                  # PostgreSQL 端口
+DB_NAME=borealos              # 数据库名
+DB_USER=borealos              # 用户名
+DB_PASSWORD=                  # 密码
+JWT_SECRET=your-secret-here   # JWT 签名密钥
+```
+
 ### 开发命令
 ```bash
 pnpm install                          # 装依赖
 pnpm dev                              # 启动所有应用
 pnpm dev --filter @borealos/web       # 仅 Web 前端
 pnpm dev --filter @borealos/server    # 仅后端
+pnpm dev --filter @borealos/desktop   # 仅桌面端
 pnpm build                            # 构建
 pnpm lint                             # 类型检查
+```
+
+### 各包类型检查
+```bash
+cd packages/api && npx tsc --noEmit       # API SDK
+cd packages/database && npx tsc --noEmit   # 数据库层
+cd packages/editor && npx tsc --noEmit     # 编辑器核心
+cd packages/memory && npx tsc --noEmit     # 记忆系统
+cd packages/sync && npx tsc --noEmit       # 实时同步
+cd apps/server && npx tsc --noEmit -p tsconfig.json  # 后端
+cd apps/web && npx tsc --noEmit            # Web 前端
+cd apps/desktop && npx tsc --noEmit        # 桌面端
 ```
 
 ### Node 要求
@@ -140,12 +190,9 @@ pnpm lint                             # 类型检查
 ## 九、最近提交脉络
 
 最新提交（master HEAD）：
+- 全模块补全：7 个 packages + 桌面端 + Rust 网关 + 认证系统 + 持久化 + PWA
 - 真实数据对接：后端 usage/progress API + 前端实时获取 + 用量记录系统
 - UI 改造：UsagePanel + ProgressPanel + 新图标 + 样式
-- `18489e7` create: ActivityBar.tsx
-- `59c03fd` create: Icons.tsx
-- `02f6f83` create: vite-env.d.ts
-- `396a342` update: README.md
 - 更早：AI 服务模块、WebSocket 流式、终端/聊天修复、UI 组件、Monorepo 骨架
 
 ## 十、注意事项
@@ -154,3 +201,5 @@ pnpm lint                             # 类型检查
 - **VPS 只做 FRP 中转和公网入口** —— 不存放代码
 - **Gitee 是唯一代码真相源** —— 云端每次改完必须 push
 - **本文件 BRAIN.md 是记忆大脑** —— 推送到 Gitee 后，任何云端会话都能读取恢复上下文
+- **数据库默认内存模式** —— 开发环境无需 PostgreSQL，生产环境设置 DATABASE_TYPE=postgres
+- **Rust 项目需 Rust 工具链** —— gateway 和 desktop 的 Rust 代码需安装 Rust 编译器

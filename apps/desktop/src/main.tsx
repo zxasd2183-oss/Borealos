@@ -1,32 +1,21 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App';
-import './App.css';
-import { registerServiceWorker } from './pwa';
+import './styles.css';
 
 // ============================================================
-// Monaco Editor CDN 配置
-// 默认使用 cdn.jsdelivr.net 在国内经常被墙，改用 npmmirror 国内镜像
+// BorealOS 桌面端 React 应用入口
+// 挂载桌面端专用 App 组件（含自定义标题栏与 Web 前端嵌入）
 // ============================================================
-import { loader } from '@monaco-editor/react';
 
-loader.config({
-  paths: {
-    vs: 'https://registry.npmmirror.com/monaco-editor/0.56.0/files/min/vs',
-  },
-});
-
-// BorealOS Web IDE React 应用入口
 const rootElement = document.getElementById('root');
 if (!rootElement) {
   throw new Error('找不到根挂载节点 #root，请检查 index.html');
 }
 
 ReactDOM.createRoot(rootElement).render(
+  // 注意：桌面端调试时若需关闭 StrictMode 的双调用行为，可移除此包裹
   <React.StrictMode>
     <App />
   </React.StrictMode>,
 );
-
-// 注册 PWA Service Worker（生产环境）
-registerServiceWorker();

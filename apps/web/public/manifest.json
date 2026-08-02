@@ -1,0 +1,37 @@
+{
+  "name": "BorealOS - AI IDE",
+  "short_name": "BorealOS",
+  "description": "跨平台 AI 驱动的云端 IDE",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#1a1a2e",
+  "theme_color": "#7c3aed",
+  "categories": ["developer", "productivity", "utilities"],
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "新建项目",
+      "url": "/?action=new-project",
+      "description": "创建新项目"
+    },
+    {
+      "name": "AI 对话",
+      "url": "/?view=chat",
+      "description": "打开 AI 助手对话"
+    }
+  ]
+}

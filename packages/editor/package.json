@@ -1,0 +1,23 @@
+{
+  "name": "@borealos/editor",
+  "version": "0.1.0",
+  "private": true,
+  "description": "BorealOS 编辑器核心封装包 - 提供可复用的编辑器/终端配置、主题、语言检测与 React Hooks，供 Web、桌面端、移动端共用",
+  "license": "MIT",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "scripts": {
+    "build": "tsc",
+    "lint": "tsc --noEmit",
+    "clean": "rimraf dist"
+  },
+  "peerDependencies": {
+    "react": ">=18.0.0"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.12",
+    "react": "^18.3.1",
+    "rimraf": "^6.0.0",
+    "typescript": "^5.7.0"
+  }
+}
