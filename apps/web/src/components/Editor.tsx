@@ -1,6 +1,7 @@
 import { useRef } from 'react';
 import Editor, { type OnMount, type BeforeMount } from '@monaco-editor/react';
 import type { FC } from 'react';
+import { getFileTypeIcon, CloseIcon, BorealOsLogo } from './Icons';
 import type { EditorTab, CursorPosition } from '../App';
 
 interface EditorProps {
@@ -16,33 +17,6 @@ interface EditorProps {
   onContentChange: (path: string, content: string) => void;
   /** 光标位置变更 */
   onCursorChange: (position: CursorPosition) => void;
-}
-
-/**
- * 根据文件名获取标签页图标
- */
-function getTabIcon(name: string): string {
-  const ext = name.split('.').pop()?.toLowerCase();
-  switch (ext) {
-    case 'tsx':
-      return '🟦';
-    case 'ts':
-      return '🔷';
-    case 'jsx':
-      return '🟨';
-    case 'js':
-      return '🟡';
-    case 'json':
-      return '📋';
-    case 'css':
-      return '🎨';
-    case 'html':
-      return '🌐';
-    case 'md':
-      return '📝';
-    default:
-      return '📄';
-  }
 }
 
 /**
@@ -122,7 +96,10 @@ const EditorPane: FC<EditorProps> = ({
             onClick={() => onSelectTab(tab.path)}
             title={tab.path}
           >
-            <span className="editor-tab__icon">{getTabIcon(tab.name)}</span>
+            {(() => {
+              const Icon = getFileTypeIcon(tab.name);
+              return <span className="editor-tab__icon"><Icon size={16} /></span>;
+            })()}
             <span className="editor-tab__label">{tab.name}</span>
             {/* 未保存标记 / 关闭按钮 */}
             {tab.isDirty ? (
@@ -145,7 +122,7 @@ const EditorPane: FC<EditorProps> = ({
                 }}
                 title="关闭"
               >
-                ×
+                <CloseIcon size={14} />
               </span>
             )}
           </div>
@@ -193,7 +170,7 @@ const EditorPane: FC<EditorProps> = ({
         ) : (
           /* 无打开文件时显示欢迎页 */
           <div className="editor-welcome">
-            <div className="editor-welcome__logo">🏔️</div>
+            <div className="editor-welcome__logo"><BorealOsLogo size={64} /></div>
             <div className="editor-welcome__title">BorealOS</div>
             <div className="editor-welcome__hint">
               从左侧文件树选择文件开始编辑，或通过菜单栏新建文件
