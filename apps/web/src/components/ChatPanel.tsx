@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import type { FC } from 'react';
 import type { ChatMessage } from '../App';
+import { AiIcon, ChevronDownIcon, CheckIcon, SendIcon } from './Icons';
 
 /** 模型信息（从后端获取） */
 interface ModelInfo {
@@ -127,7 +128,7 @@ const ChatPanel: FC<ChatPanelProps> = ({ messages, isThinking, onSend }) => {
     <div className="chat-panel">
       {/* 标题栏 - 包含模型选择器 */}
       <div className="chat-header">
-        <span className="chat-header__icon">AI</span>
+        <span className="chat-header__icon"><AiIcon size={16} /></span>
         <span className="chat-header__title">AI 助手</span>
         {/* 模型选择器 */}
         <div className="model-selector" ref={modelListRef}>
@@ -138,7 +139,7 @@ const ChatPanel: FC<ChatPanelProps> = ({ messages, isThinking, onSend }) => {
           >
             <span className="model-selector__brand">{currentModel?.brand}</span>
             <span className="model-selector__name">{currentModel?.name || '选择模型'}</span>
-            <span className={`model-selector__arrow ${showModelList ? 'model-selector__arrow--up' : ''}`}>▼</span>
+            <span className={`model-selector__arrow ${showModelList ? 'model-selector__arrow--up' : ''}`}><ChevronDownIcon size={12} /></span>
           </button>
           {showModelList && (
             <div className="model-selector__dropdown">
@@ -155,7 +156,7 @@ const ChatPanel: FC<ChatPanelProps> = ({ messages, isThinking, onSend }) => {
                   <div className="model-option__header">
                     <span className="model-option__brand">{m.brand}</span>
                     <span className="model-option__name">{m.name}</span>
-                    {m.id === selectedModel && <span className="model-option__check">✓</span>}
+                    {m.id === selectedModel && <span className="model-option__check"><CheckIcon size={14} /></span>}
                   </div>
                   <div className="model-option__desc">{m.description}</div>
                   <div className="model-option__tags">
@@ -173,7 +174,7 @@ const ChatPanel: FC<ChatPanelProps> = ({ messages, isThinking, onSend }) => {
       <div className="chat-messages">
         {messages.length === 0 && !isThinking ? (
           <div className="chat-empty">
-            <div className="chat-empty__icon">💬</div>
+            <div className="chat-empty__icon"><AiIcon size={48} /></div>
             <div className="chat-empty__text">
               开始与 AI 助手对话吧！<br />
               我可以帮你编写代码、解释概念、调试问题。
@@ -240,7 +241,7 @@ const ChatPanel: FC<ChatPanelProps> = ({ messages, isThinking, onSend }) => {
             disabled={!input.trim() || isThinking}
             title="发送消息"
           >
-            发送 ➤
+            发送 <SendIcon size={14} />
           </button>
         </div>
       </div>
