@@ -856,6 +856,7 @@ body {
   flex-direction: column;
   gap: 6px;
   flex: 1;
+  justify-content: center;
 }
 
 .editor-welcome__action {
@@ -911,6 +912,7 @@ body {
   flex-direction: column;
   gap: 4px;
   flex: 1;
+  justify-content: center;
 }
 
 .editor-welcome__shortcut {
