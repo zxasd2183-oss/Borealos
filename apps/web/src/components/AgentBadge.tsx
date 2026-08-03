@@ -2,28 +2,50 @@
  * AI Agent 徽章组件
  *
  * 在项目列表、标题栏等位置显示项目负责的 AI Agent。
+ * 内置 Agent 使用官方品牌 SVG 图标，自定义 Agent 使用 emoji。
  *
  * 用法：
- *   <AgentBadge agentId="trae" />           // 显示小徽章
- *   <AgentBadge agentId="claude" size="lg" /> // 大徽章
+ *   <AgentBadge agentId="trae" />             // 显示小徽章
+ *   <AgentBadge agentId="claude" size="lg" />  // 大徽章
  *   <AgentBadge agentId="codex" showName={false} /> // 只显示图标
  */
 
 import { useState, useRef, useEffect } from 'react';
 import { getAgentById, getAllAgents, addCustomAgent, NO_AGENT } from '../lib/agents';
 import type { AIAgent } from '../lib/agents';
+import AgentIcon from './AgentIcon';
 
 interface AgentBadgeProps {
-  /** Agent ID */
   agentId?: string;
-  /** 尺寸：sm（默认） | lg */
   size?: 'sm' | 'lg';
-  /** 是否显示名称 */
   showName?: boolean;
-  /** 是否可点击切换（用于选择/编辑） */
   editable?: boolean;
-  /** 选择 Agent 后的回调 */
   onChange?: (agentId: string) => void;
+}
+
+/** 判断是否为内置 SVG Agent（icon === 'svg'） */
+function isSvgAgent(icon: string): boolean {
+  return icon === 'svg';
+}
+
+/** 渲染 Agent 图标 */
+function AgentIconRenderer({ agent, size }: { agent: AIAgent; size: 'sm' | 'lg' }) {
+  const px = size === 'lg' ? 18 : 14;
+  if (isSvgAgent(agent.icon) || !agent.icon) {
+    // 内置品牌 SVG 或无图标
+    if (agent.id) {
+      return <AgentIcon agentId={agent.id} size={px} color={agent.color} />;
+    }
+    // 未分配
+    return (
+      <svg width={px} height={px} viewBox="0 0 24 24" fill="none" stroke={agent.color} strokeWidth="2" style={{ flexShrink: 0 }}>
+        <circle cx="12" cy="12" r="10" />
+        <path d="M8 12 L16 12 M12 8 L12 16" />
+      </svg>
+    );
+  }
+  // 自定义 emoji 图标
+  return <span style={{ fontSize: px, lineHeight: 1, flexShrink: 0 }}>{agent.icon}</span>;
 }
 
 const AgentBadge: React.FC<AgentBadgeProps> = ({
@@ -38,7 +60,6 @@ const AgentBadge: React.FC<AgentBadgeProps> = ({
   const pickerRef = useRef<HTMLDivElement>(null);
   const agent = getAgentById(agentId);
 
-  // 点击外部关闭选择器
   useEffect(() => {
     if (!showPicker) return;
     const handler = (e: MouseEvent) => {
@@ -60,7 +81,6 @@ const AgentBadge: React.FC<AgentBadgeProps> = ({
     setShowPicker(false);
   };
 
-  // 尺寸样式
   const sizeClass = size === 'lg' ? 'agent-badge--lg' : 'agent-badge--sm';
   const allAgents = getAllAgents();
 
@@ -68,12 +88,12 @@ const AgentBadge: React.FC<AgentBadgeProps> = ({
     <div className="agent-badge-wrapper" ref={pickerRef}>
       <div
         className={`agent-badge ${sizeClass} ${editable ? 'agent-badge--editable' : ''}`}
-        style={{ borderColor: agent.color }}
+        style={{ borderColor: agent.color, backgroundColor: `${agent.color}15` }}
         onClick={handleClick}
         title={agent.description || agent.name}
       >
-        <span className="agent-badge__icon" style={{ color: agent.color }}>
-          {agent.icon}
+        <span className="agent-badge__icon">
+          <AgentIconRenderer agent={agent} size={size} />
         </span>
         {showName && (
           <span className="agent-badge__name" style={{ color: agent.color }}>
@@ -81,7 +101,7 @@ const AgentBadge: React.FC<AgentBadgeProps> = ({
           </span>
         )}
         {editable && (
-          <span className="agent-badge__arrow">▼</span>
+          <span className="agent-badge__arrow" style={{ color: agent.color }}>▼</span>
         )}
       </div>
 
@@ -104,7 +124,9 @@ const AgentBadge: React.FC<AgentBadgeProps> = ({
                   className={`agent-picker__item ${!agentId ? 'agent-picker__item--active' : ''}`}
                   onClick={() => handleSelect('')}
                 >
-                  <span className="agent-picker__item-icon">{NO_AGENT.icon}</span>
+                  <span className="agent-picker__item-icon">
+                    <AgentIconRenderer agent={NO_AGENT} size="sm" />
+                  </span>
                   <span className="agent-picker__item-name">{NO_AGENT.name}</span>
                 </div>
                 {allAgents.map((a: AIAgent) => (
@@ -113,7 +135,9 @@ const AgentBadge: React.FC<AgentBadgeProps> = ({
                     className={`agent-picker__item ${agentId === a.id ? 'agent-picker__item--active' : ''}`}
                     onClick={() => handleSelect(a.id)}
                   >
-                    <span className="agent-picker__item-icon">{a.icon}</span>
+                    <span className="agent-picker__item-icon">
+                      <AgentIconRenderer agent={a} size="sm" />
+                    </span>
                     <span className="agent-picker__item-name">{a.name}</span>
                     {a.description && (
                       <span className="agent-picker__item-desc">{a.description}</span>
