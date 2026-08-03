@@ -312,6 +312,13 @@ build_app() {
         ok "esbuild 已安装: $(node -e "console.log(require('esbuild/package.json').version)" 2>/dev/null || echo 'unknown')"
     fi
 
+    # 构建内部包（@borealos/database, memory, sync）
+    info "构建内部包 (@borealos/*)..."
+    npx tsc -p packages/database/tsconfig.json 2>&1 | tail -3
+    npx tsc -p packages/memory/tsconfig.json 2>&1 | tail -3
+    npx tsc -p packages/sync/tsconfig.json 2>&1 | tail -3
+    ok "内部包构建完成"
+
     # 构建前端
     info "构建前端 (@borealos/web)..."
     if pnpm --filter @borealos/web build 2>&1 | tail -10; then
