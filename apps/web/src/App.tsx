@@ -521,6 +521,12 @@ const App: React.FC = () => {
   if (!authChecked) {
     return (
       <div className="app app--loading">
+        <div className="ambient-bg">
+          <div className="ambient-orb ambient-orb--blue" />
+          <div className="ambient-orb ambient-orb--purple" />
+          <div className="ambient-orb ambient-orb--green" />
+          <div className="ambient-grain" />
+        </div>
         <div className="app-loading">
           <div className="app-loading__spinner" />
         </div>
@@ -535,6 +541,15 @@ const App: React.FC = () => {
 
   return (
     <div className="app">
+      {/* 流动光效背景 — 浮动渐变球体 + 噪点纹理 */}
+      <div className="ambient-bg">
+        <div className="ambient-orb ambient-orb--blue" />
+        <div className="ambient-orb ambient-orb--purple" />
+        <div className="ambient-orb ambient-orb--green" />
+        <div className="ambient-orb ambient-orb--pink" />
+        <div className="ambient-grain" />
+      </div>
+
       {/* 顶部区域 — 仅灵动岛居中，无传统菜单栏 */}
       <div className="app-topbar" />
 
