@@ -5,9 +5,13 @@
  * 本地 Agent 在用户电脑上运行，将 Claude CLI / Codex CLI 暴露给 BorealOS。
  *
  * 核心功能：
- *   1. 注册 / 注销 agent 连接
- *   2. 动态提供本地 CLI 模型列表（供 /api/models 使用）
- *   3. 通过 agent 执行 CLI 命令并流式返回结果
+ *   1. 注册 / 注销 agent 连接（每台电脑一个连接，带自定义名称）
+ *   2. 动态提供本地 CLI 模型列表（每台电脑 × 每个 CLI = 一个独立选项）
+ *   3. 通过指定 agent 执行 CLI 命令并流式返回结果
+ *
+ * 模型 ID 格式：local:<agentId>:<cliType>
+ *   例如：local:agent-a1b2c3d4:claude
+ *        local:agent-e5f6g7h8:codex
  */
 
 import type { WebSocket } from 'ws';
@@ -19,8 +23,8 @@ import { randomUUID } from 'crypto';
 
 /** 本地 Agent 注册的 CLI 工具信息 */
 export interface LocalCli {
-  id: string; // 'claude-cli' | 'codex-cli'
-  name: string; // 显示名称
+  id: string;
+  name: string;
   version: string;
   type: 'claude' | 'codex';
 }
@@ -29,6 +33,8 @@ export interface LocalCli {
 interface AgentConnection {
   agentId: string;
   ws: WebSocket;
+  /** 用户自定义名称（如 "MacBook-Pro"） */
+  name: string;
   hostname: string;
   platform: string;
   clis: LocalCli[];
@@ -43,18 +49,27 @@ interface AgentConnection {
 
 /** 本地 CLI 模型（动态生成，供 /api/models 返回） */
 export interface LocalModel {
-  id: string; // 'claude-cli' | 'codex-cli'
+  id: string; // local:<agentId>:<cliType>
   name: string;
   description: string;
   brand: string;
   isLocal: true;
   vision: boolean;
   reasoning: boolean;
+  /** 所属 agent 的显示名称 */
+  agentName: string;
+  /** 所属 agent 的 ID */
+  agentId: string;
+  /** CLI 类型 */
+  cliType: 'claude' | 'codex';
 }
 
 // ============================================================================
 // AgentManager 单例
 // ============================================================================
+
+/** 模型 ID 前缀 */
+const LOCAL_MODEL_PREFIX = 'local:';
 
 class AgentManager {
   private agents = new Map<string, AgentConnection>();
@@ -62,21 +77,26 @@ class AgentManager {
   /** 注册一个 agent 连接 */
   register(ws: WebSocket, data: {
     agentId?: string;
+    name?: string;
     hostname?: string;
     platform?: string;
     clis: LocalCli[];
   }): string {
     const agentId = data.agentId || `agent-${randomUUID().slice(0, 8)}`;
 
-    // 如果同一个 agentId 已存在，先关闭旧连接
+    // 如果同一个 agentId 已存在，先清理旧连接
     const existing = this.agents.get(agentId);
     if (existing) {
       existing.pendingRequests.clear();
     }
 
+    // 自定义名称优先，否则用 hostname
+    const displayName = data.name || data.hostname || `Agent-${agentId.slice(-4)}`;
+
     this.agents.set(agentId, {
       agentId,
       ws,
+      name: displayName,
       hostname: data.hostname || 'unknown',
       platform: data.platform || 'unknown',
       clis: data.clis || [],
@@ -84,7 +104,7 @@ class AgentManager {
       pendingRequests: new Map(),
     });
 
-    console.log(`[AgentManager] Agent 已注册: ${agentId} (${data.hostname}), CLIs: ${data.clis.map(c => c.id).join(', ')}`);
+    console.log(`[AgentManager] Agent 已注册: ${agentId} (name="${displayName}", hostname=${data.hostname}), CLIs: ${data.clis.map(c => c.id).join(', ')}`);
     return agentId;
   }
 
@@ -93,13 +113,12 @@ class AgentManager {
     const agent = this.agents.get(agentId);
     if (!agent) return;
 
-    // 通知所有等待中的请求：agent 已断开
     for (const [, req] of agent.pendingRequests) {
-      req.onError('本地 Agent 连接已断开');
+      req.onError(`本地 Agent "${agent.name}" 连接已断开`);
     }
 
     this.agents.delete(agentId);
-    console.log(`[AgentManager] Agent 已断开: ${agentId}`);
+    console.log(`[AgentManager] Agent 已断开: ${agentId} (${agent.name})`);
   }
 
   /** 根据 WebSocket 获取 agentId */
@@ -110,35 +129,42 @@ class AgentManager {
     return undefined;
   }
 
-  /** 获取所有已连接 agent 的 CLI 模型列表（去重） */
+  /**
+   * 获取所有已连接 agent 的 CLI 模型列表
+   * 每台 agent × 每个 CLI = 一个独立的模型选项
+   */
   getLocalModels(): LocalModel[] {
-    const seen = new Set<string>();
     const models: LocalModel[] = [];
 
     for (const agent of this.agents.values()) {
       for (const cli of agent.clis) {
-        if (seen.has(cli.type)) continue;
-        seen.add(cli.type);
+        const modelId = `${LOCAL_MODEL_PREFIX}${agent.agentId}:${cli.type}`;
 
         if (cli.type === 'claude') {
           models.push({
-            id: 'claude-cli',
-            name: 'Claude (本地 CLI)',
-            description: `通过本地 Claude Code CLI 运行 · ${cli.version}`,
+            id: modelId,
+            name: `Claude · ${agent.name}`,
+            description: `Claude Code CLI · ${cli.version} · ${agent.hostname}`,
             brand: 'Claude Local',
             isLocal: true,
             vision: true,
             reasoning: true,
+            agentName: agent.name,
+            agentId: agent.agentId,
+            cliType: 'claude',
           });
         } else if (cli.type === 'codex') {
           models.push({
-            id: 'codex-cli',
-            name: 'Codex (本地 CLI)',
-            description: `通过本地 Codex CLI 运行 · ${cli.version}`,
+            id: modelId,
+            name: `Codex · ${agent.name}`,
+            description: `Codex CLI · ${cli.version} · ${agent.hostname}`,
             brand: 'Codex Local',
             isLocal: true,
             vision: false,
             reasoning: true,
+            agentName: agent.name,
+            agentId: agent.agentId,
+            cliType: 'codex',
           });
         }
       }
@@ -149,7 +175,19 @@ class AgentManager {
 
   /** 判断模型 ID 是否为本地 CLI 模型 */
   isLocalModel(modelId: string): boolean {
-    return modelId === 'claude-cli' || modelId === 'codex-cli';
+    return modelId.startsWith(LOCAL_MODEL_PREFIX);
+  }
+
+  /** 从模型 ID 解析出 agentId 和 cliType */
+  parseLocalModelId(modelId: string): { agentId: string; cliType: 'claude' | 'codex' } | null {
+    if (!modelId.startsWith(LOCAL_MODEL_PREFIX)) return null;
+    const rest = modelId.slice(LOCAL_MODEL_PREFIX.length);
+    const lastColon = rest.lastIndexOf(':');
+    if (lastColon < 0) return null;
+    const agentId = rest.slice(0, lastColon);
+    const cliType = rest.slice(lastColon + 1);
+    if (cliType !== 'claude' && cliType !== 'codex') return null;
+    return { agentId, cliType: cliType as 'claude' | 'codex' };
   }
 
   /** 获取当前是否有 agent 连接 */
@@ -160,25 +198,26 @@ class AgentManager {
   /** 获取连接摘要信息（供前端显示状态） */
   getConnectionInfo(): Array<{
     agentId: string;
+    name: string;
     hostname: string;
     platform: string;
-    clis: string[];
+    clis: Array<{ id: string; name: string; type: string; version: string }>;
     connectedAt: number;
   }> {
     return Array.from(this.agents.values()).map(a => ({
       agentId: a.agentId,
+      name: a.name,
       hostname: a.hostname,
       platform: a.platform,
-      clis: a.clis.map(c => c.name),
+      clis: a.clis.map(c => ({ id: c.id, name: c.name, type: c.type, version: c.version })),
       connectedAt: a.connectedAt,
     }));
   }
 
   /**
-   * 通过 agent 执行 CLI 命令（流式）
+   * 通过指定 agent 执行 CLI 命令（流式）
    *
-   * 返回一个 AsyncGenerator，yield 每个 delta 文本块。
-   * 内部通过 WebSocket 向 agent 发送执行请求，并监听返回的 chunk/done/error。
+   * modelId 格式：local:<agentId>:<cliType>
    */
   async *execute(
     modelId: string,
@@ -189,33 +228,28 @@ class AgentManager {
       permissionMode?: string;
     } = {},
   ): AsyncGenerator<string, void, unknown> {
-    // 找到第一个拥有该 CLI 类型的 agent
-    const cliType = modelId === 'claude-cli' ? 'claude'
-      : modelId === 'codex-cli' ? 'codex'
-      : null;
-
-    if (!cliType) {
-      throw new Error(`未知的本地模型: ${modelId}`);
+    const parsed = this.parseLocalModelId(modelId);
+    if (!parsed) {
+      throw new Error(`无效的本地模型 ID: ${modelId}`);
     }
 
-    let targetAgent: AgentConnection | undefined;
-    for (const agent of this.agents.values()) {
-      if (agent.clis.some(c => c.type === cliType)) {
-        targetAgent = agent;
-        break;
-      }
-    }
+    const { agentId, cliType } = parsed;
+    const targetAgent = this.agents.get(agentId);
 
     if (!targetAgent) {
-      throw new Error(`没有已连接的本地 Agent 提供 ${cliType} CLI。请先在本地运行 borealos-agent。`);
+      throw new Error(`本地 Agent "${agentId}" 未连接或已断开`);
+    }
+
+    // 确认该 agent 支持请求的 CLI 类型
+    if (!targetAgent.clis.some(c => c.type === cliType)) {
+      throw new Error(`Agent "${targetAgent.name}" 不支持 ${cliType} CLI`);
     }
 
     const requestId = randomUUID();
     const ws = targetAgent.ws;
 
-    // 检查 WebSocket 是否还活着
     if (ws.readyState !== ws.OPEN) {
-      throw new Error('本地 Agent 连接已失效');
+      throw new Error(`Agent "${targetAgent.name}" 连接已失效`);
     }
 
     // 创建 Promise 队列用于流式传输
@@ -226,14 +260,12 @@ class AgentManager {
     let errorMsg: string | null = null;
     let resolveWait: (() => void) | null = null;
 
-    /** 等待下一个 chunk 或完成 */
     const waitForNext = (): Promise<void> => {
       return new Promise<void>((resolve) => {
         resolveWait = resolve;
       });
     };
 
-    /** 唤醒等待 */
     const notify = () => {
       if (resolveWait) {
         const fn = resolveWait;
@@ -242,7 +274,6 @@ class AgentManager {
       }
     };
 
-    // 注册回调
     targetAgent.pendingRequests.set(requestId, {
       onChunk: (delta: string) => {
         chunkQueue.push(delta);
@@ -261,7 +292,6 @@ class AgentManager {
       },
     });
 
-    // 发送执行请求
     ws.send(JSON.stringify({
       event: 'agent:execute',
       requestId,
@@ -272,12 +302,10 @@ class AgentManager {
       },
     }));
 
-    // 流式 yield
     try {
       while (!done) {
         await waitForNext();
 
-        // 输出队列中的 chunks
         while (chunkQueue.length > 0) {
           yield chunkQueue.shift()!;
         }
@@ -287,20 +315,12 @@ class AgentManager {
         }
       }
 
-      // 输出剩余 chunks
       while (chunkQueue.length > 0) {
         yield chunkQueue.shift()!;
       }
-
-      // 如果 done 但没有任何 chunk 输出，用 doneContent 作为最终内容
-      if (doneContent && chunkQueue.length === 0) {
-        // doneContent 已经在 chunks 中包含了，不重复输出
-      }
     } finally {
-      // 清理回调
       targetAgent.pendingRequests.delete(requestId);
 
-      // 发送取消（如果还没完成）
       if (!done && ws.readyState === ws.OPEN) {
         ws.send(JSON.stringify({
           event: 'agent:cancel',
@@ -323,7 +343,6 @@ class AgentManager {
     if (!agent) return;
 
     const { event, data, requestId } = msg;
-
     if (!requestId || !event) return;
 
     const pending = agent.pendingRequests.get(requestId);
@@ -352,9 +371,5 @@ class AgentManager {
     }
   }
 }
-
-// ============================================================================
-// 导出单例
-// ============================================================================
 
 export const agentManager = new AgentManager();

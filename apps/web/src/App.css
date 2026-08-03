@@ -1218,6 +1218,25 @@ body {
   border-left: 2px solid rgba(255, 159, 10, 0.3);
 }
 
+/* 模型分组标题 */
+.model-option__section {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-tertiary, #8e8e93);
+  padding: 8px 12px 4px;
+  border-top: 1px solid var(--border, rgba(255,255,255,0.08));
+  margin-top: 4px;
+}
+
+/* 禁用的模型选项 */
+.model-option--disabled {
+  opacity: 0.4;
+  cursor: default;
+  padding: 8px 12px;
+}
+
 /* 流式输出光标 */
 .chat-cursor {
   display: inline-block;

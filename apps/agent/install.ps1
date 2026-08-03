@@ -14,6 +14,7 @@
 param(
     [string]$ServerUrl = "wss://api.borealos.dev/api/agent/ws",
     [string]$InstallDir = "$env:USERPROFILE\.borealos-agent",
+    [string]$AgentName = "",
     [switch]$Debug
 )
 
@@ -114,6 +115,7 @@ if ($LASTEXITCODE -eq 0) {
 # ===== 创建启动脚本 =====
 Write-Info "创建启动脚本..."
 $startArgs = "--server $ServerUrl"
+if ($AgentName) { $startArgs += " --name `"$AgentName`"" }
 if ($Debug) { $startArgs += " --debug" }
 
 @"

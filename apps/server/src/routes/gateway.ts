@@ -198,8 +198,13 @@ const gatewayRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) => {
       const modelInfo = findModel(useModel);
       const startTime = Date.now();
 
-      // ===== 本地 CLI 模型分支：转发给本地 Agent 执行 =====
+      // ===== 本地 CLI 模型分支：转发给指定本地 Agent 执行 =====
       if (agentManager.isLocalModel(useModel)) {
+        const parsed = agentManager.parseLocalModelId(useModel);
+        const cliLabel = parsed
+          ? (parsed.cliType === 'claude' ? 'Claude Local' : 'Codex Local')
+          : 'Local CLI';
+
         try {
           let fullContent = '';
 
@@ -228,7 +233,6 @@ const gatewayRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) => {
 
           const latency = Date.now() - startTime;
 
-          // 发送完成信号
           if (socket.readyState === 1) {
             sendEvent('server:chat:stream', { done: true, content: fullContent });
 
@@ -243,8 +247,8 @@ const gatewayRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) => {
 
           store.addUsageRecord({
             model: useModel,
-            brand: useModel === 'claude-cli' ? 'Claude Local' : 'Codex Local',
-            modelName: useModel === 'claude-cli' ? 'Claude (Local CLI)' : 'Codex (Local CLI)',
+            brand: cliLabel,
+            modelName: useModel,
             promptTokens: 0,
             completionTokens: 0,
             totalTokens: 0,
@@ -258,8 +262,8 @@ const gatewayRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) => {
 
           store.addUsageRecord({
             model: useModel,
-            brand: useModel === 'claude-cli' ? 'Claude Local' : 'Codex Local',
-            modelName: useModel === 'claude-cli' ? 'Claude (Local CLI)' : 'Codex (Local CLI)',
+            brand: cliLabel,
+            modelName: useModel,
             promptTokens: 0,
             completionTokens: 0,
             totalTokens: 0,

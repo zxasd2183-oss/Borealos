@@ -31,12 +31,17 @@ err()   { echo -e "${RED}[ERROR]${NC} $1"; }
 SERVER_URL="wss://api.borealos.dev/api/agent/ws"
 INSTALL_DIR="$HOME/.borealos-agent"
 DEBUG_MODE=false
+AGENT_NAME=""
 
 # ===== 解析参数 =====
 while [[ $# -gt 0 ]]; do
     case $1 in
         --server)
             SERVER_URL="$2"
+            shift 2
+            ;;
+        --name)
+            AGENT_NAME="$2"
             shift 2
             ;;
         --debug)
@@ -54,6 +59,7 @@ while [[ $# -gt 0 ]]; do
             echo ""
             echo "选项:"
             echo "  --server <url>   指定 BorealOS 服务端地址（默认: $SERVER_URL）"
+            echo "  --name <名称>    自定义设备名称，在 BorealOS 中显示（如: MacBook-Pro）"
             echo "  --dir <path>     安装目录（默认: $INSTALL_DIR）"
             echo "  --debug          启用调试模式"
             echo "  --help           显示帮助"
@@ -195,6 +201,9 @@ fi
 info "创建启动脚本..."
 
 START_ARGS="--server $SERVER_URL"
+if [ -n "$AGENT_NAME" ]; then
+    START_ARGS="$START_ARGS --name \"$AGENT_NAME\""
+fi
 if [ "$DEBUG_MODE" = true ]; then
     START_ARGS="$START_ARGS --debug"
 fi
@@ -202,7 +211,7 @@ fi
 cat > start.sh << EOF
 #!/bin/bash
 cd "$INSTALL_DIR"
-node agent.mjs $START_ARGS
+node agent.mjs $START_ARGS "\$@"
 EOF
 chmod +x start.sh
 ok "启动脚本: $INSTALL_DIR/start.sh"
@@ -226,6 +235,10 @@ fi
 if [[ "$(uname)" == "Darwin" ]]; then
     # macOS: 创建 LaunchAgent
     PLIST_PATH="$HOME/Library/LaunchAgents/com.borealos.agent.plist"
+    NAME_ARG=""
+    if [ -n "$AGENT_NAME" ]; then
+        NAME_ARG="<string>--name</string><string>$AGENT_NAME</string>"
+    fi
     cat > "$PLIST_PATH" << EOF
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -239,6 +252,7 @@ if [[ "$(uname)" == "Darwin" ]]; then
         <string>$INSTALL_DIR/agent.mjs</string>
         <string>--server</string>
         <string>$SERVER_URL</string>
+        $NAME_ARG
     </array>
     <key>RunAtLoad</key>
     <true/>
@@ -258,6 +272,10 @@ elif [[ "$(uname)" == "Linux" ]]; then
     # Linux: 创建 systemd user service
     mkdir -p "$HOME/.config/systemd/user"
     SERVICE_PATH="$HOME/.config/systemd/user/borealos-agent.service"
+    NAME_ARG=""
+    if [ -n "$AGENT_NAME" ]; then
+        NAME_ARG="--name '$AGENT_NAME'"
+    fi
     cat > "$SERVICE_PATH" << EOF
 [Unit]
 Description=BorealOS Local Agent
@@ -267,7 +285,7 @@ Wants=network-online.target
 [Service]
 Type=simple
 WorkingDirectory=$INSTALL_DIR
-ExecStart=$(which node) $INSTALL_DIR/agent.mjs --server $SERVER_URL
+ExecStart=$(which node) $INSTALL_DIR/agent.mjs --server $SERVER_URL $NAME_ARG
 Restart=always
 RestartSec=5
 Environment=NODE_ENV=production

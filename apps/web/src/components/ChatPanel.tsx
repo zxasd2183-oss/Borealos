@@ -15,9 +15,12 @@ interface ModelInfo {
   maxOutput?: number;
   speed?: 'fast' | 'medium' | 'slow';
   isLocal?: boolean;
+  agentName?: string;
+  agentId?: string;
+  cliType?: 'claude' | 'codex';
 }
 
-/** 全部 16 个支持的 AI 模型（与 /api/models 保持一致） */
+/** 云端 AI 模型（本地 CLI 模型由后端动态返回） */
 const FALLBACK_MODELS: ModelInfo[] = [
   { id: 'qwen3.6-flash', name: 'Qwen3.6 Flash', description: '极速响应，适合日常对话与代码补全', vision: true, reasoning: true, brand: '千问', contextWindow: 131072, maxOutput: 8192, speed: 'fast' },
   { id: 'qwen3.6-plus', name: 'Qwen3.6 Plus', description: '均衡性能，适合复杂编程与多轮对话', vision: true, reasoning: true, brand: '千问', contextWindow: 131072, maxOutput: 16384, speed: 'medium' },
@@ -35,9 +38,6 @@ const FALLBACK_MODELS: ModelInfo[] = [
   { id: 'o3-mini', name: 'o3-mini', description: '新一代推理模型，速度快性能强', vision: false, reasoning: true, brand: 'OpenAI', contextWindow: 200000, maxOutput: 32768, speed: 'medium' },
   { id: 'gemini-2.0-flash', name: 'Gemini 2.0 Flash', description: 'Google 多模态极速模型', vision: true, reasoning: true, brand: 'Google', contextWindow: 1048576, maxOutput: 8192, speed: 'fast' },
   { id: 'doubao-pro', name: 'Doubao Pro', description: '字节跳动企业级大模型', vision: true, reasoning: true, brand: '豆包', contextWindow: 131072, maxOutput: 4096, speed: 'medium' },
-  // 本地 CLI 模型（需运行 borealos-agent 后可用）
-  { id: 'claude-cli', name: 'Claude (本地 CLI)', description: '通过本地 Claude Code CLI 运行，需先启动 Agent', vision: true, reasoning: true, brand: 'Claude Local', isLocal: true },
-  { id: 'codex-cli', name: 'Codex (本地 CLI)', description: '通过本地 Codex CLI 运行，需先启动 Agent', vision: false, reasoning: true, brand: 'Codex Local', isLocal: true },
 ];
 
 interface ChatPanelProps {
@@ -185,7 +185,7 @@ const ChatPanel: FC<ChatPanelProps> = ({ messages, isThinking, onSend }) => {
             title={currentModel?.description || '选择模型'}
           >
             {currentModel?.isLocal && (
-              <span className={`model-selector__agent-dot ${agentConnected ? 'model-selector__agent-dot--online' : 'model-selector__agent-dot--offline'}`} />
+              <span className="model-selector__agent-dot model-selector__agent-dot--online" />
             )}
             <span className="model-selector__brand">{currentModel?.brand}</span>
             <span className="model-selector__name">{currentModel?.name || '选择模型'}</span>
@@ -193,10 +193,11 @@ const ChatPanel: FC<ChatPanelProps> = ({ messages, isThinking, onSend }) => {
           </button>
           {showModelList && (
             <div className="model-selector__dropdown">
-              {models.map((m) => (
+              {/* 云端模型 */}
+              {models.filter(m => !m.isLocal).map((m) => (
                 <div
                   key={m.id}
-                  className={`model-option ${m.id === selectedModel ? 'model-option--active' : ''} ${m.isLocal ? 'model-option--local' : ''}`}
+                  className={`model-option ${m.id === selectedModel ? 'model-option--active' : ''}`}
                   onClick={() => {
                     setSelectedModel(m.id);
                     setShowModelList(false);
@@ -204,18 +205,12 @@ const ChatPanel: FC<ChatPanelProps> = ({ messages, isThinking, onSend }) => {
                   title={m.description}
                 >
                   <div className="model-option__header">
-                    {m.isLocal && (
-                      <span className={`model-option__agent-dot ${agentConnected ? 'model-option__agent-dot--online' : 'model-option__agent-dot--offline'}`} />
-                    )}
                     <span className="model-option__brand">{m.brand}</span>
                     <span className="model-option__name">{m.name}</span>
                     {m.id === selectedModel && <span className="model-option__check"><CheckIcon size={14} /></span>}
                   </div>
-                  <div className="model-option__desc">
-                    {m.isLocal && !agentConnected ? '⚠ 本地 Agent 未连接，请先运行 borealos-agent' : m.description}
-                  </div>
+                  <div className="model-option__desc">{m.description}</div>
                   <div className="model-option__tags">
-                    {m.isLocal && <span className="model-tag model-tag--local">本地</span>}
                     {m.reasoning && <span className="model-tag model-tag--reasoning">推理</span>}
                     {m.vision && <span className="model-tag model-tag--vision">视觉</span>}
                     {m.speed === 'fast' && <span className="model-tag model-tag--fast">极速</span>}
@@ -223,6 +218,47 @@ const ChatPanel: FC<ChatPanelProps> = ({ messages, isThinking, onSend }) => {
                   </div>
                 </div>
               ))}
+
+              {/* 本地 CLI 模型分组 */}
+              {models.some(m => m.isLocal) && (
+                <div className="model-option__section">本地设备</div>
+              )}
+              {models.filter(m => m.isLocal).map((m) => (
+                <div
+                  key={m.id}
+                  className={`model-option model-option--local ${m.id === selectedModel ? 'model-option--active' : ''}`}
+                  onClick={() => {
+                    setSelectedModel(m.id);
+                    setShowModelList(false);
+                  }}
+                  title={m.description}
+                >
+                  <div className="model-option__header">
+                    <span className="model-option__agent-dot model-option__agent-dot--online" />
+                    <span className="model-option__brand">{m.brand}</span>
+                    <span className="model-option__name">{m.name}</span>
+                    {m.id === selectedModel && <span className="model-option__check"><CheckIcon size={14} /></span>}
+                  </div>
+                  <div className="model-option__desc">{m.description}</div>
+                  <div className="model-option__tags">
+                    <span className="model-tag model-tag--local">本地</span>
+                    {m.reasoning && <span className="model-tag model-tag--reasoning">推理</span>}
+                    {m.vision && <span className="model-tag model-tag--vision">视觉</span>}
+                  </div>
+                </div>
+              ))}
+
+              {/* 没有本地 agent 连接时的提示 */}
+              {!models.some(m => m.isLocal) && (
+                <div className="model-option__section">本地设备（未连接）</div>
+              )}
+              {!models.some(m => m.isLocal) && (
+                <div className="model-option model-option--disabled">
+                  <div className="model-option__desc">
+                    运行 borealos-agent 连接本地 CLI
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>

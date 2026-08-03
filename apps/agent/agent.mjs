@@ -8,6 +8,7 @@
  *
  * 用法：
  *   node agent.mjs                          # 连接到默认服务器
+ *   node agent.mjs --name "我的MacBook"     # 自定义显示名称
  *   node agent.mjs --server wss://api.borealos.dev/api/agent/ws
  *   node agent.mjs --token <agent-token>    # 带认证 token
  *   node agent.mjs --debug                  # 调试模式
@@ -37,6 +38,9 @@ const SERVER_URL = serverArg >= 0 ? args[serverArg + 1] : 'wss://api.borealos.de
 
 const tokenArg = args.indexOf('--token');
 const TOKEN = tokenArg >= 0 ? args[tokenArg + 1] : process.env.BOREALOS_AGENT_TOKEN || '';
+
+const nameArg = args.indexOf('--name');
+const AGENT_NAME = nameArg >= 0 ? args[nameArg + 1] : process.env.BOREALOS_AGENT_NAME || '';
 
 const RECONNECT_INTERVAL = 5000;
 const HEARTBEAT_INTERVAL = 30000;
@@ -197,13 +201,15 @@ function connect() {
       event: 'agent:register',
       data: {
         agentId: `agent-${Date.now()}`,
+        name: AGENT_NAME || hostname(),
         hostname: hostname(),
         platform: process.platform,
         clis: availableClis,
       },
     };
     ws.send(JSON.stringify(registerMsg));
-    log('已注册可用 CLI:', availableClis.map(c => c.id).join(', '));
+    log(`已注册可用 CLI:`, availableClis.map(c => c.id).join(', '));
+    log(`显示名称: ${AGENT_NAME || hostname()}`);
 
     // 心跳
     heartbeatTimer = setInterval(() => {
