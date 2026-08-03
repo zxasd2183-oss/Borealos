@@ -355,19 +355,9 @@ run_migrations() {
 
     cd "$APP_DIR"
 
-    # 尝试用 tsx 执行迁移脚本
-    if [ -f "scripts/migrate.ts" ]; then
-        info "执行 TypeScript 迁移脚本..."
-        if [ -f "node_modules/.bin/tsx" ]; then
-            node_modules/.bin/tsx scripts/migrate.ts 2>&1 | tail -10 && ok "迁移完成" && return 0
-        elif [ -f "apps/server/node_modules/.bin/tsx" ]; then
-            apps/server/node_modules/.bin/tsx scripts/migrate.ts 2>&1 | tail -10 && ok "迁移完成" && return 0
-        fi
-    fi
-
-    # 降级：直接用 psql 创建表
-    info "使用 psql 直接初始化数据库..."
-    PGPASSWORD="$DB_PASSWORD" psql -h 127.0.0.1 -U "$DB_USER" -d "$DB_NAME" << 'SQL'
+    # 直接用 psql 创建表（最可靠，不依赖 tsx）
+    info "使用 psql 初始化数据库表..."
+    if PGPASSWORD="$DB_PASSWORD" psql -h 127.0.0.1 -U "$DB_USER" -d "$DB_NAME" << 'SQL'
 CREATE TABLE IF NOT EXISTS schema_migrations (
     version VARCHAR(10) PRIMARY KEY,
     description TEXT,
@@ -455,7 +445,13 @@ INSERT INTO schema_migrations (version, description) VALUES
 ('006', 'memories')
 ON CONFLICT DO NOTHING;
 SQL
-    ok "数据库表初始化完成"
+    then
+        ok "数据库表初始化完成"
+    else
+        err "数据库表初始化失败！请检查 PostgreSQL 连接"
+        warn "诊断: PGPASSWORD=$DB_PASSWORD psql -h 127.0.0.1 -U $DB_USER -d $DB_NAME -c 'SELECT 1'"
+        # 不 exit，允许降级为内存模式继续
+    fi
 }
 
 # ===== 配置 systemd 服务 =====
@@ -664,12 +660,14 @@ update_deploy() {
     build_app
     run_migrations
     setup_systemd
+    setup_tunnel
 
     info "重启服务..."
+    systemctl daemon-reload
     systemctl restart borealos-server
     systemctl restart borealos-gateway 2>/dev/null || true
     systemctl restart cloudflared 2>/dev/null || true
-    sleep 3
+    sleep 5
 
     ok "更新完成"
     show_status
@@ -766,6 +764,116 @@ backup_db() {
     ok "备份完成: $backup_file ($size)"
 }
 
+# ===== 诊断并修复常见问题 =====
+fix_issues() {
+    echo -e "${CYAN}${BOLD}━━━ BorealOS 诊断修复 ━━━${NC}"
+    check_root
+    cd "$APP_DIR"
+
+    # --- 1. 修复 git safe.directory ---
+    step "修复 git 权限"
+    git config --global --add safe.directory "$APP_DIR" 2>/dev/null || true
+    ok "git 权限已修复"
+
+    # --- 2. 诊断 PostgreSQL ---
+    step "诊断 PostgreSQL"
+    if ! systemctl is-active --quiet postgresql; then
+        warn "PostgreSQL 未运行，尝试启动..."
+        systemctl start postgresql
+        sleep 2
+    fi
+
+    if PGPASSWORD="$DB_PASSWORD" psql -h 127.0.0.1 -U "$DB_USER" -d "$DB_NAME" -c "SELECT 1" &>/dev/null; then
+        ok "PostgreSQL 连接正常"
+    else
+        warn "PostgreSQL 连接失败，尝试修复..."
+        # 重新创建用户和数据库
+        su - postgres -c "psql -c \"DO \$\$ BEGIN IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = '${DB_USER}') THEN CREATE ROLE ${DB_USER} WITH LOGIN PASSWORD '${DB_PASSWORD}'; END IF; END \$\$;\"" 2>/dev/null
+        su - postgres -c "psql -c \"ALTER ROLE ${DB_USER} WITH LOGIN PASSWORD '${DB_PASSWORD}';\"" 2>/dev/null
+        su - postgres -c "psql -c \"SELECT 'CREATE DATABASE ${DB_NAME} OWNER ${DB_USER}' WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = '${DB_NAME}')\gexec\"" 2>/dev/null
+        su - postgres -c "psql -c \"GRANT ALL PRIVILEGES ON DATABASE ${DB_NAME} TO ${DB_USER};\"" 2>/dev/null
+
+        # 修复 pg_hba.conf（确保 md5 认证）
+        PG_HBA=$(find /etc/postgresql -name pg_hba.conf 2>/dev/null | head -1)
+        if [ -n "$PG_HBA" ]; then
+            if ! grep -q "borealos.*md5" "$PG_HBA" 2>/dev/null; then
+                echo "host    ${DB_NAME}    ${DB_USER}    127.0.0.1/32    md5" >> "$PG_HBA"
+                echo "host    ${DB_NAME}    ${DB_USER}    ::1/128         md5" >> "$PG_HBA"
+            fi
+            # 确保不是 scram-sha-256（如果密码是用 md5 设置的）
+            sed -i 's/scram-sha-256/md5/g' "$PG_HBA" 2>/dev/null
+            systemctl restart postgresql
+            sleep 2
+        fi
+
+        if PGPASSWORD="$DB_PASSWORD" psql -h 127.0.0.1 -U "$DB_USER" -d "$DB_NAME" -c "SELECT 1" &>/dev/null; then
+            ok "PostgreSQL 连接已修复"
+        else
+            err "PostgreSQL 仍然无法连接，请手动检查: su - postgres -c psql"
+        fi
+    fi
+
+    # --- 3. 重新执行数据库迁移 ---
+    step "数据库迁移"
+    run_migrations
+
+    # --- 4. 修复 cloudflared ---
+    step "修复 Cloudflare Tunnel"
+    if ! command -v cloudflared &>/dev/null; then
+        info "安装 cloudflared..."
+        curl -sL "https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64" -o /usr/local/bin/cloudflared
+        chmod +x /usr/local/bin/cloudflared
+    fi
+
+    # 重新生成 systemd 配置
+    cat > /etc/systemd/system/cloudflared.service << EOF
+[Unit]
+Description=Cloudflare Tunnel for BorealOS
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/cloudflared tunnel run --token ${TUNNEL_TOKEN}
+Restart=always
+RestartSec=5
+Environment="NO_AUTOUPDATE=true"
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+    systemctl daemon-reload
+    systemctl enable cloudflared 2>/dev/null
+    systemctl restart cloudflared
+    sleep 3
+
+    if systemctl is-active --quiet cloudflared; then
+        ok "Cloudflare Tunnel 运行中"
+    else
+        warn "Tunnel 仍在启动中，查看日志: journalctl -u cloudflared -n 20"
+        journalctl -u cloudflared -n 10 --no-pager 2>/dev/null
+    fi
+
+    # --- 5. 重启后端 ---
+    step "重启后端"
+    systemctl daemon-reload
+    systemctl restart borealos-server
+    sleep 3
+    if systemctl is-active --quiet borealos-server; then
+        ok "后端运行中 (PID: $(systemctl show -p MainPID --value borealos-server))"
+    else
+        err "后端启动失败，查看日志: journalctl -u borealos-server -n 30"
+        journalctl -u borealos-server -n 15 --no-pager
+    fi
+
+    # --- 6. 显示最终状态 ---
+    echo ""
+    show_status
+}
+
 # ===== 主入口 =====
 case "${1:-help}" in
     deploy|full)
@@ -786,6 +894,9 @@ case "${1:-help}" in
     backup)
         backup_db
         ;;
+    fix)
+        fix_issues
+        ;;
     *)
         echo "BorealOS VPS 部署脚本 v2.0"
         echo ""
@@ -795,6 +906,7 @@ case "${1:-help}" in
         echo "  deploy      全新部署（PG + Redis + Node + 构建 + 迁移 + 启动）"
         echo "  update      更新代码 + 重新构建 + 重启服务"
         echo "  status      查看所有服务状态"
+        echo "  fix         诊断并自动修复常见问题（数据库+cloudflared）"
         echo "  stop        停止 BorealOS 服务（保留 PG + Redis）"
         echo "  logs [svc]  查看日志（默认 borealos-server）"
         echo "  backup      备份数据库"
