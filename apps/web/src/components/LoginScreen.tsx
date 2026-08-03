@@ -39,7 +39,7 @@ const LoginScreen: FC<LoginScreenProps> = ({ onLogin }) => {
     setLoading(true);
 
     try {
-      const endpoint = mode === 'login' ? '/api/auth' : '/api/auth/register';
+      const endpoint = mode === 'login' ? '/api/auth/login' : '/api/auth/register';
       const body = mode === 'login'
         ? { email, password }
         : { email, password, name };
