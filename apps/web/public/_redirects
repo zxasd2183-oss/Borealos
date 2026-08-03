@@ -1,0 +1,4 @@
+# Cloudflare Pages 反向代理规则
+# 将 /api/* 请求代理到后端 API（api.borealos.dev → Cloudflare Tunnel → VPS:3001）
+/api/*  https://api.borealos.dev/api/:splat  200
+/ws/*   https://api.borealos.dev/ws/:splat   200

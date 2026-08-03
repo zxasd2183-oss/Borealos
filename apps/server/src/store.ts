@@ -12,6 +12,7 @@
 
 import type { Project, FileNode, ChatMessage } from './types';
 import { getDb, isDbInitialized } from './db';
+import { hashPassword } from './auth/jwt';
 
 // ==================== 存储容器 ====================
 
@@ -52,7 +53,7 @@ export async function ensureSystemUser(): Promise<void> {
     return;
   }
 
-  // 创建 system 用户
+  // 创建 system 用户（内部使用，不可登录）
   const systemUser = await db.createUser({
     email: 'system@borealos.local',
     username: 'system',
@@ -62,6 +63,19 @@ export async function ensureSystemUser(): Promise<void> {
   });
   systemUserDbId = systemUser.id;
   console.log(`[store] system 用户已创建: ${systemUserDbId}`);
+
+  // 创建可登录的 admin 账号（用于快速登录）
+  const adminExisting = await db.getUserByEmail('admin@borealos.dev');
+  if (!adminExisting) {
+    await db.createUser({
+      email: 'admin@borealos.dev',
+      username: 'admin',
+      passwordHash: hashPassword('admin123'),
+      role: 'admin',
+      isActive: true,
+    });
+    console.log('[store] admin 账号已创建: admin@borealos.dev / admin123');
+  }
 }
 
 /** 项目 ID 映射：内存 ID -> 数据库 ID */

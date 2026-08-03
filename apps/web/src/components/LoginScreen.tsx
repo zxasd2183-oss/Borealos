@@ -42,7 +42,7 @@ const LoginScreen: FC<LoginScreenProps> = ({ onLogin }) => {
       const endpoint = mode === 'login' ? '/api/auth/login' : '/api/auth/register';
       const body = mode === 'login'
         ? { email, password }
-        : { email, password, name };
+        : { email, password, username: name };
 
       const res = await fetch(endpoint, {
         method: 'POST',
@@ -63,25 +63,9 @@ const LoginScreen: FC<LoginScreenProps> = ({ onLogin }) => {
       localStorage.setItem('borealos_user', JSON.stringify(data.data.user));
 
       onLogin(data.data.user, data.data.accessToken);
-    } catch {
-      // 网络错误时使用演示模式
-      if (mode === 'login') {
-        const demoUser: UserInfo = {
-          id: 'user-demo',
-          email: email || 'guest@borealos.dev',
-          name: (email || 'guest').split('@')[0],
-          avatar: null,
-          role: 'user',
-          plan: 'free',
-          usage: { tokens: 0, requests: 0, storage: 0 },
-        };
-        localStorage.setItem('borealos_token', 'demo-token');
-        localStorage.setItem('borealos_user', JSON.stringify(demoUser));
-        onLogin(demoUser, 'demo-token');
-      } else {
-        setError('网络错误，请稍后重试');
-        setLoading(false);
-      }
+    } catch (err) {
+      setError('无法连接服务器，请检查网络后重试');
+      setLoading(false);
     }
   };
 
@@ -159,7 +143,7 @@ const LoginScreen: FC<LoginScreenProps> = ({ onLogin }) => {
             <input
               className="login-field__input"
               type="password"
-              placeholder={mode === 'register' ? '至少 6 位' : '输入密码'}
+              placeholder={mode === 'register' ? '至少 8 位' : '输入密码'}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
