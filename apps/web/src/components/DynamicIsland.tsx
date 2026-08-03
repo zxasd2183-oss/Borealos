@@ -7,10 +7,10 @@
  * - notification: 通知态（临时弹出消息）
  *
  * 功能模块：
- * - AI 用量统计（Token 使用量 + 本月额度）
- * - 项目进度（完成度圆环）
- * - 模型选择（快速切换 AI 模型）
- * - 设置快捷入口
+ * - AI 用量统计（Token 使用量 + 本月额度）— 从 /api/usage 获取真实数据
+ * - 项目进度（完成度圆环）— 从 /api/progress 获取真实数据
+ * - 模型选择（快速切换 AI 模型）— 从 /api/models 获取真实数据
+ * - 设置快捷入口（深色/浅色、自动保存、流式输出、通知提醒）
  */
 import { useState, useEffect, useRef, useCallback } from 'react';
 import type { FC } from 'react';
@@ -73,14 +73,8 @@ interface ProgressInfo {
 interface DynamicIslandProps {
   /** 当前选中的模型 ID */
   selectedModel?: string;
-  /** 模型列表 */
-  models?: ModelInfo[];
   /** 模型切换回调 */
   onModelChange?: (modelId: string) => void;
-  /** 用量数据 */
-  usage?: UsageInfo;
-  /** 进度数据 */
-  progress?: ProgressInfo;
 }
 
 /** 格式化 Token 数 */
@@ -90,29 +84,9 @@ function formatTokens(n: number): string {
   return String(n);
 }
 
-/** 默认数据 */
-const DEFAULT_USAGE: UsageInfo = {
-  totalTokens: 847320,
-  tokenLimit: 2000000,
-  monthlyUsed: 312450,
-  monthlyLimit: 500000,
-  todayCalls: 37,
-  apiCalls: 1284,
-};
-
-const DEFAULT_PROGRESS: ProgressInfo = {
-  overall: 68,
-  doneCount: 8,
-  inProgressCount: 3,
-  pendingCount: 4,
-};
-
 const DynamicIsland: FC<DynamicIslandProps> = ({
-  selectedModel = 'qwen3.6-flash',
-  models = [],
+  selectedModel: externalSelectedModel = 'qwen3.6-flash',
   onModelChange,
-  usage = DEFAULT_USAGE,
-  progress = DEFAULT_PROGRESS,
 }) => {
   const [islandState, setIslandState] = useState<IslandState>('collapsed');
   const [activePanel, setActivePanel] = useState<PanelType>(null);
@@ -121,31 +95,94 @@ const DynamicIsland: FC<DynamicIslandProps> = ({
   const notifTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const islandRef = useRef<HTMLDivElement>(null);
 
-  // 从后端获取用量数据
+  // ===== 真实数据 state =====
+  const [models, setModels] = useState<ModelInfo[]>([]);
+  const [modelsLoading, setModelsLoading] = useState(true);
+  const [selectedModel, setSelectedModel] = useState(externalSelectedModel);
+  const [usage, setUsage] = useState<UsageInfo>({
+    totalTokens: 0,
+    tokenLimit: 2000000,
+    monthlyUsed: 0,
+    monthlyLimit: 500000,
+    todayCalls: 0,
+    apiCalls: 0,
+  });
+  const [progress, setProgress] = useState<ProgressInfo>({
+    overall: 0,
+    doneCount: 0,
+    inProgressCount: 0,
+    pendingCount: 0,
+  });
+
+  // ===== 设置 state =====
+  const [settings, setSettings] = useState({
+    darkMode: false,
+    autoSave: true,
+    streaming: true,
+    notifications: false,
+  });
+
+  // ===== 从后端获取用量数据 =====
   useEffect(() => {
-    fetch('/api/usage')
+    const fetchUsage = () => {
+      fetch('/api/usage')
+        .then((res) => res.json())
+        .then((data) => {
+          if (data.success && data.data) {
+            const d = data.data;
+            setUsage({
+              totalTokens: d.totalTokens || 0,
+              tokenLimit: d.tokenLimit || 2000000,
+              monthlyUsed: d.monthlyUsed || 0,
+              monthlyLimit: d.monthlyLimit || 500000,
+              todayCalls: d.todayCalls || 0,
+              apiCalls: d.apiCalls || 0,
+            });
+          }
+        })
+        .catch(() => {});
+    };
+    fetchUsage();
+    // 每 30 秒刷新一次
+    const interval = setInterval(fetchUsage, 30000);
+    return () => clearInterval(interval);
+  }, []);
+
+  // ===== 从后端获取模型列表 =====
+  useEffect(() => {
+    fetch('/api/models')
       .then((res) => res.json())
       .then((data) => {
         if (data.success && data.data) {
-          // 可以在这里更新用量
+          setModels(data.data);
+        }
+      })
+      .catch(() => {})
+      .finally(() => setModelsLoading(false));
+  }, []);
+
+  // ===== 从后端获取进度数据 =====
+  useEffect(() => {
+    fetch('/api/progress')
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.success && data.data && data.data.modules) {
+          const modules = data.data.modules;
+          const done = modules.filter((m: { status: string }) => m.status === 'done').length;
+          const inProgress = modules.filter((m: { status: string }) => m.status === 'in-progress').length;
+          const pending = modules.filter((m: { status: string }) => m.status === 'pending').length;
+          const total = modules.length || 1;
+          const overall = Math.round((done / total) * 100);
+          setProgress({
+            overall,
+            doneCount: done,
+            inProgressCount: inProgress,
+            pendingCount: pending,
+          });
         }
       })
       .catch(() => {});
   }, []);
-
-  // 从后端获取模型列表
-  useEffect(() => {
-    if (models.length === 0) {
-      fetch('/api/models')
-        .then((res) => res.json())
-        .then((data) => {
-          if (data.success && data.data) {
-            // 外部组件会传入
-          }
-        })
-        .catch(() => {});
-    }
-  }, [models.length]);
 
   /** 发送通知 */
   const notify = useCallback((notif: Omit<IslandNotification, 'id'>) => {
@@ -175,7 +212,6 @@ const DynamicIsland: FC<DynamicIslandProps> = ({
   /** 点击灵动岛主体 */
   const handleClick = () => {
     if (notification) {
-      // 通知状态下点击关闭通知
       setNotification(null);
       if (notifTimerRef.current) clearTimeout(notifTimerRef.current);
       return;
@@ -204,14 +240,53 @@ const DynamicIsland: FC<DynamicIslandProps> = ({
 
   /** 选择模型 */
   const handleSelectModel = (modelId: string) => {
+    setSelectedModel(modelId);
     onModelChange?.(modelId);
     setShowModelDropdown(false);
+    // 广播模型切换事件，让 ChatPanel 等组件同步
+    window.dispatchEvent(new CustomEvent('borealos:model-change', { detail: { modelId } }));
     const model = models.find((m) => m.id === modelId);
     notify({
       title: `已切换到 ${model?.name || modelId}`,
       subtitle: model?.brand,
       icon: 'success',
       duration: 2000,
+    });
+  };
+
+  // 监听其他组件的模型切换事件（如 ChatPanel）
+  useEffect(() => {
+    const handleModelChange = (e: Event) => {
+      const detail = (e as CustomEvent).detail;
+      if (detail?.modelId) {
+        setSelectedModel(detail.modelId);
+      }
+    };
+    window.addEventListener('borealos:model-change', handleModelChange);
+    return () => window.removeEventListener('borealos:model-change', handleModelChange);
+  }, []);
+
+  /** 切换设置项 */
+  const toggleSetting = (key: keyof typeof settings) => {
+    setSettings((prev) => {
+      const next = { ...prev, [key]: !prev[key] };
+      // 深色/浅色模式切换：给 body 加/移除 class
+      if (key === 'darkMode') {
+        if (next.darkMode) {
+          document.body.classList.add('dark-theme');
+        } else {
+          document.body.classList.remove('dark-theme');
+        }
+      }
+      // 通知提醒
+      if (key === 'notifications' && next.notifications) {
+        notify({
+          title: '通知提醒已开启',
+          icon: 'success',
+          duration: 2000,
+        });
+      }
+      return next;
     });
   };
 
@@ -488,8 +563,11 @@ const DynamicIsland: FC<DynamicIslandProps> = ({
                       </div>
                     ))}
 
-                    {models.length === 0 && (
+                    {modelsLoading && (
                       <div className="island-model__empty">加载模型列表中...</div>
+                    )}
+                    {!modelsLoading && models.length === 0 && (
+                      <div className="island-model__empty">暂无可用模型</div>
                     )}
                   </div>
                 )}
@@ -499,27 +577,39 @@ const DynamicIsland: FC<DynamicIslandProps> = ({
             {/* ---- 设置面板 ---- */}
             {activePanel === 'settings' && (
               <div className="island-panel island-panel--settings">
-                <div className="island-settings__item">
+                <div
+                  className="island-settings__item"
+                  onClick={() => toggleSetting('darkMode')}
+                >
                   <span className="island-settings__label">深色/浅色</span>
-                  <div className="island-settings__toggle island-settings__toggle--on">
+                  <div className={`island-settings__toggle ${settings.darkMode ? 'island-settings__toggle--on' : ''}`}>
                     <span className="island-settings__toggle-knob" />
                   </div>
                 </div>
-                <div className="island-settings__item">
+                <div
+                  className="island-settings__item"
+                  onClick={() => toggleSetting('autoSave')}
+                >
                   <span className="island-settings__label">自动保存</span>
-                  <div className="island-settings__toggle island-settings__toggle--on">
+                  <div className={`island-settings__toggle ${settings.autoSave ? 'island-settings__toggle--on' : ''}`}>
                     <span className="island-settings__toggle-knob" />
                   </div>
                 </div>
-                <div className="island-settings__item">
+                <div
+                  className="island-settings__item"
+                  onClick={() => toggleSetting('streaming')}
+                >
                   <span className="island-settings__label">流式输出</span>
-                  <div className="island-settings__toggle island-settings__toggle--on">
+                  <div className={`island-settings__toggle ${settings.streaming ? 'island-settings__toggle--on' : ''}`}>
                     <span className="island-settings__toggle-knob" />
                   </div>
                 </div>
-                <div className="island-settings__item">
+                <div
+                  className="island-settings__item"
+                  onClick={() => toggleSetting('notifications')}
+                >
                   <span className="island-settings__label">通知提醒</span>
-                  <div className="island-settings__toggle">
+                  <div className={`island-settings__toggle ${settings.notifications ? 'island-settings__toggle--on' : ''}`}>
                     <span className="island-settings__toggle-knob" />
                   </div>
                 </div>

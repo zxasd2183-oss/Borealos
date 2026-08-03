@@ -101,6 +101,18 @@ const ChatPanel: FC<ChatPanelProps> = ({ messages, isThinking, onSend }) => {
       });
   }, []);
 
+  // 监听灵动岛的模型切换事件，保持同步
+  useEffect(() => {
+    const handleModelChange = (e: Event) => {
+      const detail = (e as CustomEvent).detail;
+      if (detail?.modelId) {
+        setSelectedModel(detail.modelId);
+      }
+    };
+    window.addEventListener('borealos:model-change', handleModelChange);
+    return () => window.removeEventListener('borealos:model-change', handleModelChange);
+  }, []);
+
   // 轮询本地 Agent 连接状态
   useEffect(() => {
     const checkAgentStatus = () => {
@@ -201,6 +213,8 @@ const ChatPanel: FC<ChatPanelProps> = ({ messages, isThinking, onSend }) => {
                   onClick={() => {
                     setSelectedModel(m.id);
                     setShowModelList(false);
+                    // 广播模型切换事件，让灵动岛等组件同步
+                    window.dispatchEvent(new CustomEvent('borealos:model-change', { detail: { modelId: m.id } }));
                   }}
                   title={m.description}
                 >
@@ -230,6 +244,8 @@ const ChatPanel: FC<ChatPanelProps> = ({ messages, isThinking, onSend }) => {
                   onClick={() => {
                     setSelectedModel(m.id);
                     setShowModelList(false);
+                    // 广播模型切换事件，让灵动岛等组件同步
+                    window.dispatchEvent(new CustomEvent('borealos:model-change', { detail: { modelId: m.id } }));
                   }}
                   title={m.description}
                 >
