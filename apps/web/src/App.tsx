@@ -544,6 +544,7 @@ const App: React.FC = () => {
         <ActivityBar activeView={activeView} onViewChange={setActiveView} />
 
         {/* 左侧侧边栏 - 根据活动栏视图切换内容 */}
+        <div className="sidebar-content" key={activeView}>
         {activeView === 'explorer' && (
           <FileTree treeData={MOCK_FILE_TREE} onOpenFile={handleOpenFile} activePath={activeTabPath} />
         )}
@@ -656,9 +657,10 @@ const App: React.FC = () => {
             </div>
           </div>
         )}
+        </div>
 
         {/* 中间区域：编辑器 + 终端 */}
-        <div className="center-pane">
+        <div className={`center-pane ${showTerminal ? 'center-pane--terminal-open' : ''}`}>
           {/* Monaco 编辑器（含标签页） */}
           <Editor
             tabs={openTabs}
@@ -669,17 +671,18 @@ const App: React.FC = () => {
             onCursorChange={handleCursorChange}
           />
 
-          {/* 终端切换按钮 */}
-          <button
-            className={`terminal-toggle-btn ${showTerminal ? 'terminal-toggle-btn--active' : ''}`}
-            onClick={() => setShowTerminal(!showTerminal)}
-            title={showTerminal ? '隐藏终端' : '打开终端'}
-          >
-            {showTerminal ? '▾ 终端' : '▸ 终端'}
-          </button>
-
-          {/* 底部终端 — 默认隐藏，点击按钮展开 */}
-          {showTerminal && <Terminal />}
+          {/* 底部终端 — 始终渲染，通过 CSS 控制显隐 */}
+          <div className="terminal-wrapper">
+            <button
+              className="terminal-toggle-btn"
+              onClick={() => setShowTerminal(!showTerminal)}
+              title={showTerminal ? '隐藏终端' : '打开终端'}
+            >
+              <span className="terminal-toggle-btn__icon">{showTerminal ? '▾' : '▸'}</span>
+              <span>终端</span>
+            </button>
+            <Terminal />
+          </div>
         </div>
 
         {/* 右侧 AI 聊天面板（始终显示） */}
