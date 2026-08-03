@@ -20,13 +20,14 @@
 | **开发环境** | TRAE 云端 | 写代码、构建、测试都在这里，不在本地电脑 |
 | **代码仓库** | Gitee `shashaguoji/borealos` | master 分支，唯一代码来源 |
 | **云端工作区** | `/workspace/borealos` | 云端克隆的项目目录 |
-| **阿里云 VPS** | `8.148.237.155` | FRP 服务端，公网入口（SSH:6000, Web:8080） |
+| **阿里云 VPS** | `8.148.237.155` | **生产环境**：PostgreSQL + Redis + 后端 + Cloudflare Tunnel（数据持久化） |
 | **美国 VPS** | `192.220.44.206` | FRP 备用线路（SSH:6001） |
-| **本地电脑** | 宿主机 | 跑服务：后端 Fastify(:3001) + Vite(:5173) + Rust 网关(:8787)，通过 Cloudflare Tunnel 暴露 |
-| **Cloudflare** | `borealos.dev` | DNS + CDN + Tunnel（替代 FRP）+ Pages 官网托管 + R2 存储 |
+| **TRAE 云端** | 云端沙箱 | **仅开发**：写代码、构建、测试，不跑生产服务 |
+| **Cloudflare** | `borealos.dev` | DNS + CDN + Tunnel + Pages 官网托管 + R2 存储 |
 
-**数据流（Cloudflare Tunnel）**：用户 → Cloudflare CDN → Tunnel → 本地服务（:3001/:5173/:8787）
+**数据流（生产）**：用户 → Cloudflare CDN → Tunnel → VPS 服务（:3001/:8787）
 **数据流（官网）**：用户 → Cloudflare CDN → Cloudflare Pages → 静态 HTML
+**数据流（开发）**：TRAE 云端 → git push → Gitee → VPS git pull → 重新构建部署
 
 ## 三、技术栈
 
@@ -261,11 +262,12 @@ cd apps/desktop && npx tsc --noEmit        # 桌面端
 
 ## 十、注意事项
 
-- **本地电脑只跑服务，不写代码** —— 所有代码改动在 TRAE 云端进行
-- **VPS 做 FRP 中转或 Cloudflare Tunnel** —— 不存放代码
+- **TRAE 云端只写代码，不跑生产服务** —— 代码改动在云端完成，push 到 Gitee，VPS pull 后部署
+- **VPS 是生产环境** —— PostgreSQL + Redis + 后端 + Cloudflare Tunnel 全部在阿里云 VPS 上
+- **VPS 部署一键脚本** —— `deploy/vps-deploy.sh deploy` 全新部署，`update` 更新代码重启
 - **Gitee 是唯一代码真相源** —— 云端每次改完必须 push
 - **本文件 BRAIN.md 是记忆大脑** —— 推送到 Gitee 后，任何云端会话都能读取恢复上下文
-- **数据库已切换为 PostgreSQL** —— 生产环境 DATABASE_TYPE=postgres，PG 14 + Redis 6 已部署运行，内存模式仅用于快速测试
+- **数据库已切换为 PostgreSQL** —— 生产环境 DATABASE_TYPE=postgres，VPS 上 PG 14 + Redis 6 持久化运行
 - **Rust 项目需 Rust 工具链** —— gateway 和 desktop 的 Rust 代码需安装 Rust 编译器
 - **Cloudflare Tunnel 替代 FRP** —— VPS 上运行 `scripts/cloudflared-tunnel.sh install` 即可，配置在 Cloudflare 云端管理
 - **官网部署** —— `scripts/cloudflare-manage.sh deploy-web` 一键部署到 Cloudflare Pages
