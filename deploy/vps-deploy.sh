@@ -204,6 +204,9 @@ install_node() {
 clone_or_update() {
     step "拉取代码"
 
+    # 修复 git "dubious ownership" 报错（CVE-2022-24765）
+    git config --global --add safe.directory "$APP_DIR" 2>/dev/null || true
+
     if [ -d "$APP_DIR/.git" ]; then
         info "代码已存在，更新中..."
         cd "$APP_DIR"
