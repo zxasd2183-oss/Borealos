@@ -261,3 +261,18 @@ cd apps/desktop && npx tsc --noEmit        # 桌面端
 - **Cloudflare Tunnel 替代 FRP** —— VPS 上运行 `scripts/cloudflared-tunnel.sh install` 即可，配置在 Cloudflare 云端管理
 - **官网部署** —— `scripts/cloudflare-manage.sh deploy-web` 一键部署到 Cloudflare Pages
 - **Cloudflare API Token** —— 通过环境变量 `CLOUDFLARE_API_TOKEN` 传入，不硬编码在代码中
+
+## 七、多平台安装包（2026-08-03 完成）
+
+| 平台 | 文件名 | 大小 | 构建方式 | 下载链接 |
+|------|--------|------|----------|----------|
+| Web | 浏览器直接访问 | - | Cloudflare Pages | https://ide.borealos.dev |
+| Android | BorealOS_0.1.0.apk | 13KB | Android SDK + aapt2 + d8 + apksigner | https://borealos.dev/downloads/BorealOS_0.1.0.apk |
+| Windows | BorealOS_0.1.0_x64-setup.exe | 15KB | C + mingw-w64 交叉编译 (ShellExecuteA) | https://borealos.dev/downloads/BorealOS_0.1.0_x64-setup.exe |
+| macOS | BorealOS_0.1.0.dmg | 68KB | .app bundle + genisoimage | https://borealos.dev/downloads/BorealOS_0.1.0.dmg |
+
+- **Android APK**: WebView 封装，打开 ide.borealos.dev，包名 `dev.borealos.app`，签名密钥 `borealos.keystore`
+- **Windows EXE**: C 程序调用 ShellExecuteA 打开默认浏览器，mingw 交叉编译
+- **macOS DMG**: .app bundle（含 Info.plist + shell 脚本打开浏览器）+ genisoimage 生成 DMG
+- **GitHub Actions**: `.github/workflows/build-macos.yml` 可在 macOS runner 上构建原生 Tauri DMG
+- 所有安装包已部署到 Cloudflare Pages，通过 borealos.dev/downloads/ 提供
