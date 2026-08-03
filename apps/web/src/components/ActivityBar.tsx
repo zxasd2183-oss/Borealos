@@ -9,10 +9,11 @@ import {
   SettingsIcon,
   ChartIcon,
   RocketIcon,
+  BrainIcon,
 } from './Icons';
 
 /** 活动栏视图类型 */
-export type ActivityView = 'explorer' | 'search' | 'git' | 'ai' | 'usage' | 'progress' | 'settings';
+export type ActivityView = 'explorer' | 'search' | 'git' | 'ai' | 'brain' | 'usage' | 'progress' | 'settings';
 
 interface ActivityBarProps {
   /** 当前激活的视图 */
@@ -27,6 +28,7 @@ const ACTIVITY_ITEMS: { id: ActivityView; icon: FC<{ size?: number }>; label: st
   { id: 'search', icon: SearchIcon, label: '搜索' },
   { id: 'git', icon: GitIcon, label: '源代码管理', badge: 0 },
   { id: 'ai', icon: AiIcon, label: 'AI 助手' },
+  { id: 'brain', icon: BrainIcon, label: '记忆大脑' },
   { id: 'usage', icon: ChartIcon, label: '用量统计' },
   { id: 'progress', icon: RocketIcon, label: '项目进度' },
 ];

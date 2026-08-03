@@ -136,6 +136,30 @@ export const SearchSmallIcon: FC<IconProps> = (p) => (
 
 export const GearIcon: FC<IconProps> = (p) => <SettingsIcon {...p} />;
 
+/* ==================== 记忆大脑图标 ==================== */
+
+export const BrainIcon: FC<IconProps> = (p) => (
+  <Svg {...p}>
+    <path d="M12 2a3 3 0 0 0-3 3v.5A3 3 0 0 0 6 8a3 3 0 0 0-1 5.83A3 3 0 0 0 8 19a3 3 0 0 0 4 1 3 3 0 0 0 4-1 3 3 0 0 0 3-5.17A3 3 0 0 0 18 8a3 3 0 0 0-3-2.5V5a3 3 0 0 0-3-3z" fill="currentColor" fillOpacity="0.1" />
+    <path d="M12 5v14M9 8h.01M15 8h.01M9 16h.01M15 16h.01" />
+  </Svg>
+);
+
+export const SyncIcon: FC<IconProps> = (p) => (
+  <Svg {...p}>
+    <path d="M21 12a9 9 0 0 1-9 9c-2.5 0-4.8-1-6.5-2.7L3 21" />
+    <path d="M3 12a9 9 0 0 1 9-9c2.5 0 4.8 1 6.5 2.7L21 3" />
+    <path d="M21 3v6h-6M3 21v-6h6" />
+  </Svg>
+);
+
+export const EditIcon: FC<IconProps> = (p) => (
+  <Svg {...p}>
+    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+    <path d="M18.5 2.5a2.12 2.12 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+  </Svg>
+);
+
 /* ==================== 用量/进度图标 ==================== */
 
 export const ChartIcon: FC<IconProps> = (p) => (

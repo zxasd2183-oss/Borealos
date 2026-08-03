@@ -1,5 +1,7 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { apiClient } from './lib/api-client';
+import { syncManager } from './lib/sync-manager';
+import type { SyncStatus } from './lib/sync-manager';
 import MenuBar from './components/MenuBar';
 import ActivityBar from './components/ActivityBar';
 import type { ActivityView } from './components/ActivityBar';
@@ -12,7 +14,11 @@ import UsagePanel from './components/UsagePanel';
 import ProgressPanel from './components/ProgressPanel';
 import LoginScreen from './components/LoginScreen';
 import type { UserInfo } from './components/LoginScreen';
-import { SearchIcon, GitIcon, SettingsIcon } from './components/Icons';
+import GitPanel from './components/GitPanel';
+import BrainPanel from './components/BrainPanel';
+import TaskAnalysisModal from './components/TaskAnalysisModal';
+import type { TaskAnalysis } from './components/TaskAnalysisModal';
+import { SearchIcon, GitIcon, SettingsIcon, SyncIcon } from './components/Icons';
 
 /* ============================================================
  * 前端本地类型定义（简化版，供组件间共享）
@@ -150,6 +156,21 @@ const App: React.FC = () => {
   const [user, setUser] = useState<UserInfo | null>(null);
   const [authChecked, setAuthChecked] = useState(false);
 
+  // ---- 当前项目状态 ----
+  const [currentProjectId, setCurrentProjectId] = useState<string | undefined>(undefined);
+
+  // ---- 任务分析状态 ----
+  const [taskAnalysisVisible, setTaskAnalysisVisible] = useState(false);
+  const [pendingTask, setPendingTask] = useState<string>('');
+
+  // ---- 多设备同步状态 ----
+  const [syncStatus, setSyncStatus] = useState<SyncStatus>({
+    lastSyncAt: null,
+    syncing: false,
+    error: null,
+    pendingChanges: 0,
+  });
+
   // ---- 编辑器标签页状态 ----
   const [openTabs, setOpenTabs] = useState<EditorTab[]>([]);
   const [activeTabPath, setActiveTabPath] = useState<string | null>(null);
@@ -190,6 +211,28 @@ const App: React.FC = () => {
     };
   }, []);
 
+  // 自动同步编辑器状态到云端
+  useEffect(() => {
+    if (user && openTabs.length > 0) {
+      syncManager.uploadEditorState({
+        openTabs: openTabs.map((t) => ({
+          path: t.path,
+          name: t.name,
+          content: t.content,
+        })),
+        activeTab: activeTabPath,
+        cursorPositions: {},
+      });
+    }
+  }, [openTabs, activeTabPath, user]);
+
+  // 自动同步聊天历史到云端
+  useEffect(() => {
+    if (user && chatMessages.length > 1) {
+      syncManager.uploadChatHistory(chatMessages);
+    }
+  }, [chatMessages, user]);
+
   // 检查本地存储中的登录状态
   useEffect(() => {
     const savedUser = localStorage.getItem('borealos_user');
@@ -208,14 +251,56 @@ const App: React.FC = () => {
   /** 登录成功回调 */
   const handleLogin = useCallback((loggedInUser: UserInfo, _token: string) => {
     setUser(loggedInUser);
+    // 启动多设备同步
+    syncManager.start(loggedInUser.id);
   }, []);
 
   /** 退出登录 */
   const handleLogout = useCallback(() => {
+    // 停止同步
+    syncManager.stop();
     localStorage.removeItem('borealos_token');
     localStorage.removeItem('borealos_user');
     setUser(null);
   }, []);
+
+  // 监听同步状态变化
+  useEffect(() => {
+    const unsub = syncManager.onStatusChange((status) => {
+      setSyncStatus(status);
+    });
+    return unsub;
+  }, []);
+
+  // 监听同步数据事件（从其他设备拉取的数据）
+  useEffect(() => {
+    const handleSyncData = (e: Event) => {
+      const detail = (e as CustomEvent).detail;
+      if (detail?.editorState) {
+        // 合并编辑器状态
+        const remoteState = detail.editorState;
+        if (remoteState.openTabs && Array.isArray(remoteState.openTabs)) {
+          // 只在没有本地修改时应用远程状态
+          if (openTabs.length === 0) {
+            setOpenTabs(remoteState.openTabs.map((t: any) => ({
+              path: t.path,
+              name: t.name,
+              language: 'plaintext',
+              content: t.content || '',
+              isDirty: false,
+            })));
+            setActiveTabPath(remoteState.activeTab || null);
+          }
+        }
+      }
+      if (detail?.chatHistory && Array.isArray(detail.chatHistory) && chatMessages.length <= 1) {
+        // 只在聊天记录很少时应用远程历史
+        setChatMessages(detail.chatHistory);
+      }
+    };
+    window.addEventListener('borealos:sync-data', handleSyncData as EventListener);
+    return () => window.removeEventListener('borealos:sync-data', handleSyncData as EventListener);
+  }, [openTabs.length, chatMessages.length]);
 
   /* ---------- 编辑器相关操作 ---------- */
 
@@ -288,8 +373,41 @@ const App: React.FC = () => {
 
   /* ---------- 聊天相关操作 ---------- */
 
+  /** 任务分析确认回调 */
+  const handleTaskConfirm = useCallback((answers: Record<string, string>, analysis: TaskAnalysis) => {
+    // 关闭弹窗
+    setTaskAnalysisVisible(false);
+
+    // 构建确认信息消息
+    const confirmMessage = `✅ 任务已确认\n\n📋 **任务**: ${pendingTask}\n\n📝 **确认信息**:\n${
+      Object.entries(answers).map(([k, v]) => `- ${v}`).join('\n')
+    }\n\n🚀 **执行计划**:\n${analysis.plan.map((p, i) => `${i + 1}. ${p}`).join('\n')}`;
+
+    // 添加系统消息
+    setChatMessages((prev) => [
+      ...prev,
+      {
+        id: `msg-${messageIdRef.current++}`,
+        role: 'system',
+        content: confirmMessage,
+        timestamp: Date.now(),
+      },
+    ]);
+
+    // 继续正常的 AI 聊天流程
+    handleSendMessage(pendingTask, undefined, true);
+    setPendingTask('');
+  }, [pendingTask]);
+
   /** 发送聊天消息（使用 @borealos/api SDK 的 chat.stream 流式输出） */
-  const handleSendMessage = useCallback(async (content: string, model?: string) => {
+  const handleSendMessage = useCallback(async (content: string, model?: string, skipAnalysis = false) => {
+    // 任务分析流程：检测是否是任务描述
+    if (!skipAnalysis && isTaskDescription(content)) {
+      setPendingTask(content);
+      setTaskAnalysisVisible(true);
+      return;
+    }
+
     const userMessage: ChatMessage = {
       id: `msg-${messageIdRef.current++}`,
       role: 'user',
@@ -436,13 +554,10 @@ const App: React.FC = () => {
           </div>
         )}
         {activeView === 'git' && (
-          <div className="sidebar-placeholder">
-            <div className="sidebar-placeholder__header">源代码管理</div>
-            <div className="sidebar-placeholder__body">
-              <GitIcon size={48} />
-              <p>当前没有更改</p>
-            </div>
-          </div>
+          <GitPanel projectId={currentProjectId} />
+        )}
+        {activeView === 'brain' && (
+          <BrainPanel projectId={currentProjectId} />
         )}
         {activeView === 'settings' && (
           <div className="sidebar-placeholder sidebar-placeholder--settings">
@@ -484,6 +599,51 @@ const App: React.FC = () => {
                 </div>
               )}
 
+              {/* 多设备同步状态 */}
+              <div className="sync-status-panel">
+                <div className="sync-status-panel__header">
+                  <SyncIcon size={16} />
+                  <span>多设备同步</span>
+                </div>
+                <div className="sync-status-panel__info">
+                  <div className="sync-status-panel__item">
+                    <span className="sync-status-panel__label">设备</span>
+                    <span className="sync-status-panel__value">
+                      {syncManager.getDeviceInfo().deviceName}
+                    </span>
+                  </div>
+                  <div className="sync-status-panel__item">
+                    <span className="sync-status-panel__label">状态</span>
+                    <span className={`sync-status-panel__value sync-status-panel__value--${
+                      syncStatus.error ? 'error' : syncStatus.syncing ? 'syncing' : 'ok'
+                    }`}>
+                      {syncStatus.error ? '同步失败' : syncStatus.syncing ? '同步中...' : '已同步'}
+                    </span>
+                  </div>
+                  <div className="sync-status-panel__item">
+                    <span className="sync-status-panel__label">最后同步</span>
+                    <span className="sync-status-panel__value">
+                      {syncStatus.lastSyncAt
+                        ? new Date(syncStatus.lastSyncAt).toLocaleTimeString('zh-CN')
+                        : '从未'}
+                    </span>
+                  </div>
+                  {syncStatus.pendingChanges > 0 && (
+                    <div className="sync-status-panel__item">
+                      <span className="sync-status-panel__label">待同步</span>
+                      <span className="sync-status-panel__value">{syncStatus.pendingChanges} 项</span>
+                    </div>
+                  )}
+                </div>
+                <button
+                  className="sync-status-panel__btn"
+                  onClick={() => syncManager.forceSync()}
+                  disabled={syncStatus.syncing}
+                >
+                  {syncStatus.syncing ? '同步中...' : '立即同步'}
+                </button>
+              </div>
+
               {/* 退出登录按钮 */}
               <button className="logout-btn" onClick={handleLogout}>
                 退出登录
@@ -521,9 +681,48 @@ const App: React.FC = () => {
         activeFile={activeTab}
         cursorPosition={cursorPosition}
       />
+
+      {/* 任务分析弹窗 */}
+      <TaskAnalysisModal
+        task={pendingTask}
+        visible={taskAnalysisVisible}
+        onClose={() => {
+          setTaskAnalysisVisible(false);
+          setPendingTask('');
+        }}
+        onConfirm={handleTaskConfirm}
+      />
+
+      {/* 同步状态指示器 */}
+      {syncStatus.syncing && (
+        <div className="sync-indicator">
+          <SyncIcon size={14} className="sync-indicator__icon" />
+          <span>同步中...</span>
+        </div>
+      )}
+      {syncStatus.error && (
+        <div className="sync-indicator sync-indicator--error">
+          <span>同步失败: {syncStatus.error}</span>
+        </div>
+      )}
     </div>
   );
 };
+
+/**
+ * 检测用户消息是否是任务描述（触发分析流程）
+ * 包含关键词：实现、修改、创建、修复、重构、部署、添加、优化、更新、开发
+ */
+function isTaskDescription(message: string): boolean {
+  const keywords = [
+    '实现', '修改', '创建', '修复', '重构', '部署',
+    '添加', '优化', '更新', '开发', '完成', '弄',
+    '接入', '集成', '改造', '升级', '迁移',
+  ];
+  const lower = message.toLowerCase();
+  // 消息长度 > 5 且包含关键词
+  return message.length > 5 && keywords.some((kw) => lower.includes(kw));
+}
 
 /**
  * 模拟 AI 回复（后端不可用时的兜底逻辑）
