@@ -46,25 +46,23 @@ export async function ensureSystemUser(): Promise<void> {
   if (!isDbInitialized()) return;
   const db = getDb();
 
-  // 尝试查找已有的 system 用户
+  // 1. 确保 system 用户存在（内部使用，不可登录）
   const existing = await db.getUserByEmail('system@borealos.local');
   if (existing) {
     systemUserDbId = existing.id;
-    return;
+  } else {
+    const systemUser = await db.createUser({
+      email: 'system@borealos.local',
+      username: 'system',
+      passwordHash: 'system-no-login',
+      role: 'admin',
+      isActive: true,
+    });
+    systemUserDbId = systemUser.id;
+    console.log(`[store] system 用户已创建: ${systemUserDbId}`);
   }
 
-  // 创建 system 用户（内部使用，不可登录）
-  const systemUser = await db.createUser({
-    email: 'system@borealos.local',
-    username: 'system',
-    passwordHash: 'system-no-login',
-    role: 'admin',
-    isActive: true,
-  });
-  systemUserDbId = systemUser.id;
-  console.log(`[store] system 用户已创建: ${systemUserDbId}`);
-
-  // 创建可登录的 admin 账号（用于快速登录）
+  // 2. 确保可登录的 admin 账号存在（每次启动都检查，不受 system 是否已存在的影响）
   const adminExisting = await db.getUserByEmail('admin@borealos.dev');
   if (!adminExisting) {
     await db.createUser({
@@ -75,6 +73,8 @@ export async function ensureSystemUser(): Promise<void> {
       isActive: true,
     });
     console.log('[store] admin 账号已创建: admin@borealos.dev / admin123');
+  } else {
+    console.log('[store] admin 账号已存在');
   }
 }
 
