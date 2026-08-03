@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import type { FC } from 'react';
+import type { FC, ReactNode } from 'react';
 import { BorealOsLogo, SearchIcon, SettingsIcon } from './Icons';
 
 /** 菜单项类型 */
@@ -69,13 +69,15 @@ const MENUS: MenuGroup[] = [
 interface MenuBarProps {
   /** 菜单动作回调 */
   onAction: (action: string) => void;
+  /** 右侧额外内容（如 Agent 徽章） */
+  rightContent?: ReactNode;
 }
 
 /**
  * 顶部菜单栏组件
  * 包含应用 Logo、菜单项（文件/编辑/视图/运行/帮助）及右侧操作按钮
  */
-const MenuBar: FC<MenuBarProps> = ({ onAction }) => {
+const MenuBar: FC<MenuBarProps> = ({ onAction, rightContent }) => {
   // 当前展开的菜单标签
   const [openMenu, setOpenMenu] = useState<string | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -145,6 +147,7 @@ const MenuBar: FC<MenuBarProps> = ({ onAction }) => {
 
       {/* 右侧操作按钮 */}
       <div className="menu-bar__actions">
+        {rightContent && <div className="menu-bar__agent">{rightContent}</div>}
         <button
           className="menu-bar__action-btn"
           title="搜索"

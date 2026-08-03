@@ -207,12 +207,14 @@ export function getProjectById(id: string): Project | undefined {
 export function createProject(data: {
   name: string;
   description?: string;
+  agent?: string;
   settings?: Project['settings'];
 }): Project {
   const project: Project = {
     id: generateId(),
     name: data.name,
     description: data.description ?? '',
+    agent: data.agent,
     settings: data.settings,
     createdAt: now(),
     updatedAt: now(),
@@ -237,13 +239,14 @@ export function createProject(data: {
 /** 更新项目 */
 export function updateProject(
   id: string,
-  data: Partial<Pick<Project, 'name' | 'description' | 'settings'>>,
+  data: Partial<Pick<Project, 'name' | 'description' | 'agent' | 'settings'>>,
 ): Project | undefined {
   const project = projects.get(id);
   if (!project) return undefined;
 
   if (data.name !== undefined) project.name = data.name;
   if (data.description !== undefined) project.description = data.description;
+  if (data.agent !== undefined) project.agent = data.agent;
   if (data.settings !== undefined) project.settings = data.settings;
   project.updatedAt = now();
 

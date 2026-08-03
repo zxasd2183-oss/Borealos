@@ -18,6 +18,7 @@ import GitPanel from './components/GitPanel';
 import BrainPanel from './components/BrainPanel';
 import TaskAnalysisModal from './components/TaskAnalysisModal';
 import type { TaskAnalysis } from './components/TaskAnalysisModal';
+import AgentBadge from './components/AgentBadge';
 import { SearchIcon, GitIcon, SettingsIcon, SyncIcon } from './components/Icons';
 
 /* ============================================================
@@ -158,6 +159,7 @@ const App: React.FC = () => {
 
   // ---- 当前项目状态 ----
   const [currentProjectId, setCurrentProjectId] = useState<string | undefined>(undefined);
+  const [currentAgent, setCurrentAgent] = useState<string | undefined>(undefined);
 
   // ---- 任务分析状态 ----
   const [taskAnalysisVisible, setTaskAnalysisVisible] = useState(false);
@@ -531,7 +533,16 @@ const App: React.FC = () => {
   return (
     <div className="app">
       {/* 顶部菜单栏 */}
-      <MenuBar onAction={handleMenuAction} />
+      <MenuBar
+        onAction={handleMenuAction}
+        rightContent={
+          <AgentBadge
+            agentId={currentAgent}
+            size="sm"
+            showName={true}
+          />
+        }
+      />
 
       {/* 主体区域：活动栏 + 侧边栏 + 编辑器/终端 + 聊天面板 */}
       <div className="app-body">
@@ -680,7 +691,16 @@ const App: React.FC = () => {
       <StatusBar
         activeFile={activeTab}
         cursorPosition={cursorPosition}
-      />
+      >
+        <div className="status-bar__agent">
+          <AgentBadge
+            agentId={currentAgent}
+            size="sm"
+            editable
+            onChange={(agentId) => setCurrentAgent(agentId)}
+          />
+        </div>
+      </StatusBar>
 
       {/* 任务分析弹窗 */}
       <TaskAnalysisModal

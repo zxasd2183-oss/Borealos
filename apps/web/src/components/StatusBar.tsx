@@ -1,4 +1,4 @@
-import type { FC } from 'react';
+import type { FC, ReactNode } from 'react';
 import type { EditorTab, CursorPosition } from '../App';
 import { GitIcon, RefreshIcon, CloseIcon, SettingsIcon, BorealOsLogo, ChevronDownIcon } from './Icons';
 
@@ -7,13 +7,15 @@ interface StatusBarProps {
   activeFile: EditorTab | null;
   /** 光标位置 */
   cursorPosition: CursorPosition;
+  /** 自定义子内容（如 Agent 徽章） */
+  children?: ReactNode;
 }
 
 /**
  * 底部状态栏组件
  * 显示 Git 分支、错误/警告数、光标位置、缩进、编码、换行符、语言等信息
  */
-const StatusBar: FC<StatusBarProps> = ({ activeFile, cursorPosition }) => {
+const StatusBar: FC<StatusBarProps> = ({ activeFile, cursorPosition, children }) => {
   return (
     <div className="status-bar">
       {/* 左侧：Git 信息与问题统计 */}
@@ -37,6 +39,13 @@ const StatusBar: FC<StatusBarProps> = ({ activeFile, cursorPosition }) => {
           <span className="status-item__icon">⚠</span>
           <span>0</span>
         </div>
+        {/* Agent 徽章（可点击切换） */}
+        {children && (
+          <>
+            <div className="status-divider" />
+            {children}
+          </>
+        )}
       </div>
 
       {/* 右侧：编辑器信息 */}

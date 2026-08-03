@@ -2,6 +2,35 @@
  * BorealOS 后端类型定义
  */
 
+// ==================== AI Agent 定义 ====================
+
+/** 预定义 AI Agent */
+export interface AIAgent {
+  /** Agent 标识（唯一 key） */
+  id: string;
+  /** 显示名称 */
+  name: string;
+  /** 图标 emoji */
+  icon: string;
+  /** 主题色（CSS 颜色值） */
+  color: string;
+  /** 描述 */
+  description?: string;
+}
+
+/** 内置 AI Agent 列表 */
+export const BUILTIN_AGENTS: AIAgent[] = [
+  { id: 'trae',     name: 'Trae',     icon: '🟦', color: '#2563eb', description: 'TRAE AI 助手' },
+  { id: 'codex',    name: 'Codex',    icon: '🟩', color: '#16a34a', description: 'OpenAI Codex' },
+  { id: 'claude',   name: 'Claude',   icon: '🟧', color: '#ea580c', description: 'Anthropic Claude' },
+  { id: 'cursor',   name: 'Cursor',   icon: '⬛', color: '#6b7280', description: 'Cursor AI' },
+  { id: 'windsurf', name: 'Windsurf', icon: '🏄', color: '#0891b2', description: 'Codeium Windsurf' },
+  { id: 'copilot',  name: 'Copilot',  icon: '🐙', color: '#8b5cf6', description: 'GitHub Copilot' },
+  { id: 'gemini',   name: 'Gemini',   icon: '💎', color: '#059669', description: 'Google Gemini' },
+  { id: 'deepseek', name: 'DeepSeek', icon: '🔵', color: '#1d4ed8', description: 'DeepSeek' },
+  { id: 'human',    name: '人工',      icon: '👤', color: '#64748b', description: '人工负责' },
+];
+
 // ==================== 项目相关类型 ====================
 
 /** 项目 */
@@ -12,6 +41,8 @@ export interface Project {
   name: string;
   /** 项目描述 */
   description: string;
+  /** 负责的 AI Agent ID（如 trae / codex / claude / 自定义） */
+  agent?: string;
   /** 创建时间（ISO 格式） */
   createdAt: string;
   /** 更新时间（ISO 格式） */
@@ -83,6 +114,7 @@ export interface ApiResponse<T = unknown> {
 export interface CreateProjectBody {
   name: string;
   description?: string;
+  agent?: string;
   settings?: ProjectSettings;
 }
 
@@ -90,6 +122,7 @@ export interface CreateProjectBody {
 export interface UpdateProjectBody {
   name?: string;
   description?: string;
+  agent?: string;
   settings?: ProjectSettings;
 }
 

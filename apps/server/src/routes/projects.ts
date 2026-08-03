@@ -15,6 +15,8 @@ import type {
   ApiResponse,
   Project,
 } from '../types';
+import { BUILTIN_AGENTS } from '../types';
+import type { AIAgent } from '../types';
 import * as store from '../store';
 
 const projectRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) => {
@@ -22,6 +24,11 @@ const projectRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) => {
   fastify.get('/api/projects', async () => {
     const projects = store.getAllProjects();
     return { success: true, data: projects } as ApiResponse<Project[]>;
+  });
+
+  // 获取所有可用 AI Agent
+  fastify.get('/api/agents', async () => {
+    return { success: true, data: BUILTIN_AGENTS } as ApiResponse<AIAgent[]>;
   });
 
   // 获取单个项目
@@ -46,7 +53,7 @@ const projectRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) => {
   fastify.post<{ Body: CreateProjectBody }>(
     '/api/projects',
     async (request, reply) => {
-      const { name, description, settings } = request.body;
+      const { name, description, agent, settings } = request.body;
 
       // 参数校验
       if (!name || typeof name !== 'string' || name.trim().length === 0) {
@@ -59,6 +66,7 @@ const projectRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) => {
       const project = store.createProject({
         name: name.trim(),
         description,
+        agent,
         settings,
       });
 
@@ -74,9 +82,9 @@ const projectRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) => {
     '/api/projects/:id',
     async (request, reply) => {
       const { id } = request.params;
-      const { name, description, settings } = request.body;
+      const { name, description, agent, settings } = request.body;
 
-      const project = store.updateProject(id, { name, description, settings });
+      const project = store.updateProject(id, { name, description, agent, settings });
 
       if (!project) {
         return reply.status(404).send({
