@@ -18,8 +18,8 @@ echo "[1/5] 拉取最新代码..."
 cd "$APP_DIR"
 git config --global --add safe.directory "$APP_DIR" 2>/dev/null || true
 git remote set-url origin "$GITEE_REPO" 2>/dev/null || true
-git fetch origin main 2>&1 | tail -3
-git reset --hard origin/main 2>&1 | tail -3
+git fetch origin master 2>&1 | tail -3
+git reset --hard origin/master 2>&1 | tail -3
 echo "✓ 代码已更新"
 
 # 2. 安装依赖
