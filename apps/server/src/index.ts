@@ -152,5 +152,24 @@ async function main() {
   process.on('SIGTERM', () => shutdown('SIGTERM'));
 }
 
-// 启动服务器
-main();
+// ==================== 全局错误处理 ====================
+
+// 捕获未处理的 Promise rejection（防止静默崩溃）
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('[FATAL] 未处理的 Promise Rejection:', reason);
+  // 不退出进程，仅记录错误
+});
+
+// 捕获未捕获的同步异常
+process.on('uncaughtException', (err) => {
+  console.error('[FATAL] 未捕获的异常:', err);
+  // 给日志一点时间写入，然后退出（让 systemd 重启）
+  setTimeout(() => process.exit(1), 1000);
+});
+
+// 启动服务器（带错误捕获，防止静默崩溃）
+main().catch((err) => {
+  console.error('[FATAL] 服务器启动失败:', err);
+  console.error(err?.stack || err);
+  process.exit(1);
+});

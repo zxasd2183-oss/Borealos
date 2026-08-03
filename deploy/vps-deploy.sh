@@ -585,6 +585,26 @@ EOF
     echo "    https://gw.borealos.dev   → localhost:8787  (AI 网关)"
 }
 
+# ===== 重置 systemd 失败计数器并启动服务 =====
+reset_and_start() {
+    local svc="$1"
+    local sleep_sec="${2:-3}"
+
+    # 重置失败计数器（防止 StartLimitBurst 触发后拒绝启动）
+    systemctl reset-failed "$svc" 2>/dev/null || true
+    systemctl restart "$svc"
+    sleep "$sleep_sec"
+
+    if systemctl is-active --quiet "$svc"; then
+        ok "$svc 运行中 (PID: $(systemctl show -p MainPID --value "$svc"))"
+        return 0
+    else
+        err "$svc 启动失败！最近 30 行日志："
+        journalctl -u "$svc" -n 30 --no-pager 2>/dev/null
+        return 1
+    fi
+}
+
 # ===== 启动所有服务 =====
 start_services() {
     step "启动服务"
@@ -592,32 +612,31 @@ start_services() {
     mkdir -p "$LOG_DIR"
 
     info "启动后端..."
-    systemctl restart borealos-server
-    sleep 3
-
-    if systemctl is-active --quiet borealos-server; then
-        ok "后端运行中 (PID: $(systemctl show -p MainPID --value borealos-server))"
-    else
-        err "后端启动失败！查看日志: journalctl -u borealos-server -n 50"
-        journalctl -u borealos-server -n 30 --no-pager
+    if ! reset_and_start borealos-server 5; then
+        err "后端启动失败，尝试诊断..."
+        # 检查 dist 是否存在
+        if [ ! -f "$APP_DIR/apps/server/dist/index.js" ]; then
+            err "apps/server/dist/index.js 不存在！需要重新构建: bash deploy/vps-deploy.sh update"
+        fi
+        # 检查 .env 是否存在
+        if [ ! -f "$APP_DIR/.env" ]; then
+            err ".env 文件不存在！"
+        fi
+        # 检查 node 路径
+        info "node 路径: $(which node)"
+        info "dist 文件: $(ls -la $APP_DIR/apps/server/dist/index.js 2>/dev/null || echo '不存在')"
         exit 1
     fi
 
     # 网关（可选）
     if systemctl list-unit-files | grep -q borealos-gateway; then
         info "启动 AI 网关..."
-        systemctl restart borealos-gateway 2>/dev/null && ok "网关运行中" || warn "网关启动失败（非致命）"
+        reset_and_start borealos-gateway 3 || warn "网关启动失败（非致命）"
     fi
 
     # Tunnel
     info "启动 Cloudflare Tunnel..."
-    systemctl restart cloudflared
-    sleep 2
-    if systemctl is-active --quiet cloudflared; then
-        ok "Tunnel 运行中"
-    else
-        warn "Tunnel 启动中，可能需要几秒..."
-    fi
+    reset_and_start cloudflared 3 || warn "Tunnel 启动中，可能需要几秒..."
 }
 
 # ===== 全新部署 =====
@@ -664,10 +683,22 @@ update_deploy() {
 
     info "重启服务..."
     systemctl daemon-reload
+    # 重置失败计数器（防止 StartLimitBurst 锁定）
+    systemctl reset-failed borealos-server 2>/dev/null || true
+    systemctl reset-failed borealos-gateway 2>/dev/null || true
+    systemctl reset-failed cloudflared 2>/dev/null || true
     systemctl restart borealos-server
     systemctl restart borealos-gateway 2>/dev/null || true
     systemctl restart cloudflared 2>/dev/null || true
     sleep 5
+
+    # 检查后端是否启动成功
+    if systemctl is-active --quiet borealos-server; then
+        ok "后端运行中"
+    else
+        err "后端启动失败！最近日志："
+        journalctl -u borealos-server -n 30 --no-pager
+    fi
 
     ok "更新完成"
     show_status
@@ -860,13 +891,19 @@ EOF
     # --- 5. 重启后端 ---
     step "重启后端"
     systemctl daemon-reload
+    systemctl reset-failed borealos-server 2>/dev/null || true
     systemctl restart borealos-server
-    sleep 3
+    sleep 5
     if systemctl is-active --quiet borealos-server; then
         ok "后端运行中 (PID: $(systemctl show -p MainPID --value borealos-server))"
     else
-        err "后端启动失败，查看日志: journalctl -u borealos-server -n 30"
-        journalctl -u borealos-server -n 15 --no-pager
+        err "后端启动失败，查看日志: journalctl -u borealos-server -n 50"
+        journalctl -u borealos-server -n 30 --no-pager
+        # 额外诊断
+        info "=== 诊断信息 ==="
+        info "dist 文件: $(ls -la $APP_DIR/apps/server/dist/index.js 2>/dev/null || echo '不存在')"
+        info ".env 文件: $(ls -la $APP_DIR/.env 2>/dev/null || echo '不存在')"
+        info "node 版本: $(node -v 2>/dev/null || echo '未安装')"
     fi
 
     # --- 6. 显示最终状态 ---
