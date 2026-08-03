@@ -131,6 +131,23 @@ const App: React.FC = () => {
     };
   }, []);
 
+  // 监听欢迎页快捷操作发出的视图切换事件
+  useEffect(() => {
+    const handleSwitchView = (e: Event) => {
+      const view = (e as CustomEvent).detail as ActivityView;
+      setActiveView(view);
+    };
+    const handleFocusChat = () => {
+      setActiveView('ai');
+    };
+    window.addEventListener('borealos:switch-view', handleSwitchView);
+    window.addEventListener('borealos:focus-chat', handleFocusChat);
+    return () => {
+      window.removeEventListener('borealos:switch-view', handleSwitchView);
+      window.removeEventListener('borealos:focus-chat', handleFocusChat);
+    };
+  }, []);
+
   // 自动同步编辑器状态到云端
   useEffect(() => {
     if (user && openTabs.length > 0) {
@@ -607,6 +624,8 @@ const App: React.FC = () => {
             onCloseTab={handleCloseTab}
             onContentChange={handleContentChange}
             onCursorChange={handleCursorChange}
+            onAction={handleMenuAction}
+            onToggleTerminal={() => setShowTerminal(!showTerminal)}
           />
 
           {/* 底部终端 — 始终渲染，通过 CSS 控制显隐 */}
