@@ -102,19 +102,29 @@ install_node() {
         local ver=$(node -v | sed 's/v//' | cut -d. -f1)
         if [ "$ver" -ge "$NODE_VERSION" ]; then
             ok "Node.js 已安装: $(node -v)"
-            return 0
+        else
+            info "安装 Node.js $NODE_VERSION ..."
+            curl -fsSL "https://deb.nodesource.com/setup_${NODE_VERSION}.x" | bash -
+            apt-get install -y -qq nodejs
+            ok "Node.js 安装完成: $(node -v)"
         fi
+    else
+        info "安装 Node.js $NODE_VERSION ..."
+        curl -fsSL "https://deb.nodesource.com/setup_${NODE_VERSION}.x" | bash -
+        apt-get install -y -qq nodejs
+        ok "Node.js 安装完成: $(node -v)"
     fi
 
-    info "安装 Node.js $NODE_VERSION ..."
-    curl -fsSL "https://deb.nodesource.com/setup_${NODE_VERSION}.x" | bash -
-    apt-get install -y -qq nodejs
-    ok "Node.js 安装完成: $(node -v)"
-
-    # 安装 pnpm
+    # 安装 pnpm（不管 Node 是否新装都检查）
     if ! command -v pnpm &>/dev/null; then
         info "安装 pnpm..."
-        npm install -g pnpm
+        # 优先用 corepack（Node 16.13+ 自带）
+        if command -v corepack &>/dev/null; then
+            corepack enable
+            corepack prepare pnpm@latest --activate
+        else
+            npm install -g pnpm
+        fi
     fi
     ok "pnpm 安装完成: $(pnpm -v)"
 }
