@@ -2,7 +2,6 @@ import { useState, useCallback, useRef, useEffect } from 'react';
 import { apiClient } from './lib/api-client';
 import { syncManager } from './lib/sync-manager';
 import type { SyncStatus } from './lib/sync-manager';
-import MenuBar from './components/MenuBar';
 import ActivityBar from './components/ActivityBar';
 import type { ActivityView } from './components/ActivityBar';
 import FileTree from './components/FileTree';
@@ -191,6 +190,9 @@ const App: React.FC = () => {
 
   // ---- 活动栏视图状态 ----
   const [activeView, setActiveView] = useState<ActivityView>('explorer');
+
+  // ---- 终端显示/隐藏 ----
+  const [showTerminal, setShowTerminal] = useState(false);
 
   // ---- 状态栏信息 ----
   const [cursorPosition, setCursorPosition] = useState<CursorPosition>({
@@ -533,17 +535,8 @@ const App: React.FC = () => {
 
   return (
     <div className="app">
-      {/* 顶部菜单栏 */}
-      <MenuBar
-        onAction={handleMenuAction}
-        rightContent={
-          <AgentBadge
-            agentId={currentAgent}
-            size="sm"
-            showName={true}
-          />
-        }
-      />
+      {/* 顶部区域 — 仅灵动岛居中，无传统菜单栏 */}
+      <div className="app-topbar" />
 
       {/* 主体区域：活动栏 + 侧边栏 + 编辑器/终端 + 聊天面板 */}
       <div className="app-body">
@@ -676,8 +669,17 @@ const App: React.FC = () => {
             onCursorChange={handleCursorChange}
           />
 
-          {/* 底部终端 */}
-          <Terminal />
+          {/* 终端切换按钮 */}
+          <button
+            className={`terminal-toggle-btn ${showTerminal ? 'terminal-toggle-btn--active' : ''}`}
+            onClick={() => setShowTerminal(!showTerminal)}
+            title={showTerminal ? '隐藏终端' : '打开终端'}
+          >
+            {showTerminal ? '▾ 终端' : '▸ 终端'}
+          </button>
+
+          {/* 底部终端 — 默认隐藏，点击按钮展开 */}
+          {showTerminal && <Terminal />}
         </div>
 
         {/* 右侧 AI 聊天面板（始终显示） */}

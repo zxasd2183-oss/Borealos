@@ -173,35 +173,65 @@ body {
 }
 
 /* ============================================================
- * 顶部菜单栏 — 液态玻璃
+ * 顶部区域 — 极简，仅容纳灵动岛
  * ============================================================ */
-.menu-bar {
-  display: flex;
-  align-items: center;
-  height: var(--menu-bar-height);
-  background: var(--glass-bg-ultra);
-  backdrop-filter: var(--glass-blur);
-  -webkit-backdrop-filter: var(--glass-blur);
-  border-bottom: 1px solid var(--glass-border-light);
-  padding: 0 12px;
+.app-topbar {
+  height: 48px;
   flex-shrink: 0;
-  user-select: none;
-  -webkit-app-region: drag;
-  position: relative;
-  z-index: 100;
+  background: transparent;
 }
 
-.menu-bar__logo {
+/* 终端切换按钮 */
+.terminal-toggle-btn {
   display: flex;
   align-items: center;
-  gap: 8px;
-  font-weight: 600;
-  color: var(--text-bright);
-  font-size: 14px;
-  padding: 0 12px 0 4px;
-  -webkit-app-region: no-drag;
-  letter-spacing: -0.02em;
+  gap: 4px;
+  padding: 4px 12px;
+  font-size: 12px;
+  color: var(--text-secondary);
+  background: var(--glass-bg-light);
+  border: 1px solid var(--glass-border-light);
+  border-radius: 6px 6px 0 0;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  user-select: none;
 }
+
+.terminal-toggle-btn:hover {
+  background: var(--glass-bg);
+  color: var(--text-primary);
+}
+
+.terminal-toggle-btn--active {
+  background: var(--glass-bg-strong);
+  color: var(--text-primary);
+  border-bottom-color: transparent;
+}
+
+/* 聊天面板模型标签（只读） */
+.chat-header__model-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: auto;
+  padding: 2px 8px;
+  font-size: 11px;
+  color: var(--text-secondary);
+  background: var(--glass-bg-light);
+  border: 1px solid var(--glass-border-light);
+  border-radius: 10px;
+  white-space: nowrap;
+}
+
+.model-tag-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #34c759;
+  flex-shrink: 0;
+}
+
+/* (旧的 menu-bar 样式已移除) */
 
 .menu-bar__logo-icon {
   display: inline-flex;
