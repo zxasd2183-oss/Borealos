@@ -471,6 +471,10 @@ setup_systemd() {
     chown -R borealos:borealos "$APP_DIR"
 
     # 后端服务
+    # 预创建需要写入的目录
+    mkdir -p "$APP_DIR/data" "$APP_DIR/public" "$APP_DIR/logs"
+    chown -R borealos:borealos "$APP_DIR/data" "$APP_DIR/public" "$APP_DIR/logs" 2>/dev/null || true
+
     cat > /etc/systemd/system/borealos-server.service << EOF
 [Unit]
 Description=BorealOS Backend Server (Fastify)
@@ -489,15 +493,16 @@ EnvironmentFile=${APP_DIR}/.env
 ExecStart=$(which node) apps/server/dist/index.js
 Restart=always
 RestartSec=5
+StartLimitIntervalSec=60
+StartLimitBurst=10
 StandardOutput=journal
 StandardError=journal
 SyslogIdentifier=borealos-server
 
 NoNewPrivileges=true
 PrivateTmp=true
-ProtectSystem=strict
-ReadWritePaths=${APP_DIR}/data
-ProtectHome=true
+ProtectSystem=yes
+ReadWritePaths=${APP_DIR}
 LimitNOFILE=65536
 MemoryMax=1G
 

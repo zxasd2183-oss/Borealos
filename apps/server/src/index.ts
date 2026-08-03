@@ -49,9 +49,14 @@ async function main() {
 
   // 注册静态文件服务 - 提供静态资源访问
   const publicDir = path.join(process.cwd(), 'public');
-  fs.mkdirSync(publicDir, { recursive: true });
+  try {
+    fs.mkdirSync(publicDir, { recursive: true });
+  } catch {
+    // 只读文件系统下无法创建目录，使用 /tmp 兜底
+    fs.mkdirSync('/tmp/borealos-public', { recursive: true });
+  }
   await fastify.register(fastifyStatic, {
-    root: publicDir,
+    root: fs.existsSync(publicDir) ? publicDir : '/tmp/borealos-public',
     prefix: '/static/',
     decorateReply: false, // 不装饰 reply.sendFile，留给前端 dist 注册使用
   });

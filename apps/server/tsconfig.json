@@ -5,6 +5,7 @@
     "moduleResolution": "node",
     "lib": ["ES2022"],
     "outDir": "./dist",
+    "rootDir": "./src",
     "strict": true,
     "esModuleInterop": true,
     "allowSyntheticDefaultImports": true,
@@ -17,16 +18,7 @@
     "noUnusedLocals": false,
     "noUnusedParameters": false,
     "noImplicitReturns": true,
-    "noFallthroughCasesInSwitch": true,
-    "baseUrl": ".",
-    "paths": {
-      "@borealos/database": ["../../packages/database/src/index.ts"],
-      "@borealos/database/*": ["../../packages/database/src/*"],
-      "@borealos/memory": ["../../packages/memory/src/index.ts"],
-      "@borealos/memory/*": ["../../packages/memory/src/*"],
-      "@borealos/sync": ["../../packages/sync/src/index.ts"],
-      "@borealos/sync/*": ["../../packages/sync/src/*"]
-    }
+    "noFallthroughCasesInSwitch": true
   },
   "include": ["src/**/*"],
   "exclude": ["node_modules", "dist"]
