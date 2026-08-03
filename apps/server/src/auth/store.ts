@@ -1,14 +1,15 @@
 /**
  * 认证模块用户存储
  *
- * 在内存中维护用户数据与令牌黑名单，不依赖数据库。
- * 服务器重启后数据会丢失，后续版本将替换为持久化存储。
+ * 内存 Map 作为主读取源，PostgreSQL write-through 持久化。
+ * 服务器重启时从数据库恢复用户数据。
  *
  * 该模块在 auth 模块内部维护 Map（见需求说明），供 middleware 与 routes 共享。
  */
 
 import type { AuthUser } from './types';
 import { hashPassword } from './jwt';
+import { getDb, isDbInitialized } from '../db';
 
 /** 存储的用户记录（在 AuthUser 基础上额外保存密码哈希） */
 export interface StoredUser extends AuthUser {
@@ -80,6 +81,22 @@ export function createUser(data: {
   users.set(user.id, user);
   emailIndex.set(user.email.toLowerCase(), user.id);
   usernameIndex.set(user.username.toLowerCase(), user.id);
+
+  // 异步写入数据库（write-through 模式）
+  if (isDbInitialized()) {
+    const db = getDb();
+    db.createUser({
+      email: user.email,
+      username: user.username,
+      passwordHash: user.passwordHash,
+      role: user.role,
+      isActive: user.isActive,
+    }).catch((err: unknown) => {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error(`[auth/store] 用户写入数据库失败: ${msg}`);
+    });
+  }
+
   return user;
 }
 

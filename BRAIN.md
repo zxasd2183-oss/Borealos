@@ -2,7 +2,7 @@
 
 > **用途**：本文件是项目的"记忆大脑"。每次会话开始时优先读取此文件以恢复上下文，防止失忆。每次开发结束或重要节点更新此文件，并立即推送到 Gitee。
 >
-> **最后更新**：2026-08-03（官网下载链接修复 + Web IDE 部署 + Gitee Release v0.1.0 + 生产部署配置）
+> **最后更新**：2026-08-03（PostgreSQL + Redis 生产数据库部署完成 · 全部模块 100% 完成）
 
 ---
 
@@ -176,9 +176,10 @@ borealos/
 - [x] **Gitee Release v0.1.0** — DEB (4.5MB) + AppImage (79MB) 安装包已上传
 - [x] **Web IDE 部署** — Cloudflare Pages 项目 `borealos-ide`，ide.borealos.dev 可直接访问
 - [x] **官网下载链接修复** — DEB 指向 Pages 直链，AppImage 指向 Gitee Release 直链，Web 版指向 ide.borealos.dev
+- [x] **PostgreSQL + Redis 生产部署** — PG 14 + Redis 6 安装运行，6 张表迁移完成（users/projects/files/chat_messages/usage_records/memories + schema_migrations），认证模块 write-through 持久化，system 用户自动创建，种子数据外键修复，API 全链路验证通过
 
 ### 🚧 后续优化方向（非阻塞）
-- [ ] PostgreSQL + Redis 实际部署（代码已就绪，需配置环境变量）
+- [x] ~~PostgreSQL + Redis 实际部署~~ ✅ 已完成（2026-08-03）
 
 ## 七、开发流程规范（重要）
 
@@ -204,13 +205,21 @@ borealos/
 
 ### 数据库配置（环境变量）
 ```bash
-DATABASE_TYPE=memory          # memory（开发）或 postgres（生产）
+DATABASE_TYPE=postgres        # memory（开发）或 postgres（生产，已部署）
 DB_HOST=localhost             # PostgreSQL 主机
 DB_PORT=5432                  # PostgreSQL 端口
 DB_NAME=borealos              # 数据库名
 DB_USER=borealos              # 用户名
-DB_PASSWORD=                  # 密码
-JWT_SECRET=your-secret-here   # JWT 签名密钥
+DB_PASSWORD=borealos123       # 密码
+JWT_SECRET=borealos-prod-jwt-secret-2026  # JWT 签名密钥
+```
+
+### 数据库迁移
+```bash
+# 执行迁移脚本（幂等，已执行的会跳过）
+cd /workspace/borealos
+export $(grep -v '^#' .env | xargs)
+./apps/server/node_modules/.bin/tsx scripts/migrate.ts
 ```
 
 ### 开发命令
@@ -256,7 +265,7 @@ cd apps/desktop && npx tsc --noEmit        # 桌面端
 - **VPS 做 FRP 中转或 Cloudflare Tunnel** —— 不存放代码
 - **Gitee 是唯一代码真相源** —— 云端每次改完必须 push
 - **本文件 BRAIN.md 是记忆大脑** —— 推送到 Gitee 后，任何云端会话都能读取恢复上下文
-- **数据库默认内存模式** —— 开发环境无需 PostgreSQL，生产环境设置 DATABASE_TYPE=postgres
+- **数据库已切换为 PostgreSQL** —— 生产环境 DATABASE_TYPE=postgres，PG 14 + Redis 6 已部署运行，内存模式仅用于快速测试
 - **Rust 项目需 Rust 工具链** —— gateway 和 desktop 的 Rust 代码需安装 Rust 编译器
 - **Cloudflare Tunnel 替代 FRP** —— VPS 上运行 `scripts/cloudflared-tunnel.sh install` 即可，配置在 Cloudflare 云端管理
 - **官网部署** —— `scripts/cloudflare-manage.sh deploy-web` 一键部署到 Cloudflare Pages

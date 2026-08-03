@@ -24,7 +24,7 @@ import syncRoutes from './routes/sync';
 import gatewayRoutes from './routes/gateway';
 import { createAuthMiddleware } from './auth/middleware';
 import { initDatabase, closeDatabase } from './db';
-import { seedData } from './store';
+import { seedData, ensureSystemUser } from './store';
 
 /** 服务器监听端口 */
 const PORT = 3001;
@@ -61,6 +61,8 @@ async function main() {
   try {
     await initDatabase();
     fastify.log.info('数据库已初始化');
+    await ensureSystemUser();
+    fastify.log.info('system 用户已就绪');
   } catch (dbErr) {
     fastify.log.warn(`数据库初始化失败，降级为纯内存模式: ${dbErr instanceof Error ? dbErr.message : dbErr}`);
   }

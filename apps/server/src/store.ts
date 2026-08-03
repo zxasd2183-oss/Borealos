@@ -32,6 +32,38 @@ const usageRecords: UsageRecord[] = [];
 /** 默认所有者 ID（store 无用户概念，数据库 projects 表的 owner_id 使用此值） */
 const DEFAULT_OWNER_ID = 'system';
 
+/** 数据库中的 system 用户 ID（首次建表时创建） */
+let systemUserDbId: string | null = null;
+
+/**
+ * 确保 system 用户存在于数据库中
+ *
+ * 在首次连接 PostgreSQL 时调用，创建一个 system 用户作为种子项目的 owner。
+ * 如果 system 用户已存在则直接获取其 ID。
+ */
+export async function ensureSystemUser(): Promise<void> {
+  if (!isDbInitialized()) return;
+  const db = getDb();
+
+  // 尝试查找已有的 system 用户
+  const existing = await db.getUserByEmail('system@borealos.local');
+  if (existing) {
+    systemUserDbId = existing.id;
+    return;
+  }
+
+  // 创建 system 用户
+  const systemUser = await db.createUser({
+    email: 'system@borealos.local',
+    username: 'system',
+    passwordHash: 'system-no-login',
+    role: 'admin',
+    isActive: true,
+  });
+  systemUserDbId = systemUser.id;
+  console.log(`[store] system 用户已创建: ${systemUserDbId}`);
+}
+
 /** 项目 ID 映射：内存 ID -> 数据库 ID */
 const projectIdMap = new Map<string, string>();
 
@@ -194,7 +226,7 @@ export function createProject(data: {
     const dbProject = await db.createProject({
       name: project.name,
       description: project.description,
-      ownerId: DEFAULT_OWNER_ID,
+      ownerId: systemUserDbId ?? DEFAULT_OWNER_ID,
     });
     projectIdMap.set(project.id, dbProject.id);
   });
@@ -522,7 +554,7 @@ export async function syncToDatabase(): Promise<void> {
     const dbProject = await db.createProject({
       name: project.name,
       description: project.description,
-      ownerId: DEFAULT_OWNER_ID,
+      ownerId: systemUserDbId ?? DEFAULT_OWNER_ID,
     });
     projectIdMap.set(project.id, dbProject.id);
   }
