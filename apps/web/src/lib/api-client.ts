@@ -7,12 +7,26 @@
 
 import { BorealOSClient } from '@borealos/api';
 
-// HTTP API 基础地址：默认走当前站点（由 Vite 代理转发到后端 3001 端口），
-// 可通过 VITE_API_BASE_URL 环境变量覆盖
-const baseURL = import.meta.env.VITE_API_BASE_URL || '';
+// 后端 API 地址：优先使用环境变量，其次自动检测
+// 如果当前站点不是后端（如 ide.borealos.dev），则连接 api.borealos.dev
+const getBackendURL = (): string => {
+  const envURL = import.meta.env.VITE_API_BASE_URL;
+  if (envURL) return envURL;
 
-// WebSocket 地址：根据当前页面协议自动选择 ws/wss，统一走 /ws 网关端点
-const wsURL = `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}/ws`;
+  const host = window.location.hostname;
+  // 本地开发环境
+  if (host === 'localhost' || host === '127.0.0.1') return '';
+  // 如果已在后端站点上（如 api.borealos.dev 或通过代理）
+  if (host.startsWith('api.')) return '';
+  // 生产环境：使用 api 子域名
+  return `https://api.${host.split('.').slice(-2).join('.')}`;
+};
+
+const baseURL = getBackendURL();
+
+// WebSocket 地址：根据 baseURL 构建
+const wsBase = baseURL || `${window.location.origin}`;
+const wsURL = `${wsBase.startsWith('https') ? 'wss' : wsBase.startsWith('http') ? 'ws' : window.location.protocol === 'https:' ? 'wss' : 'ws'}://${wsBase.replace(/^https?:\/\//, '').replace(/^wss?:\/\//, '')}/ws`;
 
 // BorealOS API 客户端单例，供全应用复用
 export const apiClient = new BorealOSClient({ baseURL, wsURL });

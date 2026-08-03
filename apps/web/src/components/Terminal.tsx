@@ -144,9 +144,21 @@ const Terminal: FC = () => {
       }
     };
 
-    // 建立 WebSocket 连接（通过 Vite 代理转发到后端 3001 端口）
+    // 建立 WebSocket 连接
+    // 生产环境连接 api.borealos.dev，本地开发走当前 host
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const wsUrl = `${protocol}//${window.location.host}/api/terminal/ws`;
+    const host = window.location.hostname;
+    let wsHost: string;
+    if (host === 'localhost' || host === '127.0.0.1') {
+      wsHost = `${window.location.host}`;
+    } else if (host.startsWith('api.')) {
+      wsHost = window.location.host;
+    } else {
+      // 生产环境：使用 api 子域名
+      const rootDomain = host.split('.').slice(-2).join('.');
+      wsHost = `api.${rootDomain}`;
+    }
+    const wsUrl = `${protocol}//${wsHost}/api/terminal/ws`;
 
     let ws: WebSocket;
     try {
