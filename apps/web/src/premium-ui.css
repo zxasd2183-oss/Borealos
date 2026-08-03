@@ -1156,3 +1156,716 @@
 .login-toggle:hover {
   transform: scale(1.05);
 }
+
+/* ============================================================
+ * 22. 系统加载页面 — 品牌级启动动画
+ * ============================================================ */
+
+.app--loading {
+  background:
+    radial-gradient(ellipse at 30% 20%, rgba(10, 132, 255, 0.08), transparent 50%),
+    radial-gradient(ellipse at 70% 80%, rgba(175, 82, 222, 0.06), transparent 50%),
+    linear-gradient(135deg, #f0f2f7 0%, #e8ebf3 50%, #f5f0fa 100%);
+}
+
+.app-loading {
+  position: relative;
+  z-index: 1;
+}
+
+/* 品牌加载动画 — 三层旋转环 */
+.app-loading__spinner {
+  position: relative;
+  width: 64px;
+  height: 64px;
+  border: none !important;
+  border-radius: 50%;
+  background: transparent !important;
+  box-shadow: none !important;
+  animation: none !important;
+}
+
+.app-loading__spinner::before,
+.app-loading__spinner::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  border: 3px solid transparent;
+}
+
+.app-loading__spinner::before {
+  border-top-color: var(--accent);
+  border-right-color: var(--accent);
+  animation: spin-fast 0.8s linear infinite;
+}
+
+.app-loading__spinner::after {
+  inset: 8px;
+  border-top-color: var(--sys-purple);
+  border-left-color: var(--sys-purple);
+  animation: spin-fast 1.2s linear infinite reverse;
+}
+
+.app-loading__spinner > div {
+  position: absolute;
+  inset: 16px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  border-bottom-color: var(--sys-teal);
+  border-top-color: var(--sys-teal);
+  animation: spin-fast 1s linear infinite;
+}
+
+@keyframes spin-fast {
+  to { transform: rotate(360deg); }
+}
+
+/* 加载文字脉冲 */
+.app-loading::after {
+  content: 'BorealOS';
+  position: absolute;
+  bottom: -50px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 14px;
+  font-weight: 300;
+  letter-spacing: 6px;
+  color: var(--text-muted);
+  animation: loading-pulse 2s ease-in-out infinite;
+}
+
+@keyframes loading-pulse {
+  0%, 100% { opacity: 0.4; letter-spacing: 6px; }
+  50% { opacity: 1; letter-spacing: 8px; }
+}
+
+/* ============================================================
+ * 23. 登录页面全面增强 — 交错入场 + 标签滑动 + 输入光效
+ * ============================================================ */
+
+/* 登录卡片 — 深度玻璃 + 入场弹性 */
+.login-card {
+  animation: login-card-premium 0.8s cubic-bezier(0.22, 1, 0.36, 1) backwards;
+  position: relative;
+  overflow: hidden;
+}
+
+@keyframes login-card-premium {
+  from {
+    opacity: 0;
+    transform: translateY(30px) scale(0.92);
+    filter: blur(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    filter: blur(0);
+  }
+}
+
+/* 卡片内元素交错入场 */
+.login-card__logo {
+  animation: login-element-in 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) 0.2s backwards;
+}
+
+.login-card__title {
+  animation: login-element-in 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) 0.3s backwards;
+}
+
+.login-card__subtitle {
+  animation: login-element-in 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) 0.4s backwards;
+}
+
+.login-tabs {
+  animation: login-element-in 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) 0.5s backwards;
+}
+
+.login-form {
+  animation: login-element-in 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) 0.6s backwards;
+}
+
+.login-form .login-field:nth-child(1) {
+  animation: login-field-in 0.5s cubic-bezier(0.22, 1, 0.36, 1) 0.65s backwards;
+}
+
+.login-form .login-field:nth-child(2) {
+  animation: login-field-in 0.5s cubic-bezier(0.22, 1, 0.36, 1) 0.75s backwards;
+}
+
+.login-form .login-field:nth-child(3) {
+  animation: login-field-in 0.5s cubic-bezier(0.22, 1, 0.36, 1) 0.85s backwards;
+}
+
+.login-submit {
+  animation: login-element-in 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) 0.95s backwards;
+}
+
+.login-quick {
+  animation: login-element-in 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) 1.05s backwards;
+}
+
+.login-hint {
+  animation: login-element-in 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) 1.15s backwards;
+}
+
+@keyframes login-element-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes login-field-in {
+  from {
+    opacity: 0;
+    transform: translateX(-16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+/* Logo 呼吸发光 */
+.login-card__logo {
+  animation: login-element-in 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) 0.2s backwards,
+             logo-breath 3s ease-in-out 1s infinite;
+}
+
+@keyframes logo-breath {
+  0%, 100% {
+    filter: drop-shadow(0 4px 12px rgba(10, 132, 255, 0.3));
+    transform: scale(1);
+  }
+  50% {
+    filter: drop-shadow(0 8px 24px rgba(10, 132, 255, 0.5));
+    transform: scale(1.05);
+  }
+}
+
+/* 标题渐变流光 */
+.login-card__title {
+  background: linear-gradient(
+    90deg,
+    var(--text-bright) 0%,
+    var(--accent) 50%,
+    var(--text-bright) 100%
+  );
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: login-element-in 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) 0.3s backwards,
+             title-flow 4s ease-in-out 1s infinite;
+}
+
+@keyframes title-flow {
+  0%, 100% { background-position: 0% center; }
+  50% { background-position: 100% center; }
+}
+
+/* 标签切换 — 滑动指示器 */
+.login-tabs {
+  position: relative;
+}
+
+.login-tab {
+  transition: all 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+  position: relative;
+  z-index: 1;
+}
+
+.login-tab--active {
+  background: var(--glass-bg-ultra);
+  color: var(--accent);
+  box-shadow:
+    0 2px 8px rgba(0, 0, 0, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.6),
+    0 0 0 1px rgba(10, 132, 255, 0.1);
+  transform: scale(1.02);
+}
+
+.login-tab:not(.login-tab--active):hover {
+  color: var(--text-primary);
+  background: rgba(0, 0, 0, 0.03);
+}
+
+/* 输入框 — 聚焦光晕 + 底部线条动画 */
+.login-field__input {
+  transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+}
+
+.login-field__input:focus {
+  border-color: var(--accent);
+  box-shadow:
+    0 0 0 4px rgba(10, 132, 255, 0.1),
+    0 4px 16px rgba(10, 132, 255, 0.12);
+  background: rgba(255, 255, 255, 0.9);
+  transform: translateY(-1px);
+}
+
+.login-field__label {
+  transition: all 0.3s ease;
+  transform-origin: left;
+}
+
+.login-field:focus-within .login-field__label {
+  color: var(--accent);
+  transform: scale(1.02);
+}
+
+/* 提交按钮 — 渐变流光 + 悬停浮起 */
+.login-submit {
+  transition: all 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+  position: relative;
+  overflow: hidden;
+  background: linear-gradient(135deg, var(--accent), var(--sys-indigo), var(--accent));
+  background-size: 200% 100%;
+}
+
+.login-submit::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.3),
+    transparent
+  );
+  transition: left 0.6s;
+}
+
+.login-submit:hover:not(:disabled)::before {
+  left: 100%;
+}
+
+.login-submit:hover:not(:disabled) {
+  transform: translateY(-2px) scale(1.01);
+  background-position: 100% 0;
+  box-shadow:
+    0 8px 24px rgba(10, 132, 255, 0.35),
+    0 0 0 1px rgba(255, 255, 255, 0.1) inset;
+}
+
+.login-submit:active:not(:disabled) {
+  transform: translateY(0) scale(0.98);
+}
+
+/* 加载态 — 按钮内旋转 */
+.login-submit:disabled {
+  opacity: 0.7;
+  cursor: wait;
+}
+
+/* 快速登录按钮 */
+.login-quick {
+  transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.login-quick:hover {
+  transform: translateY(-1px);
+  border-color: var(--accent);
+  color: var(--accent);
+  box-shadow: 0 4px 12px rgba(10, 132, 255, 0.1);
+}
+
+/* 错误提示 — 抖动 + 红色光晕 */
+.login-error {
+  animation: error-shake 0.5s cubic-bezier(0.36, 0.07, 0.19, 0.97),
+             error-glow 2s ease-in-out infinite;
+  box-shadow: 0 0 12px rgba(255, 69, 58, 0.2);
+}
+
+@keyframes error-shake {
+  0%, 100% { transform: translateX(0); }
+  10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); }
+  20%, 40%, 60%, 80% { transform: translateX(5px); }
+}
+
+@keyframes error-glow {
+  0%, 100% { box-shadow: 0 0 8px rgba(255, 69, 58, 0.15); }
+  50% { box-shadow: 0 0 16px rgba(255, 69, 58, 0.3); }
+}
+
+/* ============================================================
+ * 24. 登录背景光球增强 — 更鲜艳 + 多层
+ * ============================================================ */
+
+.login-bg__orb {
+  opacity: 0.4;
+  will-change: transform;
+}
+
+.login-bg__orb--1 {
+  animation: login-orb-1 18s ease-in-out infinite;
+}
+
+.login-bg__orb--2 {
+  animation: login-orb-2 22s ease-in-out infinite;
+}
+
+.login-bg__orb--3 {
+  animation: login-orb-3 25s ease-in-out infinite;
+}
+
+@keyframes login-orb-1 {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  25% { transform: translate(100px, 60px) scale(1.2); }
+  50% { transform: translate(50px, 150px) scale(0.9); }
+  75% { transform: translate(-30px, 80px) scale(1.1); }
+}
+
+@keyframes login-orb-2 {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  25% { transform: translate(-80px, -50px) scale(1.15); }
+  50% { transform: translate(-120px, 30px) scale(0.85); }
+  75% { transform: translate(-40px, -80px) scale(1.05); }
+}
+
+@keyframes login-orb-3 {
+  0%, 100% { transform: translate(-50%, -50%) scale(1); }
+  33% { transform: translate(-20%, -70%) scale(1.3); }
+  66% { transform: translate(-80%, -30%) scale(0.8); }
+}
+
+/* 噪点纹理叠加 */
+.login-screen::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  opacity: 0.02;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  mix-blend-mode: overlay;
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* ============================================================
+ * 25. 任务分析弹窗全面增强
+ * ============================================================ */
+
+.task-analysis-overlay {
+  animation: overlay-premium-in 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@keyframes overlay-premium-in {
+  from {
+    opacity: 0;
+    backdrop-filter: blur(0);
+  }
+  to {
+    opacity: 1;
+    backdrop-filter: blur(12px);
+  }
+}
+
+.task-analysis-modal {
+  animation: modal-premium-in 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+.task-analysis-modal::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -150%;
+  width: 60%;
+  height: 100%;
+  background: linear-gradient(
+    105deg,
+    transparent 30%,
+    rgba(255, 255, 255, 0.12) 45%,
+    rgba(255, 255, 255, 0.25) 50%,
+    rgba(255, 255, 255, 0.12) 55%,
+    transparent 70%
+  );
+  transform: skewX(-20deg);
+  pointer-events: none;
+  z-index: 1;
+  animation: glass-sweep 6s ease-in-out infinite 1s;
+}
+
+@keyframes modal-premium-in {
+  from {
+    opacity: 0;
+    transform: scale(0.85) translateY(30px);
+    filter: blur(12px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+    filter: blur(0);
+  }
+}
+
+/* 弹窗内容交错入场 */
+.task-analysis-section {
+  animation: section-fade-in 0.5s cubic-bezier(0.22, 1, 0.36, 1) backwards;
+}
+
+.task-analysis-section:nth-child(1) { animation-delay: 0.1s; }
+.task-analysis-section:nth-child(2) { animation-delay: 0.2s; }
+.task-analysis-section:nth-child(3) { animation-delay: 0.3s; }
+.task-analysis-section:nth-child(4) { animation-delay: 0.4s; }
+
+@keyframes section-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* 关闭按钮增强 */
+.task-analysis-header__close {
+  transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.task-analysis-header__close:hover {
+  background: var(--sys-red);
+  color: #fff;
+  transform: rotate(90deg) scale(1.1);
+}
+
+/* 选项按钮增强 */
+.task-analysis-option {
+  transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.task-analysis-option:hover {
+  transform: translateY(-2px) scale(1.02);
+  box-shadow: 0 4px 12px rgba(10, 132, 255, 0.1);
+}
+
+.task-analysis-option--active {
+  animation: option-pop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+  box-shadow: 0 2px 12px rgba(10, 132, 255, 0.2);
+}
+
+@keyframes option-pop {
+  0% { transform: scale(0.95); }
+  50% { transform: scale(1.05); }
+  100% { transform: scale(1); }
+}
+
+/* 计划步骤交错入场 */
+.task-analysis-plan__step {
+  animation: step-slide-in 0.4s cubic-bezier(0.22, 1, 0.36, 1) backwards;
+}
+
+.task-analysis-plan__step:nth-child(1) { animation-delay: 0.05s; }
+.task-analysis-plan__step:nth-child(2) { animation-delay: 0.1s; }
+.task-analysis-plan__step:nth-child(3) { animation-delay: 0.15s; }
+.task-analysis-plan__step:nth-child(4) { animation-delay: 0.2s; }
+.task-analysis-plan__step:nth-child(5) { animation-delay: 0.25s; }
+.task-analysis-plan__step:nth-child(n+6) { animation-delay: 0.3s; }
+
+@keyframes step-slide-in {
+  from {
+    opacity: 0;
+    transform: translateX(-16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+/* 底部按钮增强 */
+.task-analysis-footer__btn {
+  transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+.task-analysis-footer__btn--confirm:hover:not(:disabled) {
+  transform: translateY(-2px) scale(1.03);
+  box-shadow: 0 6px 20px rgba(10, 132, 255, 0.3);
+}
+
+.task-analysis-footer__btn--confirm:active:not(:disabled) {
+  transform: scale(0.97);
+}
+
+.task-analysis-footer__btn--cancel:hover {
+  transform: translateY(-1px);
+}
+
+/* 加载旋转器增强 */
+.task-analysis-loading__spinner {
+  width: 40px;
+  height: 40px;
+  border: 3px solid rgba(10, 132, 255, 0.1) !important;
+  border-top-color: var(--accent) !important;
+  border-right-color: var(--sys-purple) !important;
+  border-radius: 50%;
+  animation: spin-fast 0.8s linear infinite;
+  box-shadow: 0 0 20px rgba(10, 132, 255, 0.2);
+}
+
+/* ============================================================
+ * 26. 用量面板增强 — 卡片交错 + 数字滚动
+ * ============================================================ */
+
+.usage-panel__content > * {
+  animation: usage-card-in 0.5s cubic-bezier(0.22, 1, 0.36, 1) backwards;
+}
+
+.usage-panel__content > *:nth-child(1) { animation-delay: 0.05s; }
+.usage-panel__content > *:nth-child(2) { animation-delay: 0.12s; }
+.usage-panel__content > *:nth-child(3) { animation-delay: 0.19s; }
+.usage-panel__content > *:nth-child(4) { animation-delay: 0.26s; }
+.usage-panel__content > *:nth-child(5) { animation-delay: 0.33s; }
+.usage-panel__content > *:nth-child(n+6) { animation-delay: 0.4s; }
+
+@keyframes usage-card-in {
+  from {
+    opacity: 0;
+    transform: translateY(16px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* 用量面板头部图标脉冲 */
+.usage-panel__header .usage-panel__icon {
+  animation: icon-pulse 3s ease-in-out infinite;
+}
+
+@keyframes icon-pulse {
+  0%, 100% { filter: drop-shadow(0 0 4px rgba(10, 132, 255, 0.2)); }
+  50% { filter: drop-shadow(0 0 12px rgba(10, 132, 255, 0.4)); }
+}
+
+/* ============================================================
+ * 27. 进度面板增强 — 模块卡片交错 + 进度条动画
+ * ============================================================ */
+
+.progress-panel__content > * {
+  animation: progress-card-in 0.5s cubic-bezier(0.22, 1, 0.36, 1) backwards;
+}
+
+.progress-panel__content > *:nth-child(1) { animation-delay: 0.05s; }
+.progress-panel__content > *:nth-child(2) { animation-delay: 0.12s; }
+.progress-panel__content > *:nth-child(3) { animation-delay: 0.19s; }
+.progress-panel__content > *:nth-child(4) { animation-delay: 0.26s; }
+.progress-panel__content > *:nth-child(n+5) { animation-delay: 0.33s; }
+
+@keyframes progress-card-in {
+  from {
+    opacity: 0;
+    transform: translateX(-16px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0) scale(1);
+  }
+}
+
+/* 进度环增强 */
+.progress-panel svg circle:last-of-type {
+  filter: drop-shadow(0 0 8px rgba(10, 132, 255, 0.4));
+  transition: stroke-dashoffset 1s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* ============================================================
+ * 28. 页面切换过渡 — 登录 → 主界面
+ * ============================================================ */
+
+.app {
+  animation: app-fade-in 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@keyframes app-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* 登录界面淡出 */
+.login-screen {
+  animation: login-screen-in 0.5s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@keyframes login-screen-in {
+  from {
+    opacity: 0;
+    filter: blur(8px);
+  }
+  to {
+    opacity: 1;
+    filter: blur(0);
+  }
+}
+
+/* ============================================================
+ * 29. Git 面板 & 记忆面板增强
+ * ============================================================ */
+
+.git-panel__content > *,
+.brain-panel__content > * {
+  animation: panel-item-in 0.4s cubic-bezier(0.22, 1, 0.36, 1) backwards;
+}
+
+.git-panel__content > *:nth-child(1) { animation-delay: 0.05s; }
+.git-panel__content > *:nth-child(2) { animation-delay: 0.1s; }
+.git-panel__content > *:nth-child(3) { animation-delay: 0.15s; }
+.git-panel__content > *:nth-child(n+4) { animation-delay: 0.2s; }
+
+.brain-panel__content > *:nth-child(1) { animation-delay: 0.05s; }
+.brain-panel__content > *:nth-child(2) { animation-delay: 0.1s; }
+.brain-panel__content > *:nth-child(n+3) { animation-delay: 0.15s; }
+
+@keyframes panel-item-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* ============================================================
+ * 30. 设置面板交错入场
+ * ============================================================ */
+
+.settings-panel > * {
+  animation: settings-item-in 0.5s cubic-bezier(0.22, 1, 0.36, 1) backwards;
+}
+
+.settings-panel > *:nth-child(1) { animation-delay: 0.05s; }
+.settings-panel > *:nth-child(2) { animation-delay: 0.12s; }
+.settings-panel > *:nth-child(3) { animation-delay: 0.19s; }
+.settings-panel > *:nth-child(n+4) { animation-delay: 0.26s; }
+
+@keyframes settings-item-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}

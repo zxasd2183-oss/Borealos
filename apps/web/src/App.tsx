@@ -528,7 +528,9 @@ const App: React.FC = () => {
           <div className="ambient-grain" />
         </div>
         <div className="app-loading">
-          <div className="app-loading__spinner" />
+          <div className="app-loading__spinner">
+            <div />
+          </div>
         </div>
       </div>
     );
