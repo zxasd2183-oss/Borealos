@@ -20,7 +20,7 @@ Group=borealos
 WorkingDirectory=/opt/borealos
 Environment=NODE_ENV=production
 Environment=PORT=3001
-Environment=DATABASE_TYPE=memory
+Environment=DATABASE_TYPE=postgres
 EnvironmentFile=/opt/borealos/.env
 ExecStart=/usr/bin/node apps/server/dist/index.js
 Restart=always
