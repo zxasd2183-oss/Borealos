@@ -2,7 +2,7 @@
 
 > **用途**：本文件是项目的"记忆大脑"。每次会话开始时优先读取此文件以恢复上下文，防止失忆。每次开发结束或重要节点更新此文件，并立即推送到 Gitee。
 >
-> **最后更新**：2026-08-02（Tauri 桌面端打包成功 + Rust 升级到 1.97.1 + deb/AppImage 产物）
+> **最后更新**：2026-08-03（Cloudflare 域名接入完成 + 官网部署 + Tunnel 配置 + 管理脚本）
 
 ---
 
@@ -22,9 +22,11 @@
 | **云端工作区** | `/workspace/borealos` | 云端克隆的项目目录 |
 | **阿里云 VPS** | `8.148.237.155` | FRP 服务端，公网入口（SSH:6000, Web:8080） |
 | **美国 VPS** | `192.220.44.206` | FRP 备用线路（SSH:6001） |
-| **本地电脑** | 宿主机 | 只负责跑服务：后端 Fastify(:3001) + FRP 隧道，让公网能访问 |
+| **本地电脑** | 宿主机 | 跑服务：后端 Fastify(:3001) + Vite(:5173) + Rust 网关(:8787)，通过 Cloudflare Tunnel 暴露 |
+| **Cloudflare** | `borealos.dev` | DNS + CDN + Tunnel（替代 FRP）+ Pages 官网托管 + R2 存储 |
 
-**数据流**：用户 → 阿里云 VPS(:8080) → FRP 隧道 → 本地后端(:3001)
+**数据流（Cloudflare Tunnel）**：用户 → Cloudflare CDN → Tunnel → 本地服务（:3001/:5173/:8787）
+**数据流（官网）**：用户 → Cloudflare CDN → Cloudflare Pages → 静态 HTML
 
 ## 三、技术栈
 
@@ -41,6 +43,7 @@
 | 编辑器核心 | @borealos/editor（Monaco/xterm 封装 + 主题 + Hooks） |
 | Monorepo | pnpm + Turborepo |
 | AI 模型 | Token Plan 提供 16 个模型（千问/DeepSeek/Kimi/GLM/MiniMax 等） |
+| 公网接入 | Cloudflare Tunnel（替代 FRP）+ Cloudflare Pages 官网 + R2 对象存储 |
 
 ## 四、Monorepo 结构
 
@@ -69,7 +72,12 @@ borealos/
 │   └── sync/             # Yjs CRDT 实时同步（文档、Awareness、WebSocket Provider）
 ├── package.json          # pnpm workspaces
 ├── turbo.json
-└── tsconfig.json         # 路径别名 @borealos/*
+├── tsconfig.json         # 路径别名 @borealos/*
+├── config/
+│   └── cloudflare.json   # Cloudflare 集成配置（Zone/Tunnel/DNS/Pages/R2）
+└── scripts/
+    ├── cloudflared-tunnel.sh  # Cloudflare Tunnel 部署脚本（VPS 用）
+    └── cloudflare-manage.sh   # Cloudflare 统一管理脚本（DNS/Tunnel/Pages/缓存）
 ```
 
 ## 五、关键端口
@@ -84,6 +92,23 @@ borealos/
 | Redis | 6379 |
 | FRP 公网入口（阿里云） | SSH 6000 / Web 8080 |
 | FRP 备用（美国） | SSH 6001 |
+
+## 五点五、Cloudflare 域名映射
+
+| 域名 | 类型 | 指向 | 说明 |
+|------|------|------|------|
+| `borealos.dev` | CNAME | `borealos.pages.dev` | 官网（Cloudflare Pages） |
+| `www.borealos.dev` | CNAME | `borealos.pages.dev` | 官网 www |
+| `api.borealos.dev` | CNAME | Tunnel | 后端 Fastify API (:3001) |
+| `ide.borealos.dev` | CNAME | Tunnel | Web IDE Vite (:5173) |
+| `gw.borealos.dev` | CNAME | Tunnel | Rust AI 网关 (:8787) |
+| `cdn.borealos.dev` | CNAME | `public.r2.dev` | R2 CDN |
+| `files.borealos.dev` | CNAME | `public.r2.dev` | R2 文件服务 |
+
+- **Tunnel ID**：`2cd9b918-83f1-40e2-b91f-321c6f044a25`
+- **Zone ID**：`1477f2622ce76a9b338ee10e78f2293b`
+- **Account ID**：`063867422e9fb60f62a5e7e783bbbb81`
+- **Pages 项目**：`borealos`（subdomain: `borealos.pages.dev`）
 
 ## 六、当前进度
 
@@ -127,6 +152,11 @@ borealos/
 - [x] **Rust AI 网关编译成功** — reqwest 改用 rustls-tls（避免 OpenSSL 依赖），TraceLayer 泛型修复，release 优化构建 23MB ELF 二进制
 - [x] **前后端运行验证** — 后端 Fastify:3001 启动成功（数据库初始化 + 认证中间件 + SPA 静态文件），API 测试通过（health/usage/progress/models/auth/chat），前端 Vite 构建成功（70 模块 3.71 秒）
 - [x] **Tauri 桌面端打包成功** — Rust 1.97.1 + Tauri 2.11.5 编译 6 分 25 秒，生成 deb (4.5MB) + AppImage (79MB) 安装包，二进制 20MB
+- [x] **官网开发** — 响应式 HTML 官网（功能介绍/界面预览/技术栈/下载/架构展示），AI 生成 hero + app-preview 图片
+- [x] **Cloudflare 域名接入** — DNS 管理（7 条 CNAME）+ Tunnel 内网穿透（3 子域路由）+ Pages 官网部署（borealos.dev + www + pages.dev）
+- [x] **Cloudflare 管理脚本** — `cloudflared-tunnel.sh`（VPS 部署/启停/systemd）+ `cloudflare-manage.sh`（DNS/Tunnel/Pages/缓存统一管理）
+- [x] **Cloudflare 配置文件** — `config/cloudflare.json` 完整记录 Zone/Tunnel/DNS/Pages/R2 配置
+- [x] **旧 Tunnel 清理** — 删除废弃的 `ai-seller-gateway-borealos` 隧道
 
 ### 🚧 后续优化方向（非阻塞）
 - [ ] PostgreSQL + Redis 实际部署（代码已就绪，需配置环境变量）
@@ -194,6 +224,8 @@ cd apps/desktop && npx tsc --noEmit        # 桌面端
 ## 九、最近提交脉络
 
 最新提交（master HEAD）：
+- Cloudflare 集成：DNS + Tunnel + Pages 官网 + 管理脚本 + 配置文件
+- 官网开发：响应式 HTML + 功能介绍 + 下载页面
 - 全模块补全：7 个 packages + 桌面端 + Rust 网关 + 认证系统 + 持久化 + PWA
 - 真实数据对接：后端 usage/progress API + 前端实时获取 + 用量记录系统
 - UI 改造：UsagePanel + ProgressPanel + 新图标 + 样式
@@ -202,8 +234,11 @@ cd apps/desktop && npx tsc --noEmit        # 桌面端
 ## 十、注意事项
 
 - **本地电脑只跑服务，不写代码** —— 所有代码改动在 TRAE 云端进行
-- **VPS 只做 FRP 中转和公网入口** —— 不存放代码
+- **VPS 做 FRP 中转或 Cloudflare Tunnel** —— 不存放代码
 - **Gitee 是唯一代码真相源** —— 云端每次改完必须 push
 - **本文件 BRAIN.md 是记忆大脑** —— 推送到 Gitee 后，任何云端会话都能读取恢复上下文
 - **数据库默认内存模式** —— 开发环境无需 PostgreSQL，生产环境设置 DATABASE_TYPE=postgres
 - **Rust 项目需 Rust 工具链** —— gateway 和 desktop 的 Rust 代码需安装 Rust 编译器
+- **Cloudflare Tunnel 替代 FRP** —— VPS 上运行 `scripts/cloudflared-tunnel.sh install` 即可，配置在 Cloudflare 云端管理
+- **官网部署** —— `scripts/cloudflare-manage.sh deploy-web` 一键部署到 Cloudflare Pages
+- **Cloudflare API Token** —— 通过环境变量 `CLOUDFLARE_API_TOKEN` 传入，不硬编码在代码中

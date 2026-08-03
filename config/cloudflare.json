@@ -1,0 +1,127 @@
+{
+  "$schema": "https://json.schemastore.org/cloudflare",
+  "project": "BorealOS",
+  "domain": "borealos.dev",
+  "lastUpdated": "2026-08-03",
+  "account": {
+    "id": "063867422e9fb60f62a5e7e783bbbb81",
+    "name": "Zxasd2183@gmail.com's Account"
+  },
+  "zone": {
+    "id": "1477f2622ce76a9b338ee10e78f2293b",
+    "name": "borealos.dev",
+    "status": "active",
+    "type": "full",
+    "nameServers": [
+      "jessica.ns.cloudflare.com",
+      "venkat.ns.cloudflare.com"
+    ]
+  },
+  "tunnel": {
+    "id": "2cd9b918-83f1-40e2-b91f-321c6f044a25",
+    "name": "borealos",
+    "status": "inactive",
+    "configSource": "cloudflare",
+    "remoteConfig": true,
+    "ingress": [
+      {
+        "hostname": "api.borealos.dev",
+        "service": "http://localhost:3001",
+        "description": "后端 Fastify API"
+      },
+      {
+        "hostname": "ide.borealos.dev",
+        "service": "http://localhost:5173",
+        "description": "Web IDE (Vite dev server)"
+      },
+      {
+        "hostname": "gw.borealos.dev",
+        "service": "http://localhost:8787",
+        "description": "Rust AI 网关 (Axum)"
+      },
+      {
+        "service": "http_status:404",
+        "description": "Catch-all"
+      }
+    ]
+  },
+  "dns": [
+    {
+      "type": "CNAME",
+      "name": "borealos.dev",
+      "content": "borealos.pages.dev",
+      "proxied": true,
+      "description": "官网 (Cloudflare Pages)"
+    },
+    {
+      "type": "CNAME",
+      "name": "www.borealos.dev",
+      "content": "borealos.pages.dev",
+      "proxied": true,
+      "description": "官网 www (Cloudflare Pages)"
+    },
+    {
+      "type": "CNAME",
+      "name": "api.borealos.dev",
+      "content": "2cd9b918-83f1-40e2-b91f-321c6f044a25.cfargotunnel.com",
+      "proxied": true,
+      "description": "后端 API (Tunnel)"
+    },
+    {
+      "type": "CNAME",
+      "name": "ide.borealos.dev",
+      "content": "2cd9b918-83f1-40e2-b91f-321c6f044a25.cfargotunnel.com",
+      "proxied": true,
+      "description": "Web IDE (Tunnel)"
+    },
+    {
+      "type": "CNAME",
+      "name": "gw.borealos.dev",
+      "content": "2cd9b918-83f1-40e2-b91f-321c6f044a25.cfargotunnel.com",
+      "proxied": true,
+      "description": "AI 网关 (Tunnel)"
+    },
+    {
+      "type": "CNAME",
+      "name": "cdn.borealos.dev",
+      "content": "public.r2.dev",
+      "proxied": true,
+      "description": "CDN (R2 存储)"
+    },
+    {
+      "type": "CNAME",
+      "name": "files.borealos.dev",
+      "content": "public.r2.dev",
+      "proxied": true,
+      "description": "文件服务 (R2 存储)"
+    }
+  ],
+  "pages": {
+    "projectName": "borealos",
+    "subdomain": "borealos.pages.dev",
+    "domains": [
+      "borealos.pages.dev",
+      "borealos.dev",
+      "www.borealos.dev"
+    ],
+    "productionBranch": "main",
+    "deploymentDir": "/workspace/borealos-website",
+    "entryFile": "borealos-website.html -> index.html"
+  },
+  "r2": {
+    "buckets": [],
+    "publicAccess": {
+      "cdn.borealos.dev": "public.r2.dev",
+      "files.borealos.dev": "public.r2.dev"
+    }
+  },
+  "scripts": {
+    "tunnelDeploy": "scripts/cloudflared-tunnel.sh",
+    "pagesDeploy": "wrangler pages deploy . --project-name=borealos --branch=main"
+  },
+  "environmentVariables": {
+    "CLOUDFLARE_API_TOKEN": "cfut_*** (set in environment, not in code)",
+    "CLOUDFLARE_ACCOUNT_ID": "063867422e9fb60f62a5e7e783bbbb81",
+    "CLOUDFLARE_ZONE_ID": "1477f2622ce76a9b338ee10e78f2293b"
+  }
+}
