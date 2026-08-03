@@ -11,7 +11,30 @@ interface ModelInfo {
   vision: boolean;
   reasoning: boolean;
   brand: string;
+  contextWindow?: number;
+  maxOutput?: number;
+  speed?: 'fast' | 'medium' | 'slow';
 }
+
+/** 全部 16 个支持的 AI 模型（与 /api/models 保持一致） */
+const FALLBACK_MODELS: ModelInfo[] = [
+  { id: 'qwen3.6-flash', name: 'Qwen3.6 Flash', description: '极速响应，适合日常对话与代码补全', vision: true, reasoning: true, brand: '千问', contextWindow: 131072, maxOutput: 8192, speed: 'fast' },
+  { id: 'qwen3.6-plus', name: 'Qwen3.6 Plus', description: '均衡性能，适合复杂编程与多轮对话', vision: true, reasoning: true, brand: '千问', contextWindow: 131072, maxOutput: 16384, speed: 'medium' },
+  { id: 'qwen3.6-max', name: 'Qwen3.6 Max', description: '旗舰模型，最强推理与创作能力', vision: true, reasoning: true, brand: '千问', contextWindow: 32768, maxOutput: 8192, speed: 'slow' },
+  { id: 'qwen3-coder', name: 'Qwen3 Coder', description: '专为编程优化，支持 128K 上下文', vision: false, reasoning: true, brand: '千问', contextWindow: 131072, maxOutput: 16384, speed: 'medium' },
+  { id: 'deepseek-v3', name: 'DeepSeek-V3', description: '高性能通用大模型，性价比极高', vision: false, reasoning: true, brand: '深度求索', contextWindow: 65536, maxOutput: 8192, speed: 'medium' },
+  { id: 'deepseek-r1', name: 'DeepSeek-R1', description: '深度推理模型，擅长数学与逻辑', vision: false, reasoning: true, brand: '深度求索', contextWindow: 65536, maxOutput: 32768, speed: 'slow' },
+  { id: 'glm-4-flash', name: 'GLM-4 Flash', description: '免费极速模型，适合快速原型', vision: false, reasoning: false, brand: '智谱', contextWindow: 131072, maxOutput: 4096, speed: 'fast' },
+  { id: 'glm-4-plus', name: 'GLM-4 Plus', description: '智谱旗舰，多模态理解能力强', vision: true, reasoning: true, brand: '智谱', contextWindow: 131072, maxOutput: 4096, speed: 'medium' },
+  { id: 'claude-3.5-sonnet', name: 'Claude 3.5 Sonnet', description: '顶级代码生成与长文理解能力', vision: true, reasoning: true, brand: 'Anthropic', contextWindow: 200000, maxOutput: 8192, speed: 'medium' },
+  { id: 'claude-3.5-haiku', name: 'Claude 3.5 Haiku', description: '轻量快速，适合实时交互场景', vision: true, reasoning: false, brand: 'Anthropic', contextWindow: 200000, maxOutput: 8192, speed: 'fast' },
+  { id: 'gpt-4o', name: 'GPT-4o', description: 'OpenAI 旗舰多模态模型', vision: true, reasoning: true, brand: 'OpenAI', contextWindow: 131072, maxOutput: 16384, speed: 'medium' },
+  { id: 'gpt-4o-mini', name: 'GPT-4o mini', description: '轻量高效，成本极低', vision: true, reasoning: false, brand: 'OpenAI', contextWindow: 131072, maxOutput: 16384, speed: 'fast' },
+  { id: 'o1-mini', name: 'o1-mini', description: '专注推理，适合复杂问题求解', vision: false, reasoning: true, brand: 'OpenAI', contextWindow: 65536, maxOutput: 32768, speed: 'slow' },
+  { id: 'o3-mini', name: 'o3-mini', description: '新一代推理模型，速度快性能强', vision: false, reasoning: true, brand: 'OpenAI', contextWindow: 200000, maxOutput: 32768, speed: 'medium' },
+  { id: 'gemini-2.0-flash', name: 'Gemini 2.0 Flash', description: 'Google 多模态极速模型', vision: true, reasoning: true, brand: 'Google', contextWindow: 1048576, maxOutput: 8192, speed: 'fast' },
+  { id: 'doubao-pro', name: 'Doubao Pro', description: '字节跳动企业级大模型', vision: true, reasoning: true, brand: '豆包', contextWindow: 131072, maxOutput: 4096, speed: 'medium' },
+];
 
 interface ChatPanelProps {
   /** 聊天消息列表 */
@@ -57,20 +80,19 @@ const ChatPanel: FC<ChatPanelProps> = ({ messages, isThinking, onSend }) => {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const modelListRef = useRef<HTMLDivElement>(null);
 
-  // 从后端获取模型列表
+  // 从后端获取模型列表（失败时使用全部 16 个本地模型）
   useEffect(() => {
     fetch('/api/models')
       .then((res) => res.json())
       .then((data) => {
-        if (data.success && data.data) {
+        if (data.success && data.data && Array.isArray(data.data) && data.data.length > 0) {
           setModels(data.data);
+        } else {
+          setModels(FALLBACK_MODELS);
         }
       })
       .catch(() => {
-        // 后端不可用时使用默认列表
-        setModels([
-          { id: 'qwen3.6-flash', name: 'Qwen3.6 Flash', description: '默认模型', vision: true, reasoning: true, brand: '千问' },
-        ]);
+        setModels(FALLBACK_MODELS);
       });
   }, []);
 
@@ -162,6 +184,8 @@ const ChatPanel: FC<ChatPanelProps> = ({ messages, isThinking, onSend }) => {
                   <div className="model-option__tags">
                     {m.reasoning && <span className="model-tag model-tag--reasoning">推理</span>}
                     {m.vision && <span className="model-tag model-tag--vision">视觉</span>}
+                    {m.speed === 'fast' && <span className="model-tag model-tag--fast">极速</span>}
+                    {m.speed === 'slow' && <span className="model-tag model-tag--slow">深度</span>}
                   </div>
                 </div>
               ))}

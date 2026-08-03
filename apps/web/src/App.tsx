@@ -10,6 +10,8 @@ import ChatPanel from './components/ChatPanel';
 import StatusBar from './components/StatusBar';
 import UsagePanel from './components/UsagePanel';
 import ProgressPanel from './components/ProgressPanel';
+import LoginScreen from './components/LoginScreen';
+import type { UserInfo } from './components/LoginScreen';
 import { SearchIcon, GitIcon, SettingsIcon } from './components/Icons';
 
 /* ============================================================
@@ -144,6 +146,10 @@ const getFileContent = (path: string, language: string): string => {
  * 主应用组件
  * ============================================================ */
 const App: React.FC = () => {
+  // ---- 用户认证状态 ----
+  const [user, setUser] = useState<UserInfo | null>(null);
+  const [authChecked, setAuthChecked] = useState(false);
+
   // ---- 编辑器标签页状态 ----
   const [openTabs, setOpenTabs] = useState<EditorTab[]>([]);
   const [activeTabPath, setActiveTabPath] = useState<string | null>(null);
@@ -182,6 +188,33 @@ const App: React.FC = () => {
       // 组件卸载时断开连接
       apiClient.ws.disconnect();
     };
+  }, []);
+
+  // 检查本地存储中的登录状态
+  useEffect(() => {
+    const savedUser = localStorage.getItem('borealos_user');
+    const savedToken = localStorage.getItem('borealos_token');
+    if (savedUser && savedToken) {
+      try {
+        setUser(JSON.parse(savedUser));
+      } catch {
+        localStorage.removeItem('borealos_user');
+        localStorage.removeItem('borealos_token');
+      }
+    }
+    setAuthChecked(true);
+  }, []);
+
+  /** 登录成功回调 */
+  const handleLogin = useCallback((loggedInUser: UserInfo, _token: string) => {
+    setUser(loggedInUser);
+  }, []);
+
+  /** 退出登录 */
+  const handleLogout = useCallback(() => {
+    localStorage.removeItem('borealos_token');
+    localStorage.removeItem('borealos_user');
+    setUser(null);
   }, []);
 
   /* ---------- 编辑器相关操作 ---------- */
@@ -361,6 +394,22 @@ const App: React.FC = () => {
   // 当前激活的标签页
   const activeTab = openTabs.find((tab) => tab.path === activeTabPath) ?? null;
 
+  // 未完成认证检查时显示加载状态
+  if (!authChecked) {
+    return (
+      <div className="app app--loading">
+        <div className="app-loading">
+          <div className="app-loading__spinner" />
+        </div>
+      </div>
+    );
+  }
+
+  // 未登录时显示登录界面
+  if (!user) {
+    return <LoginScreen onLogin={handleLogin} />;
+  }
+
   return (
     <div className="app">
       {/* 顶部菜单栏 */}
@@ -396,11 +445,49 @@ const App: React.FC = () => {
           </div>
         )}
         {activeView === 'settings' && (
-          <div className="sidebar-placeholder">
+          <div className="sidebar-placeholder sidebar-placeholder--settings">
             <div className="sidebar-placeholder__header">设置</div>
-            <div className="sidebar-placeholder__body">
-              <SettingsIcon size={48} />
-              <p>设置功能开发中</p>
+            <div className="settings-panel">
+              {/* 用户信息卡片 */}
+              <div className="user-profile-card">
+                <div className="user-profile-card__avatar">
+                  {user.avatar ? (
+                    <img src={user.avatar} alt={user.name} />
+                  ) : (
+                    <span>{user.name.charAt(0).toUpperCase()}</span>
+                  )}
+                </div>
+                <div className="user-profile-card__info">
+                  <div className="user-profile-card__name">{user.name}</div>
+                  <div className="user-profile-card__email">{user.email}</div>
+                  <div className="user-profile-card__badge user-profile-card__badge--pro">
+                    {user.plan === 'pro' ? 'Pro 会员' : '免费版'}
+                  </div>
+                </div>
+              </div>
+
+              {/* 用量统计 */}
+              {user.usage && (
+                <div className="user-usage">
+                  <div className="user-usage__item">
+                    <span className="user-usage__label">Token 用量</span>
+                    <span className="user-usage__value">{(user.usage.tokens / 1000).toFixed(1)}K</span>
+                  </div>
+                  <div className="user-usage__item">
+                    <span className="user-usage__label">请求次数</span>
+                    <span className="user-usage__value">{user.usage.requests}</span>
+                  </div>
+                  <div className="user-usage__item">
+                    <span className="user-usage__label">存储空间</span>
+                    <span className="user-usage__value">{(user.usage.storage / 1024 / 1024).toFixed(1)}MB</span>
+                  </div>
+                </div>
+              )}
+
+              {/* 退出登录按钮 */}
+              <button className="logout-btn" onClick={handleLogout}>
+                退出登录
+              </button>
             </div>
           </div>
         )}
