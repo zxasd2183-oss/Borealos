@@ -3,6 +3,7 @@ import ReactDOM from 'react-dom/client';
 import App from './App';
 import './App.css';
 import './premium-ui.css';
+import './panel-redesign.css';
 import { registerServiceWorker } from './pwa';
 
 // ============================================================

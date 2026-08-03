@@ -37,6 +37,12 @@ importers:
         specifier: ^5.7.0
         version: 5.9.3
 
+  apps/agent:
+    dependencies:
+      ws:
+        specifier: ^8.18.0
+        version: 8.21.1
+
   apps/desktop:
     dependencies:
       '@tauri-apps/api':

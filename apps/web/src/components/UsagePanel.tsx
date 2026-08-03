@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import type { FC } from 'react';
 import {
   ZapIcon,
@@ -39,33 +39,6 @@ interface UsageData {
   dailyTrend: { day: string; tokens: number }[];
 }
 
-/** 默认 mock 数据 */
-const DEFAULT_USAGE: UsageData = {
-  totalTokens: 847320,
-  tokenLimit: 2000000,
-  monthlyUsed: 312450,
-  monthlyLimit: 500000,
-  apiCalls: 1284,
-  todayCalls: 37,
-  avgLatency: 1240,
-  modelBreakdown: [
-    { modelId: 'qwen3.6-flash', modelName: 'Qwen3.6 Flash', brand: '千问', requests: 542, tokens: 312000 },
-    { modelId: 'deepseek-v3', modelName: 'DeepSeek V3', brand: 'DeepSeek', requests: 318, tokens: 245000 },
-    { modelId: 'kimi-k2', modelName: 'Kimi K2', brand: 'Moonshot', requests: 214, tokens: 168000 },
-    { modelId: 'glm-4.6', modelName: 'GLM-4.6', brand: '智谱', requests: 128, tokens: 89000 },
-    { modelId: 'minimax-m1', modelName: 'MiniMax M1', brand: 'MiniMax', requests: 82, tokens: 33320 },
-  ],
-  dailyTrend: [
-    { day: '周一', tokens: 42000 },
-    { day: '周二', tokens: 38000 },
-    { day: '周三', tokens: 51000 },
-    { day: '周四', tokens: 67000 },
-    { day: '周五', tokens: 45000 },
-    { day: '周六', tokens: 28000 },
-    { day: '周日', tokens: 41450 },
-  ],
-};
-
 /** 格式化数字（千分位） */
 function formatNumber(n: number): string {
   return n.toLocaleString('zh-CN');
@@ -83,23 +56,99 @@ function formatTokens(n: number): string {
  * ChatGPT 客户端风格，展示 Token 用量、API 调用、额度、模型分布
  */
 const UsagePanel: FC = () => {
-  const [usage, setUsage] = useState<UsageData>(DEFAULT_USAGE);
-  const [loading, setLoading] = useState(false);
+  const [usage, setUsage] = useState<UsageData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  // 尝试从后端获取用量数据
-  useEffect(() => {
+  // 从后端获取用量数据
+  const fetchUsage = useCallback(() => {
+    setLoading(true);
+    setError(null);
     fetch('/api/usage')
-      .then((res) => res.json())
+      .then((res) => {
+        if (!res.ok) {
+          throw new Error(`请求失败 (${res.status})`);
+        }
+        return res.json();
+      })
       .then((data) => {
         if (data.success && data.data) {
-          setUsage(data.data);
+          // 即使所有值为 0 / 数组为空，也是真实的有效数据，正常展示
+          setUsage(data.data as UsageData);
+        } else {
+          throw new Error('返回数据格式不正确');
         }
       })
-      .catch(() => {
-        // 后端不可用时使用默认数据
+      .catch((err) => {
+        setError(err instanceof Error ? err.message : '获取用量数据失败');
       })
       .finally(() => setLoading(false));
   }, []);
+
+  useEffect(() => {
+    fetchUsage();
+  }, [fetchUsage]);
+
+  // 加载中：居中显示加载指示器
+  if (loading) {
+    return (
+      <div className="usage-panel">
+        <div className="usage-panel__header">
+          <span className="usage-panel__icon"><ChartIcon size={16} /></span>
+          <span className="usage-panel__title">用量统计</span>
+        </div>
+        <div
+          className="usage-panel__content"
+          style={{ alignItems: 'center', justifyContent: 'center' }}
+        >
+          <div
+            className="app-loading__spinner"
+            style={{ width: 28, height: 28, borderWidth: 2 }}
+          />
+          <div style={{ marginTop: 12, fontSize: 12, color: 'var(--text-secondary)' }}>
+            加载中...
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // 加载失败：显示错误信息与重试按钮
+  if (error || !usage) {
+    return (
+      <div className="usage-panel">
+        <div className="usage-panel__header">
+          <span className="usage-panel__icon"><ChartIcon size={16} /></span>
+          <span className="usage-panel__title">用量统计</span>
+        </div>
+        <div
+          className="usage-panel__content"
+          style={{ alignItems: 'center', justifyContent: 'center' }}
+        >
+          <div style={{ fontSize: 12, color: 'var(--text-secondary)', textAlign: 'center' }}>
+            {error ?? '暂无用量数据'}
+          </div>
+          <button
+            type="button"
+            onClick={fetchUsage}
+            style={{
+              marginTop: 12,
+              padding: '6px 16px',
+              fontSize: 12,
+              fontWeight: 600,
+              color: '#fff',
+              background: 'var(--accent)',
+              border: 'none',
+              borderRadius: 6,
+              cursor: 'pointer',
+            }}
+          >
+            重试
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   const tokenPercent = Math.min((usage.totalTokens / usage.tokenLimit) * 100, 100);
   const monthlyPercent = Math.min((usage.monthlyUsed / usage.monthlyLimit) * 100, 100);
@@ -212,14 +261,12 @@ const UsagePanel: FC = () => {
                 </div>
                 <div className="usage-model__meta">
                   <span>{m.requests} 次调用</span>
-                  <span>{formatTokens(Math.round(m.tokens / m.requests))}/次</span>
+                  <span>{formatTokens(m.requests > 0 ? Math.round(m.tokens / m.requests) : 0)}/次</span>
                 </div>
               </div>
             ))}
           </div>
         </div>
-
-        {loading && <div className="usage-loading">加载中...</div>}
       </div>
     </div>
   );

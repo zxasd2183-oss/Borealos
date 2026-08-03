@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import type { FC } from 'react';
 import {
   RocketIcon,
@@ -51,17 +51,6 @@ interface ProgressData {
   pendingCount: number;
 }
 
-/** 默认数据（后端不可用时显示） */
-const DEFAULT_DATA: ProgressData = {
-  modules: [],
-  milestones: [],
-  tasks: [],
-  overallProgress: 0,
-  doneCount: 0,
-  inProgressCount: 0,
-  pendingCount: 0,
-};
-
 /** 优先级标签 */
 const PRIORITY_LABELS: Record<TaskItem['priority'], string> = {
   high: '高',
@@ -98,28 +87,144 @@ function ProgressRing({ percent, size = 80 }: { percent: number; size?: number }
   );
 }
 
+/** 面板头部（在各状态下保持一致） */
+const PanelHeader: FC = () => (
+  <div className="progress-panel__header">
+    <span className="progress-panel__icon"><RocketIcon size={16} /></span>
+    <span className="progress-panel__title">项目进度</span>
+  </div>
+);
+
 /**
  * 项目进度面板
  * 展示总进度、模块完成度、里程碑时间线、待办任务
+ * 数据全部来自 GET /api/progress，无任何 mock/兜底数据
  */
 const ProgressPanel: FC = () => {
-  const [data, setData] = useState<ProgressData>(DEFAULT_DATA);
+  const [data, setData] = useState<ProgressData | null>(null);
   const [tasks, setTasks] = useState<TaskItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  // 从后端获取进度数据
-  useEffect(() => {
+  // 从后端获取进度数据（可被「重试」按钮复用）
+  const loadData = useCallback(() => {
+    setLoading(true);
+    setError(null);
     fetch('/api/progress')
-      .then((res) => res.json())
-      .then((result) => {
-        if (result.success && result.data) {
-          setData(result.data);
-          setTasks(result.data.tasks ?? []);
+      .then(async (res) => {
+        if (!res.ok) {
+          throw new Error(`服务器响应异常（${res.status}）`);
         }
+        const result = await res.json();
+        if (!result.success || !result.data) {
+          throw new Error('返回数据格式不正确');
+        }
+        setData(result.data);
+        setTasks(result.data.tasks ?? []);
       })
-      .catch(() => {
-        // 后端不可用时使用默认数据
+      .catch((err) => {
+        setError(err?.message || '加载进度数据失败');
+      })
+      .finally(() => {
+        setLoading(false);
       });
   }, []);
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
+
+  // ---- 加载中 ----
+  if (loading) {
+    return (
+      <div className="progress-panel">
+        <PanelHeader />
+        <div className="progress-panel__content">
+          <div
+            className="progress-panel__loading"
+            style={{
+              flex: 1,
+              minHeight: 200,
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 12,
+            }}
+          >
+            <span
+              className="progress-panel__spinner"
+              style={{
+                display: 'block',
+                width: 28,
+                height: 28,
+                borderRadius: '50%',
+                border: '3px solid var(--bg-hover)',
+                borderTopColor: 'var(--accent)',
+                animation: 'spin-fast 0.8s linear infinite',
+              }}
+            />
+            <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>加载进度数据…</span>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ---- 出错 ----
+  if (error) {
+    return (
+      <div className="progress-panel">
+        <PanelHeader />
+        <div className="progress-panel__content">
+          <div
+            className="progress-panel__error"
+            style={{
+              flex: 1,
+              minHeight: 200,
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 14,
+              textAlign: 'center',
+              padding: '0 16px',
+            }}
+          >
+            <span style={{ fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.6 }}>
+              {error}
+            </span>
+            <button
+              type="button"
+              className="progress-panel__retry"
+              onClick={loadData}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                height: 28,
+                padding: '0 16px',
+                fontSize: 12,
+                fontWeight: 600,
+                color: 'var(--accent)',
+                background: 'var(--accent-bg)',
+                border: '1px solid rgba(0, 0, 0, 0.06)',
+                borderRadius: 'var(--radius-sm)',
+                cursor: 'pointer',
+              }}
+            >
+              重试
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ---- 数据保护（类型层面不可能到达，但确保安全） ----
+  if (!data) {
+    return null;
+  }
 
   const { modules, milestones, overallProgress, doneCount, inProgressCount, pendingCount } = data;
   const taskDoneCount = tasks.filter((t) => t.done).length;

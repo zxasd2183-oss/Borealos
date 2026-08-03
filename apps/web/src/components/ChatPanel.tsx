@@ -14,17 +14,6 @@ interface ModelInfo {
   isLocal?: boolean;
 }
 
-/** 云端 AI 模型（本地 CLI 模型由后端动态返回） */
-const FALLBACK_MODELS: ModelInfo[] = [
-  { id: 'qwen3.6-flash', name: 'Qwen3.6 Flash', description: '极速响应，适合日常对话', vision: true, reasoning: true, brand: '千问' },
-  { id: 'qwen3.6-plus', name: 'Qwen3.6 Plus', description: '均衡性能，复杂编程', vision: true, reasoning: true, brand: '千问' },
-  { id: 'qwen3.6-max', name: 'Qwen3.6 Max', description: '旗舰模型，最强推理', vision: true, reasoning: true, brand: '千问' },
-  { id: 'deepseek-v3', name: 'DeepSeek-V3', description: '高性能通用大模型', vision: false, reasoning: true, brand: '深度求索' },
-  { id: 'deepseek-r1', name: 'DeepSeek-R1', description: '深度推理模型', vision: false, reasoning: true, brand: '深度求索' },
-  { id: 'glm-4-flash', name: 'GLM-4 Flash', description: '免费极速模型', vision: false, reasoning: false, brand: '智谱' },
-  { id: 'glm-4-plus', name: 'GLM-4 Plus', description: '智谱旗舰', vision: true, reasoning: true, brand: '智谱' },
-];
-
 interface ChatPanelProps {
   /** 聊天消息列表 */
   messages: ChatMessage[];
@@ -58,29 +47,45 @@ function formatTime(timestamp: number): string {
 
 /**
  * AI 聊天面板组件
- * 模型选择已移至灵动岛，此处仅保留只读模型标签
+ * 模型列表从 GET /api/models 获取，无任何本地兜底数据
  */
 const ChatPanel: FC<ChatPanelProps> = ({ messages, isThinking, onSend }) => {
   const [input, setInput] = useState('');
-  const [selectedModel, setSelectedModel] = useState('qwen3.6-flash');
+  const [selectedModel, setSelectedModel] = useState('');
   const [models, setModels] = useState<ModelInfo[]>([]);
+  const [modelsLoading, setModelsLoading] = useState(true);
+  const [modelsError, setModelsError] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   // 从后端获取模型列表（仅用于显示当前模型名称）
   useEffect(() => {
+    let cancelled = false;
+    setModelsLoading(true);
+    setModelsError(null);
     fetch('/api/models')
-      .then((res) => res.json())
+      .then(async (res) => {
+        if (!res.ok) throw new Error(`请求失败 (${res.status})`);
+        return res.json();
+      })
       .then((data) => {
-        if (data.success && data.data && Array.isArray(data.data) && data.data.length > 0) {
-          setModels(data.data);
+        if (cancelled) return;
+        if (data.success && Array.isArray(data.data) && data.data.length > 0) {
+          setModels(data.data as ModelInfo[]);
+          // 默认选中第一个模型
+          setSelectedModel((prev) => prev || (data.data as ModelInfo[])[0].id);
         } else {
-          setModels(FALLBACK_MODELS);
+          setModelsError('暂无可用模型');
         }
       })
-      .catch(() => {
-        setModels(FALLBACK_MODELS);
+      .catch((err) => {
+        if (cancelled) return;
+        setModelsError(err instanceof Error ? err.message : '获取模型列表失败');
+      })
+      .finally(() => {
+        if (!cancelled) setModelsLoading(false);
       });
+    return () => { cancelled = true; };
   }, []);
 
   // 监听灵动岛的模型切换事件
@@ -140,7 +145,17 @@ const ChatPanel: FC<ChatPanelProps> = ({ messages, isThinking, onSend }) => {
       <div className="chat-header">
         <span className="chat-header__icon"><AiIcon size={16} /></span>
         <span className="chat-header__title">AI 助手</span>
-        {currentModel && (
+        {modelsLoading && (
+          <span className="chat-header__model-tag" style={{ opacity: 0.6 }}>
+            加载模型...
+          </span>
+        )}
+        {!modelsLoading && modelsError && (
+          <span className="chat-header__model-tag" style={{ color: 'var(--sys-red)' }}>
+            {modelsError}
+          </span>
+        )}
+        {!modelsLoading && !modelsError && currentModel && (
           <span className="chat-header__model-tag">
             {currentModel.isLocal && <span className="model-tag-dot" />}
             {currentModel.brand} · {currentModel.name}

@@ -25,12 +25,19 @@ import { SearchIcon, GitIcon, SettingsIcon, SyncIcon } from './components/Icons'
  * 前端本地类型定义（简化版，供组件间共享）
  * ============================================================ */
 
-/** 文件树节点 */
+/** 文件树节点（与后端 GET /api/files 返回结构对齐） */
 export interface FileNode {
+  id: string;
+  projectId: string;
   name: string;
   path: string;
+  content: string;
+  language: string;
+  isDirectory: boolean;
+  createdAt: string;
+  updatedAt: string;
+  /** 客户端构建树时补全 */
   type: 'file' | 'directory';
-  language?: string;
   children?: FileNode[];
 }
 
@@ -56,98 +63,6 @@ export interface CursorPosition {
   lineNumber: number;
   column: number;
 }
-
-/* ============================================================
- * 模拟文件树数据（实际项目中由后端 API 提供）
- * ============================================================ */
-const MOCK_FILE_TREE: FileNode[] = [
-  {
-    name: 'src',
-    path: '/src',
-    type: 'directory',
-    children: [
-      {
-        name: 'components',
-        path: '/src/components',
-        type: 'directory',
-        children: [
-          {
-            name: 'App.tsx',
-            path: '/src/components/App.tsx',
-            type: 'file',
-            language: 'typescript',
-          },
-          {
-            name: 'Button.tsx',
-            path: '/src/components/Button.tsx',
-            type: 'file',
-            language: 'typescript',
-          },
-        ],
-      },
-      {
-        name: 'main.tsx',
-        path: '/src/main.tsx',
-        type: 'file',
-        language: 'typescript',
-      },
-      {
-        name: 'index.css',
-        path: '/src/index.css',
-        type: 'file',
-        language: 'css',
-      },
-    ],
-  },
-  {
-    name: 'public',
-    path: '/public',
-    type: 'directory',
-    children: [
-      {
-        name: 'favicon.svg',
-        path: '/public/favicon.svg',
-        type: 'file',
-        language: 'xml',
-      },
-    ],
-  },
-  {
-    name: 'package.json',
-    path: '/package.json',
-    type: 'file',
-    language: 'json',
-  },
-  {
-    name: 'tsconfig.json',
-    path: '/tsconfig.json',
-    type: 'file',
-    language: 'json',
-  },
-  {
-    name: 'vite.config.ts',
-    path: '/vite.config.ts',
-    type: 'file',
-    language: 'typescript',
-  },
-  {
-    name: 'README.md',
-    path: '/README.md',
-    type: 'file',
-    language: 'markdown',
-  },
-];
-
-/** 模拟文件内容（根据文件路径返回示例代码） */
-const getFileContent = (path: string, language: string): string => {
-  if (path.endsWith('package.json')) {
-    return `{\n  "name": "@borealos/web",\n  "version": "0.1.0",\n  "private": true,\n  "type": "module",\n  "scripts": {\n    "dev": "vite",\n    "build": "tsc -b && vite build",\n    "preview": "vite preview"\n  }\n}\n`;
-  }
-  if (path.endsWith('README.md')) {
-    return `# BorealOS\n\nAI 驱动的跨平台 IDE。\n\n## 特性\n\n- Monaco 编辑器\n- 集成终端\n- AI 助手\n`;
-  }
-  return `// ${path}\n// BorealOS - 在此编写你的代码\n\nexport default function example() {\n  return 'Hello BorealOS';\n}\n`;
-};
 
 /* ============================================================
  * 主应用组件
@@ -319,12 +234,12 @@ const App: React.FC = () => {
       if (existing) {
         return prev;
       }
-      // 否则创建新标签页
+      // 使用后端返回的真实文件内容
       const newTab: EditorTab = {
         path: node.path,
         name: node.name,
-        language: node.language ?? 'plaintext',
-        content: getFileContent(node.path, node.language ?? ''),
+        language: node.language || 'plaintext',
+        content: node.content || '',
         isDirty: false,
       };
       return [...prev, newTab];
@@ -442,7 +357,7 @@ const App: React.FC = () => {
         const result = await apiClient.chat.send(content, { model });
         updateStreaming(result.content || '(空回复)');
       } catch {
-        updateStreaming(simulateAiReply(content));
+        updateStreaming('⚠️ AI 服务暂时不可用，请检查后端服务是否已启动后重试。');
       } finally {
         setIsAiThinking(false);
       }
@@ -494,10 +409,16 @@ const App: React.FC = () => {
         case 'new-file':
           // 新建文件：创建一个未命名标签页
           handleOpenFile({
+            id: '',
+            projectId: '',
             name: 'untitled.txt',
             path: `/untitled-${Date.now()}.txt`,
-            type: 'file',
+            content: '',
             language: 'plaintext',
+            isDirectory: false,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+            type: 'file',
           });
           break;
         case 'save':
@@ -563,7 +484,7 @@ const App: React.FC = () => {
         {/* 左侧侧边栏 - 根据活动栏视图切换内容 */}
         <div className="sidebar-content" key={activeView}>
         {activeView === 'explorer' && (
-          <FileTree treeData={MOCK_FILE_TREE} onOpenFile={handleOpenFile} activePath={activeTabPath} />
+          <FileTree onOpenFile={handleOpenFile} activePath={activeTabPath} />
         )}
         {activeView === 'usage' && <UsagePanel />}
         {activeView === 'progress' && <ProgressPanel />}
@@ -768,26 +689,6 @@ function isTaskDescription(message: string): boolean {
   const lower = message.toLowerCase();
   // 消息长度 > 5 且包含关键词
   return message.length > 5 && keywords.some((kw) => lower.includes(kw));
-}
-
-/**
- * 模拟 AI 回复（后端不可用时的兜底逻辑）
- */
-function simulateAiReply(userMessage: string): string {
-  const lower = userMessage.toLowerCase();
-  if (lower.includes('你好') || lower.includes('hello') || lower.includes('hi')) {
-    return '你好！我是 BorealOS AI 助手。有什么可以帮你的吗？你可以让我帮你写代码、解释概念或调试问题。';
-  }
-  if (lower.includes('react') || lower.includes('组件')) {
-    return 'React 组件是构建 UI 的基本单元。函数组件通过 props 接收数据并返回 JSX。建议使用 TypeScript 为 props 定义接口，并通过 React.FC 或直接标注参数类型来获得类型安全。需要我帮你生成一个示例组件吗？';
-  }
-  if (lower.includes('monaco') || lower.includes('编辑器')) {
-    return 'Monaco Editor 是 VS Code 的核心编辑器组件。在 React 中推荐使用 @monaco-editor/react 包，它封装了 Monaco 的加载与生命周期管理。可以通过 options 属性配置主题、字体、自动补全等。';
-  }
-  if (lower.includes('终端') || lower.includes('terminal') || lower.includes('xterm')) {
-    return 'xterm.js 是一个在浏览器中渲染终端的前端组件。通过 WebSocket 连接后端的 PTY 进程，可实现真实的命令行交互。配合 @xterm/addon-fit 插件可自动适配终端尺寸。';
-  }
-  return `已收到你的消息："${userMessage}"。\n\n当前为离线模拟模式（后端 AI 服务未连接）。启动后端服务后，将通过 /api/chat 接口获取真实 AI 回复。`;
 }
 
 export default App;
