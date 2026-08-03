@@ -2,7 +2,7 @@
 
 > **用途**：本文件是项目的"记忆大脑"。每次会话开始时优先读取此文件以恢复上下文，防止失忆。每次开发结束或重要节点更新此文件，并立即推送到 Gitee。
 >
-> **最后更新**：2026-08-03（生产部署配置 — Docker/Nginx/systemd/部署脚本 + Cloudflare 完整集成）
+> **最后更新**：2026-08-03（官网下载链接修复 + Web IDE 部署 + Gitee Release v0.1.0 + 生产部署配置）
 
 ---
 
@@ -111,7 +111,7 @@ borealos/
 | `borealos.dev` | CNAME | `borealos.pages.dev` | 官网（Cloudflare Pages） |
 | `www.borealos.dev` | CNAME | `borealos.pages.dev` | 官网 www |
 | `api.borealos.dev` | CNAME | Tunnel | 后端 Fastify API (:3001) |
-| `ide.borealos.dev` | CNAME | Tunnel | Web IDE Vite (:5173) |
+| `ide.borealos.dev` | CNAME | `borealos-ide.pages.dev` | Web IDE（Cloudflare Pages，已部署可访问） |
 | `gw.borealos.dev` | CNAME | Tunnel | Rust AI 网关 (:8787) |
 | `cdn.borealos.dev` | CNAME | `public.r2.dev` | R2 CDN |
 | `files.borealos.dev` | CNAME | `public.r2.dev` | R2 文件服务 |
@@ -173,6 +173,9 @@ borealos/
 - [x] **systemd 服务** — borealos-server.service + borealos-gateway.service（含安全限制 + 资源限制 + 自动重启）
 - [x] **一键部署脚本** — deploy/deploy.sh（Docker/Docker-Full/裸机三种模式 + 状态/停止/重启/日志）
 - [x] **环境变量模板** — .env.example（数据库/Redis/JWT/AI 网关/Cloudflare 全配置）
+- [x] **Gitee Release v0.1.0** — DEB (4.5MB) + AppImage (79MB) 安装包已上传
+- [x] **Web IDE 部署** — Cloudflare Pages 项目 `borealos-ide`，ide.borealos.dev 可直接访问
+- [x] **官网下载链接修复** — DEB 指向 Pages 直链，AppImage 指向 Gitee Release 直链，Web 版指向 ide.borealos.dev
 
 ### 🚧 后续优化方向（非阻塞）
 - [ ] PostgreSQL + Redis 实际部署（代码已就绪，需配置环境变量）
