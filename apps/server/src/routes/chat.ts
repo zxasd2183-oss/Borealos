@@ -17,6 +17,7 @@ import {
   type AIModel,
   type ChatAPIMessage,
 } from '../ai';
+import { agentManager } from '../agent-manager';
 import { MemoryManager, type MemoryEntry, type MemorySearchResult } from '@borealos/memory';
 
 /** 查找模型信息 */
@@ -57,9 +58,12 @@ function formatLongTermMemory(memories: MemorySearchResult[]): string {
 }
 
 const chatRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) => {
-  // GET /api/models - 获取可用模型列表
+  // GET /api/models - 获取可用模型列表（含本地 Agent CLI 模型）
   fastify.get('/api/models', async () => {
-    return { success: true, data: AVAILABLE_MODELS } as ApiResponse<AIModel[]>;
+    // 合并云端模型和本地 CLI 模型
+    const localModels = agentManager.getLocalModels();
+    const allModels = [...AVAILABLE_MODELS, ...localModels] as AIModel[];
+    return { success: true, data: allModels } as ApiResponse<AIModel[]>;
   });
 
   // POST /api/chat - 非流式聊天

@@ -7,6 +7,7 @@
  *
  * 支持的事件：
  * - client:chat:send    → 流式聊天（AI 回复通过 server:chat:stream 事件返回）
+ *                          当 model 为 claude-cli / codex-cli 时，转发给本地 Agent
  * - client:terminal:input / resize / kill → 终端控制
  * - ping                 → 心跳（回复 pong）
  *
@@ -29,6 +30,7 @@ import {
   type AIModel,
   type ChatAPIMessage,
 } from '../ai';
+import { agentManager } from '../agent-manager';
 import { MemoryManager, type MemoryEntry, type MemorySearchResult } from '@borealos/memory';
 
 // ============================================================================
@@ -196,6 +198,81 @@ const gatewayRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) => {
       const modelInfo = findModel(useModel);
       const startTime = Date.now();
 
+      // ===== 本地 CLI 模型分支：转发给本地 Agent 执行 =====
+      if (agentManager.isLocalModel(useModel)) {
+        try {
+          let fullContent = '';
+
+          // 构建完整 prompt（包含记忆上下文 + 历史 + 用户消息）
+          const promptParts: string[] = [];
+          for (const m of messages) {
+            if (m.role === 'system') {
+              promptParts.push(`[系统提示]\n${m.content}`);
+            } else if (m.role === 'user') {
+              promptParts.push(`[用户]\n${m.content}`);
+            } else if (m.role === 'assistant') {
+              promptParts.push(`[助手]\n${m.content}`);
+            }
+          }
+          const fullPrompt = promptParts.join('\n\n');
+
+          for await (const chunk of agentManager.execute(useModel, fullPrompt, {
+            workDir: process.cwd(),
+            permissionMode: 'plan',
+          })) {
+            if (socket.readyState !== 1) return;
+
+            fullContent += chunk;
+            sendEvent('server:chat:stream', { delta: chunk });
+          }
+
+          const latency = Date.now() - startTime;
+
+          // 发送完成信号
+          if (socket.readyState === 1) {
+            sendEvent('server:chat:stream', { done: true, content: fullContent });
+
+            store.addChatMessage({
+              role: 'assistant',
+              content: fullContent,
+              projectId,
+            });
+
+            memoryManager.addMessage(projectId || 'default', 'assistant', fullContent);
+          }
+
+          store.addUsageRecord({
+            model: useModel,
+            brand: useModel === 'claude-cli' ? 'Claude Local' : 'Codex Local',
+            modelName: useModel === 'claude-cli' ? 'Claude (Local CLI)' : 'Codex (Local CLI)',
+            promptTokens: 0,
+            completionTokens: 0,
+            totalTokens: 0,
+            latency,
+            success: true,
+          });
+        } catch (err) {
+          const errorMsg = err instanceof Error ? err.message : '本地 CLI 执行失败';
+          const latency = Date.now() - startTime;
+          fastify.log.error(`网关本地 CLI 执行错误: ${errorMsg}`);
+
+          store.addUsageRecord({
+            model: useModel,
+            brand: useModel === 'claude-cli' ? 'Claude Local' : 'Codex Local',
+            modelName: useModel === 'claude-cli' ? 'Claude (Local CLI)' : 'Codex (Local CLI)',
+            promptTokens: 0,
+            completionTokens: 0,
+            totalTokens: 0,
+            latency,
+            success: false,
+          });
+
+          sendEvent('server:error', { message: `本地 CLI 错误: ${errorMsg}` });
+        }
+        return;
+      }
+
+      // ===== 常规 AI 模型分支：调用云端 API =====
       try {
         let fullContent = '';
 

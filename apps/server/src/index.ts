@@ -22,6 +22,7 @@ import progressRoutes from './routes/progress';
 import authRoutes from './routes/auth';
 import syncRoutes from './routes/sync';
 import gatewayRoutes from './routes/gateway';
+import agentRoutes from './routes/agent';
 import { createAuthMiddleware } from './auth/middleware';
 import { initDatabase, closeDatabase } from './db';
 import { seedData, ensureSystemUser } from './store';
@@ -89,6 +90,7 @@ async function main() {
   await fastify.register(progressRoutes); // /api/progress
   await fastify.register(syncRoutes); // /api/sync/ws
   await fastify.register(gatewayRoutes); // /ws（统一网关）
+  await fastify.register(agentRoutes); // /api/agent/ws（本地 Agent 连接）
 
   // ==================== 服务前端静态文件 ====================
 

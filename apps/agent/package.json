@@ -1,0 +1,16 @@
+{
+  "name": "@borealos/agent",
+  "version": "1.0.0",
+  "description": "BorealOS Local Agent - 连接本地 Claude CLI / Codex CLI 到 BorealOS 服务端",
+  "type": "module",
+  "bin": {
+    "borealos-agent": "./agent.mjs"
+  },
+  "scripts": {
+    "start": "node agent.mjs",
+    "dev": "node agent.mjs --debug"
+  },
+  "dependencies": {
+    "ws": "^8.18.0"
+  }
+}
