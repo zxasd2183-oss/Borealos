@@ -19,6 +19,7 @@ import BrainPanel from './components/BrainPanel';
 import TaskAnalysisModal from './components/TaskAnalysisModal';
 import type { TaskAnalysis } from './components/TaskAnalysisModal';
 import AgentBadge from './components/AgentBadge';
+import DynamicIsland from './components/DynamicIsland';
 import { SearchIcon, GitIcon, SettingsIcon, SyncIcon } from './components/Icons';
 
 /* ============================================================
@@ -725,6 +726,9 @@ const App: React.FC = () => {
           <span>同步失败: {syncStatus.error}</span>
         </div>
       )}
+
+      {/* 灵动岛 — 顶部居中，仿 iPhone Dynamic Island */}
+      <DynamicIsland />
     </div>
   );
 };
