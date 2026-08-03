@@ -1,0 +1,115 @@
+# ============================================================
+# BorealOS Docker Compose 一键部署
+# ============================================================
+# 用法：
+#   docker compose up -d              # 启动所有服务
+#   docker compose up -d borealos     # 仅启动后端+前端
+#   docker compose up -d gateway      # 仅启动 AI 网关
+#   docker compose logs -f            # 查看日志
+#   docker compose down               # 停止
+# ============================================================
+
+services:
+  # ---- BorealOS 后端 + Web 前端 ----
+  borealos:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: borealos-app
+    restart: unless-stopped
+    ports:
+      - "3001:3001"
+    environment:
+      - NODE_ENV=production
+      - PORT=3001
+      - DATABASE_TYPE=${DATABASE_TYPE:-memory}
+      - DB_HOST=${DB_HOST:-postgres}
+      - DB_PORT=${DB_PORT:-5432}
+      - DB_NAME=${DB_NAME:-borealos}
+      - DB_USER=${DB_USER:-borealos}
+      - DB_PASSWORD=${DB_PASSWORD:-}
+      - JWT_SECRET=${JWT_SECRET:-borealos-default-jwt-secret-change-me}
+      - REDIS_URL=${REDIS_URL:-redis://redis:6379}
+      - AI_GATEWAY_URL=${AI_GATEWAY_URL:-http://gateway:8787}
+    depends_on:
+      postgres:
+        condition: service_healthy
+        required: false
+      redis:
+        condition: service_healthy
+        required: false
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://localhost:3001/api/health').then(r=>r.ok?process.exit(0):process.exit(1)).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    networks:
+      - borealos-net
+
+  # ---- Rust AI 网关 ----
+  gateway:
+    build:
+      context: .
+      dockerfile: Dockerfile.gateway
+    container_name: borealos-gateway
+    restart: unless-stopped
+    ports:
+      - "8787:8787"
+    environment:
+      - RUST_LOG=${RUST_LOG:-info}
+      - GATEWAY_PORT=8787
+      - AI_API_BASE_URL=${AI_API_BASE_URL:-}
+      - AI_API_KEY=${AI_API_KEY:-}
+    networks:
+      - borealos-net
+
+  # ---- PostgreSQL 数据库 ----
+  postgres:
+    image: postgres:16-alpine
+    container_name: borealos-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${DB_NAME:-borealos}
+      POSTGRES_USER: ${DB_USER:-borealos}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-borealos123}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-borealos}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - borealos-net
+    profiles:
+      - full
+
+  # ---- Redis 缓存 ----
+  redis:
+    image: redis:7-alpine
+    container_name: borealos-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - borealos-net
+    profiles:
+      - full
+
+volumes:
+  postgres-data:
+  redis-data:
+
+networks:
+  borealos-net:
+    driver: bridge

@@ -2,7 +2,7 @@
 
 > **用途**：本文件是项目的"记忆大脑"。每次会话开始时优先读取此文件以恢复上下文，防止失忆。每次开发结束或重要节点更新此文件，并立即推送到 Gitee。
 >
-> **最后更新**：2026-08-03（Cloudflare 域名接入完成 + 官网部署 + Tunnel 配置 + 管理脚本）
+> **最后更新**：2026-08-03（生产部署配置 — Docker/Nginx/systemd/部署脚本 + Cloudflare 完整集成）
 
 ---
 
@@ -75,9 +75,20 @@ borealos/
 ├── tsconfig.json         # 路径别名 @borealos/*
 ├── config/
 │   └── cloudflare.json   # Cloudflare 集成配置（Zone/Tunnel/DNS/Pages/R2）
-└── scripts/
-    ├── cloudflared-tunnel.sh  # Cloudflare Tunnel 部署脚本（VPS 用）
-    └── cloudflare-manage.sh   # Cloudflare 统一管理脚本（DNS/Tunnel/Pages/缓存）
+├── deploy/
+│   ├── deploy.sh         # 一键部署脚本（Docker/裸机）
+│   ├── nginx/
+│   │   └── borealos.conf # Nginx 反向代理配置
+│   └── systemd/
+│       ├── borealos-server.service   # 后端 systemd 服务
+│       └── borealos-gateway.service  # AI 网关 systemd 服务
+├── scripts/
+│   ├── cloudflared-tunnel.sh  # Cloudflare Tunnel 部署脚本（VPS 用）
+│   └── cloudflare-manage.sh   # Cloudflare 统一管理脚本（DNS/Tunnel/Pages/缓存）
+├── Dockerfile            # 后端+前端多阶段构建
+├── Dockerfile.gateway    # Rust AI 网关构建
+├── docker-compose.yml    # Docker Compose 编排（含 PG/Redis profile）
+└── .env.example          # 环境变量模板
 ```
 
 ## 五、关键端口
@@ -157,6 +168,11 @@ borealos/
 - [x] **Cloudflare 管理脚本** — `cloudflared-tunnel.sh`（VPS 部署/启停/systemd）+ `cloudflare-manage.sh`（DNS/Tunnel/Pages/缓存统一管理）
 - [x] **Cloudflare 配置文件** — `config/cloudflare.json` 完整记录 Zone/Tunnel/DNS/Pages/R2 配置
 - [x] **旧 Tunnel 清理** — 删除废弃的 `ai-seller-gateway-borealos` 隧道
+- [x] **Docker 容器化** — Dockerfile（多阶段构建后端+前端）+ Dockerfile.gateway（Rust 网关）+ docker-compose.yml（含 PG/Redis profile）
+- [x] **Nginx 反向代理** — deploy/nginx/borealos.conf（HTTP→HTTPS 重定向 + WebSocket + SSE 流式 + 安全头 + 限流）
+- [x] **systemd 服务** — borealos-server.service + borealos-gateway.service（含安全限制 + 资源限制 + 自动重启）
+- [x] **一键部署脚本** — deploy/deploy.sh（Docker/Docker-Full/裸机三种模式 + 状态/停止/重启/日志）
+- [x] **环境变量模板** — .env.example（数据库/Redis/JWT/AI 网关/Cloudflare 全配置）
 
 ### 🚧 后续优化方向（非阻塞）
 - [ ] PostgreSQL + Redis 实际部署（代码已就绪，需配置环境变量）

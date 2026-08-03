@@ -1,0 +1,48 @@
+# ============================================================
+# BorealOS Rust AI 网关 systemd 配置
+# ============================================================
+# 安装：
+#   sudo cp deploy/systemd/borealos-gateway.service /etc/systemd/system/
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable borealos-gateway
+#   sudo systemctl start borealos-gateway
+# ============================================================
+
+[Unit]
+Description=BorealOS AI Gateway (Rust/Axum)
+After=network.target
+Wants=network.target
+
+[Service]
+Type=simple
+User=borealos
+Group=borealos
+WorkingDirectory=/opt/borealos/apps/gateway
+Environment=RUST_LOG=info
+Environment=GATEWAY_PORT=8787
+EnvironmentFile=/opt/borealos/apps/gateway/.env
+ExecStart=/opt/borealos/apps/gateway/target/release/borealos-gateway
+Restart=always
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=borealos-gateway
+
+# 安全限制
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+LockPersonality=true
+RestrictRealtime=true
+
+LimitNOFILE=65536
+MemoryMax=512M
+CPUQuota=100%
+
+[Install]
+WantedBy=multi-user.target

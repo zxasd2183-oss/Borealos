@@ -1,0 +1,53 @@
+# ============================================================
+# BorealOS 后端服务 systemd 配置
+# ============================================================
+# 安装：
+#   sudo cp deploy/systemd/borealos-server.service /etc/systemd/system/
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable borealos-server
+#   sudo systemctl start borealos-server
+# ============================================================
+
+[Unit]
+Description=BorealOS Backend Server (Fastify)
+After=network.target postgresql.service redis.service
+Wants=network.target
+
+[Service]
+Type=simple
+User=borealos
+Group=borealos
+WorkingDirectory=/opt/borealos
+Environment=NODE_ENV=production
+Environment=PORT=3001
+Environment=DATABASE_TYPE=memory
+EnvironmentFile=/opt/borealos/.env
+ExecStart=/usr/bin/node apps/server/dist/index.js
+Restart=always
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=borealos-server
+
+# 安全限制
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/opt/borealos/data
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+RestrictNamespaces=true
+LockPersonality=true
+RestrictRealtime=true
+RestrictSUIDSGID=true
+
+# 资源限制
+LimitNOFILE=65536
+MemoryMax=1G
+CPUQuota=200%
+
+[Install]
+WantedBy=multi-user.target

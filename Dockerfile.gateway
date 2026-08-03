@@ -1,0 +1,30 @@
+# ============================================================
+# BorealOS Rust AI 网关 Dockerfile
+# ============================================================
+
+FROM rust:1.77-slim AS builder
+
+WORKDIR /app
+
+# 安装编译依赖
+RUN apt-get update && apt-get install -y pkg-config && rm -rf /var/lib/apt/lists/*
+
+COPY apps/gateway/ ./apps/gateway/
+WORKDIR /app/apps/gateway
+
+# 编译 release
+RUN cargo build --release
+
+# ---- 生产镜像 ----
+FROM debian:bookworm-slim AS production
+
+RUN apt-get update && apt-get install -y ca-certificates && rm -rf /var/lib/apt/lists/*
+
+COPY --from=builder /app/apps/gateway/target/release/borealos-gateway /usr/local/bin/borealos-gateway
+
+ENV RUST_LOG=info
+ENV GATEWAY_PORT=8787
+
+EXPOSE 8787
+
+CMD ["borealos-gateway"]
