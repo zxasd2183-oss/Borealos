@@ -264,19 +264,31 @@ if (Test-Proxy) {
     }
 }
 
-# 设置代理环境变量（写入用户环境变量，永久生效）
+# 设置代理环境变量 — 仅在代理实际运行时才设置
 Write-Host ""
-Write-Host "  配置代理环境变量..." -ForegroundColor Yellow
-[System.Environment]::SetEnvironmentVariable("HTTP_PROXY", $PROXY_URL, "User")
-[System.Environment]::SetEnvironmentVariable("HTTPS_PROXY", $PROXY_URL, "User")
-[System.Environment]::SetEnvironmentVariable("http_proxy", $PROXY_URL, "User")
-[System.Environment]::SetEnvironmentVariable("https_proxy", $PROXY_URL, "User")
-# 当前 session 也设置
-$env:HTTP_PROXY = $PROXY_URL
-$env:HTTPS_PROXY = $PROXY_URL
-$env:http_proxy = $PROXY_URL
-$env:https_proxy = $PROXY_URL
-Write-Host "  ✓ 环境变量 HTTP_PROXY / HTTPS_PROXY = $PROXY_URL" -ForegroundColor Green
+if ($proxyReady -or (Test-Proxy)) {
+    Write-Host "  配置代理环境变量（代理已运行）..." -ForegroundColor Yellow
+    [System.Environment]::SetEnvironmentVariable("HTTP_PROXY", $PROXY_URL, "User")
+    [System.Environment]::SetEnvironmentVariable("HTTPS_PROXY", $PROXY_URL, "User")
+    [System.Environment]::SetEnvironmentVariable("http_proxy", $PROXY_URL, "User")
+    [System.Environment]::SetEnvironmentVariable("https_proxy", $PROXY_URL, "User")
+    $env:HTTP_PROXY = $PROXY_URL
+    $env:HTTPS_PROXY = $PROXY_URL
+    $env:http_proxy = $PROXY_URL
+    $env:https_proxy = $PROXY_URL
+    Write-Host "  ✓ 环境变量 HTTP_PROXY / HTTPS_PROXY = $PROXY_URL" -ForegroundColor Green
+} else {
+    Write-Host "  代理未运行，跳过代理环境变量（使用国内 npm 镜像）..." -ForegroundColor Yellow
+    # 清除可能残留的代理变量，避免 npm ECONNREFUSED
+    $env:HTTP_PROXY = $null
+    $env:HTTPS_PROXY = $null
+    $env:http_proxy = $null
+    $env:https_proxy = $null
+    # 设置 npm 国内镜像
+    npm config set registry https://registry.npmmirror.com 2>$null
+    Write-Host "  ✓ npm 镜像: registry.npmmirror.com" -ForegroundColor Green
+    Write-Host "  ⚠ 启动 v2rayN 后再手动设置代理环境变量" -ForegroundColor Yellow
+}
 
 # ---- 3. 下载中转服务器 ----
 Write-Host ""
@@ -350,7 +362,7 @@ function Install-Cli {
         }
     } catch {}
 
-    Write-Host "  正在安装 $Name (通过代理)..." -ForegroundColor Yellow
+    Write-Host "  正在安装 $Name..." -ForegroundColor Yellow
     npm install -g $NpmPackage 2>&1 | Out-Null
     Start-Sleep -Seconds 2
     Refresh-Path
