@@ -14,5 +14,16 @@ $bytes = $wc.DownloadData("http://8.148.237.155:3003/download.ps1")
 # Decode bytes as UTF-8
 $scriptText = [System.Text.Encoding]::UTF8.GetString($bytes)
 
-# Execute directly via Invoke-Expression (bypasses ExecutionPolicy)
-Invoke-Expression $scriptText
+# Write to temp file with UTF-8 BOM (PowerShell 5.x respects BOM)
+$tempFile = Join-Path $env:TEMP "borealos_download.ps1"
+$utf8WithBom = New-Object System.Text.UTF8Encoding $true
+[System.IO.File]::WriteAllText($tempFile, $scriptText, $utf8WithBom)
+
+# Set ExecutionPolicy to Bypass for THIS PROCESS ONLY (not permanent)
+Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass -Force
+
+# Execute the temp file (Read-Host works properly this way)
+& $tempFile
+
+# Cleanup
+Remove-Item $tempFile -Force -ErrorAction SilentlyContinue
