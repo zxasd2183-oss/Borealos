@@ -78,6 +78,15 @@ function Test-Proxy {
     }
 }
 
+# 快速解压（Expand-Archive 对大 zip 极慢，改用 .NET ZipFile）
+function Expand-ZipFast {
+    param([string]$ZipPath, [string]$DestPath)
+    Add-Type -AssemblyName System.IO.Compression.FileSystem -ErrorAction SilentlyContinue
+    if (Test-Path $DestPath) { Remove-Item $DestPath -Recurse -Force }
+    New-Item -ItemType Directory -Path $DestPath -Force | Out-Null
+    [System.IO.Compression.ZipFile]::ExtractToDirectory($ZipPath, $DestPath)
+}
+
 if (Test-Proxy) {
     Write-Host "  ✓ 代理已在运行 (端口 $PROXY_HTTP_PORT)" -ForegroundColor Green
     $proxyReady = $true
@@ -144,8 +153,8 @@ if (Test-Proxy) {
                 }
 
                 if ($v2rayDownloaded) {
-                    New-Item -ItemType Directory -Path $v2rayDir -Force | Out-Null
-                    Expand-Archive -Path $v2rayZip -DestinationPath $v2rayDir -Force
+                    Write-Host "  正在解压..." -ForegroundColor DarkGray
+                    Expand-ZipFast -ZipPath $v2rayZip -DestPath $v2rayDir
                     Remove-Item $v2rayZip -Force
                     Write-Host "  ✓ v2rayN 解压完成: $v2rayDir" -ForegroundColor Green
                 }
@@ -169,8 +178,8 @@ if (Test-Proxy) {
                     $fileSize = (Get-Item $v2rayZip).Length
                     if ($fileSize -gt 100000) {
                         Write-Host "  ✓ 下载成功 ($source, $([math]::Round($fileSize/1MB,1)) MB)" -ForegroundColor Green
-                        New-Item -ItemType Directory -Path $v2rayDir -Force | Out-Null
-                        Expand-Archive -Path $v2rayZip -DestinationPath $v2rayDir -Force
+                        Write-Host "  正在解压..." -ForegroundColor DarkGray
+                        Expand-ZipFast -ZipPath $v2rayZip -DestPath $v2rayDir
                         Remove-Item $v2rayZip -Force
                         Write-Host "  ✓ v2rayN 解压完成: $v2rayDir" -ForegroundColor Green
                         $v2rayDownloaded = $true
