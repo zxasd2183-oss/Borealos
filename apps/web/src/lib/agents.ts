@@ -40,7 +40,7 @@ export const NO_AGENT: AIAgent = {
 };
 
 /** localStorage key for custom agents */
-const CUSTOM_AGENTS_KEY = 'borealos_custom_agents';
+const CUSTOM_AGENTS_KEY = 'aurora_custom_agents';
 
 /** 获取所有 Agent（内置 + 自定义） */
 export function getAllAgents(): AIAgent[] {

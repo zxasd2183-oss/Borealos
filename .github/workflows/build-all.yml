@@ -1,0 +1,114 @@
+name: Build All Platforms
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 11
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Build frontend
+        run: pnpm --filter @borealos/web build
+      - name: Build Tauri Windows
+        working-directory: apps/desktop
+        run: |
+          cargo install tauri-cli --version "^2.0"
+          cargo tauri build
+      - name: Upload EXE
+        uses: actions/upload-artifact@v4
+        with:
+          name: aurora-windows-exe
+          path: apps/desktop/src-tauri/target/release/bundle/nsis/*.exe
+
+  build-macos:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 11
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-darwin,x86_64-apple-darwin
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Build frontend
+        run: pnpm --filter @borealos/web build
+      - name: Build Tauri macOS (Universal)
+        working-directory: apps/desktop
+        run: |
+          cargo install tauri-cli --version "^2.0"
+          cargo tauri build --target universal-apple-darwin
+      - name: Upload DMG
+        uses: actions/upload-artifact@v4
+        with:
+          name: aurora-macos-dmg
+          path: |
+            apps/desktop/src-tauri/target/universal-apple-darwin/release/bundle/dmg/*.dmg
+            apps/desktop/src-tauri/target/universal-apple-darwin/release/bundle/macos/*.app
+
+  build-android:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 11
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+        with:
+          packages: |
+            platforms;android-34
+            build-tools;34.0.0
+            ndk;27.0.12077973
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-linux-android,armv7-linux-androideabi,i686-linux-android,x86_64-linux-android
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Build frontend
+        run: pnpm --filter @borealos/web build
+      - name: Init & Build Android
+        working-directory: apps/desktop
+        run: |
+          cargo install tauri-cli --version "^2.0"
+          cargo tauri android init
+          cargo tauri android build --apk
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: aurora-android-apk
+          path: apps/desktop/src-tauri/gen/android/app/build/outputs/apk/**/*.apk

@@ -15,6 +15,8 @@ export default defineConfig({
       '@borealos/api': fileURLToPath(new URL('../../packages/api/src/index.ts', import.meta.url)),
     },
   },
+  // Tauri 推荐的环境变量前缀，允许读取 VITE_ 与 TAURI_ENV_ 开头的变量
+  envPrefix: ['VITE_', 'TAURI_ENV_'],
   server: {
     // 开发服务器端口
     port: 5173,
@@ -36,11 +38,9 @@ export default defineConfig({
   build: {
     outDir: 'dist',
     sourcemap: true,
-    // Monaco Editor 体积较大，提高单块警告阈值
-    chunkSizeWarningLimit: 2000,
+    chunkSizeWarningLimit: 1500,
   },
-  // 优化 Monaco Editor 的预构建依赖（本地打包，不使用 CDN）
   optimizeDeps: {
-    include: ['react', 'react-dom', 'monaco-editor'],
+    include: ['react', 'react-dom'],
   },
 });

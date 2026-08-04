@@ -1,11 +1,11 @@
 [package]
-name = "borealos-desktop"
-version = "0.1.0"
-description = "BorealOS Desktop Application"
+name = "aurora-desktop"
+version = "0.2.0"
+description = "Aurora AI Desktop Application"
 edition = "2021"
 
 [lib]
-name = "borealos_desktop_lib"
+name = "aurora_desktop_lib"
 crate-type = ["lib", "cdylib", "staticlib"]
 
 [build-dependencies]
@@ -17,5 +17,15 @@ tauri-plugin-shell = "2"
 tauri-plugin-fs = "2"
 tauri-plugin-dialog = "2"
 tauri-plugin-window-state = "2"
+tauri-plugin-updater = "2"
+tauri-plugin-global-shortcut = "2"
+tauri-plugin-notification = "2"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
+
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1
+panic = "abort"
+strip = true

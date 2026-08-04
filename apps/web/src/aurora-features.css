@@ -1,0 +1,506 @@
+/* ============================================================
+ * Aurora — 多视图导航 + 新功能样式
+ * macOS 27 Liquid Glass · 蓝紫主题
+ * ============================================================ */
+
+/* ==================== 主布局 ==================== */
+
+.aurora-app {
+  display: flex;
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+  position: relative;
+}
+
+/* ==================== 左侧导航栏 ==================== */
+
+.aurora-nav {
+  width: 64px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 12px 0;
+  gap: 8px;
+  background: rgba(255, 255, 255, 0.55);
+  backdrop-filter: blur(40px) saturate(180%);
+  -webkit-backdrop-filter: blur(40px) saturate(180%);
+  border-right: 1px solid rgba(0, 0, 0, 0.06);
+  z-index: 10;
+  position: relative;
+}
+
+.aurora-nav::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 1px;
+  height: 100%;
+  background: linear-gradient(180deg, transparent, rgba(0, 122, 255, 0.08) 30%, rgba(88, 86, 214, 0.08) 70%, transparent);
+}
+
+.aurora-nav__logo {
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.aurora-nav__items {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+  width: 100%;
+  align-items: center;
+}
+
+.aurora-nav__item {
+  width: 48px;
+  height: 48px;
+  border: none;
+  background: transparent;
+  border-radius: 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  cursor: pointer;
+  color: rgba(60, 60, 67, 0.6);
+  transition: all 0.2s ease;
+  position: relative;
+}
+
+.aurora-nav__item:hover {
+  background: rgba(0, 122, 255, 0.08);
+  color: rgba(0, 122, 255, 0.8);
+}
+
+.aurora-nav__item--active {
+  background: linear-gradient(135deg, rgba(0, 122, 255, 0.12), rgba(88, 86, 214, 0.12));
+  color: #007AFF;
+}
+
+.aurora-nav__item--active::before {
+  content: '';
+  position: absolute;
+  left: -12px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 3px;
+  height: 24px;
+  background: linear-gradient(180deg, #007AFF, #5856D6);
+  border-radius: 0 3px 3px 0;
+}
+
+.aurora-nav__label {
+  font-size: 9px;
+  font-weight: 500;
+  letter-spacing: 0.3px;
+  opacity: 0.7;
+}
+
+.aurora-nav__bottom {
+  margin-top: auto;
+  padding-top: 8px;
+  border-top: 1px solid rgba(0, 0, 0, 0.06);
+  width: 100%;
+  display: flex;
+  justify-content: center;
+}
+
+/* ==================== 主内容区 ==================== */
+
+.aurora-main {
+  flex: 1;
+  overflow: hidden;
+  position: relative;
+  display: flex;
+}
+
+.aurora-view-wrapper {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  min-height: 0;
+}
+
+.aurora-view-wrapper--chat {
+  padding: 0;
+}
+
+.aurora-view-wrapper--canvas {
+  padding: 0;
+}
+
+.aurora-view-header {
+  padding: 14px 24px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+  background: rgba(255, 255, 255, 0.45);
+  backdrop-filter: blur(20px) saturate(160%);
+  -webkit-backdrop-filter: blur(20px) saturate(160%);
+  flex-shrink: 0;
+}
+
+.aurora-view-header h1 {
+  font-size: 18px;
+  font-weight: 600;
+  margin: 0;
+  color: #1d1d1f;
+  letter-spacing: -0.02em;
+}
+
+.aurora-view-header p {
+  font-size: 13px;
+  color: rgba(60, 60, 67, 0.55);
+  margin: 3px 0 0;
+  letter-spacing: -0.01em;
+}
+
+.aurora-placeholder {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  color: rgba(60, 60, 67, 0.3);
+}
+
+.aurora-placeholder p {
+  font-size: 16px;
+  margin: 0;
+}
+
+/* ==================== 斜杠命令菜单 ==================== */
+
+.slash-menu {
+  position: absolute;
+  bottom: 100%;
+  left: 16px;
+  right: 16px;
+  max-width: 400px;
+  margin-bottom: 8px;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(40px) saturate(180%);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 12px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
+  padding: 8px;
+  z-index: 100;
+  max-height: 320px;
+  overflow-y: auto;
+}
+
+.slash-menu__header {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: rgba(60, 60, 67, 0.4);
+  padding: 4px 8px 8px;
+}
+
+.slash-menu__item {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border: none;
+  background: transparent;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.15s ease;
+  text-align: left;
+}
+
+.slash-menu__item:hover {
+  background: rgba(0, 122, 255, 0.06);
+}
+
+.slash-menu__icon {
+  font-size: 18px;
+  width: 28px;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.slash-menu__info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.slash-menu__label {
+  font-size: 14px;
+  font-weight: 500;
+  color: #1d1d1f;
+}
+
+.slash-menu__desc {
+  font-size: 12px;
+  color: rgba(60, 60, 67, 0.5);
+}
+
+.slash-menu__empty {
+  padding: 16px;
+  text-align: center;
+  font-size: 13px;
+  color: rgba(60, 60, 67, 0.4);
+}
+
+/* ==================== 聊天输入工具栏 ==================== */
+
+.chat-input__toolbar {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 4px;
+}
+
+.chat-input__tool-btn {
+  width: 32px;
+  height: 32px;
+  border: none;
+  background: transparent;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: rgba(60, 60, 67, 0.5);
+  transition: all 0.15s ease;
+}
+
+.chat-input__tool-btn:hover {
+  background: rgba(0, 122, 255, 0.08);
+  color: #007AFF;
+}
+
+.chat-input__tool-btn--active {
+  background: rgba(255, 59, 48, 0.1);
+  color: #FF3B30;
+  animation: pulse-rec 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse-rec {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
+}
+
+/* ==================== 附件预览 ==================== */
+
+.chat-attachments {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 8px 16px 0;
+  max-width: var(--input-max-width, 768px);
+  margin: 0 auto;
+  width: 100%;
+}
+
+.chat-attachment {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(255, 255, 255, 0.7);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 8px;
+  padding: 4px;
+  transition: all 0.2s ease;
+}
+
+.chat-attachment:hover {
+  border-color: rgba(0, 122, 255, 0.3);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+.chat-attachment__preview {
+  width: 48px;
+  height: 48px;
+  object-fit: cover;
+  border-radius: 6px;
+}
+
+.chat-attachment__file {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  font-size: 13px;
+  color: rgba(60, 60, 67, 0.7);
+}
+
+.chat-attachment__remove {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  width: 18px;
+  height: 18px;
+  border: none;
+  background: rgba(0, 0, 0, 0.5);
+  color: white;
+  border-radius: 50%;
+  font-size: 12px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  transition: background 0.15s ease;
+}
+
+.chat-attachment__remove:hover {
+  background: rgba(255, 59, 48, 0.8);
+}
+
+/* ==================== 拖拽上传遮罩 ==================== */
+
+.chat-drag-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 122, 255, 0.05);
+  backdrop-filter: blur(8px);
+  border: 2px dashed rgba(0, 122, 255, 0.4);
+  border-radius: 12px;
+  margin: 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  color: #007AFF;
+  z-index: 1000;
+  pointer-events: none;
+}
+
+.chat-drag-overlay p {
+  font-size: 16px;
+  font-weight: 500;
+  margin: 0;
+}
+
+/* ==================== 图片内联渲染 ==================== */
+
+.chat-image-inline {
+  margin: 8px 0;
+  border-radius: 8px;
+  overflow: hidden;
+  max-width: 100%;
+}
+
+.chat-image-inline img {
+  max-width: 100%;
+  height: auto;
+  display: block;
+  border-radius: 8px;
+  cursor: zoom-in;
+  transition: transform 0.2s ease;
+}
+
+.chat-image-inline img:hover {
+  transform: scale(1.02);
+}
+
+/* ==================== 兼容旧布局 ==================== */
+
+/* 确保旧 .chatgpt-app 样式仍然可用 */
+.chatgpt-app {
+  display: flex;
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+  background: transparent;
+  position: relative;
+}
+
+/* ==================== 暗色模式适配 ==================== */
+
+@media (prefers-color-scheme: dark) {
+  .aurora-nav {
+    background: rgba(30, 30, 32, 0.6);
+    border-right-color: rgba(255, 255, 255, 0.08);
+  }
+
+  .aurora-nav__item {
+    color: rgba(235, 235, 245, 0.6);
+  }
+
+  .aurora-nav__item:hover {
+    background: rgba(10, 132, 255, 0.15);
+    color: rgba(10, 132, 255, 0.9);
+  }
+
+  .aurora-nav__item--active {
+    background: linear-gradient(135deg, rgba(10, 132, 255, 0.2), rgba(191, 90, 242, 0.2));
+    color: #0A84FF;
+  }
+
+  .aurora-nav__bottom {
+    border-top-color: rgba(255, 255, 255, 0.08);
+  }
+
+  .aurora-view-header {
+    background: rgba(30, 30, 32, 0.5);
+    border-bottom-color: rgba(255, 255, 255, 0.08);
+  }
+
+  .aurora-view-header h1 {
+    color: #f5f5f7;
+  }
+
+  .aurora-view-header p {
+    color: rgba(235, 235, 245, 0.6);
+  }
+
+  .slash-menu {
+    background: rgba(40, 40, 42, 0.95);
+    border-color: rgba(255, 255, 255, 0.1);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+  }
+
+  .slash-menu__label {
+    color: #f5f5f7;
+  }
+
+  .slash-menu__desc {
+    color: rgba(235, 235, 245, 0.5);
+  }
+
+  .chat-attachment {
+    background: rgba(40, 40, 42, 0.7);
+    border-color: rgba(255, 255, 255, 0.08);
+  }
+
+  .chat-attachment__file {
+    color: rgba(235, 235, 245, 0.7);
+  }
+}
+
+/* ==================== 响应式适配 ==================== */
+
+@media (max-width: 768px) {
+  .aurora-nav {
+    width: 56px;
+  }
+
+  .aurora-nav__item {
+    width: 40px;
+    height: 40px;
+  }
+
+  .aurora-nav__label {
+    display: none;
+  }
+
+  .aurora-view-header {
+    padding: 12px 16px;
+  }
+}

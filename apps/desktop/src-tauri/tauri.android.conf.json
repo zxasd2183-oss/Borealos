@@ -1,0 +1,48 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "Aurora",
+  "version": "0.2.0",
+  "identifier": "dev.aurora.app",
+  "build": {
+    "beforeBuildCommand": "cd ../web && npx vite build",
+    "frontendDist": "../../web/dist"
+  },
+  "app": {
+    "windows": [
+      {
+        "label": "main",
+        "title": "Aurora",
+        "width": 420,
+        "height": 800,
+        "minWidth": 360,
+        "minHeight": 600,
+        "decorations": false,
+        "transparent": false,
+        "resizable": true,
+        "fullscreen": false,
+        "center": true,
+        "hidden": false
+      }
+    ],
+    "security": {
+      "csp": null
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": ["apk"],
+    "icon": ["icons/icon.png"],
+    "publisher": "Aurora",
+    "category": "Productivity",
+    "shortDescription": "Aurora AI 智能工作站",
+    "longDescription": "Aurora — 极光智能 AI 工作站"
+  },
+  "plugins": {
+    "updater": {
+      "active": false
+    },
+    "global-shortcut": {
+      "active": false
+    }
+  }
+}

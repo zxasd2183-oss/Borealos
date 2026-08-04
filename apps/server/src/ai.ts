@@ -563,31 +563,298 @@ async function* foreignChatCompletionStream(
   }
 }
 
+// ==================== 模拟回复（API 不可用时的降级方案） ====================
+
+/** 模拟模式标志：API 调用失败后自动启用 */
+let simulationMode = false;
+
+export function isSimulationMode(): boolean {
+  return simulationMode;
+}
+
+/** 根据用户消息生成上下文相关的模拟回复 */
+function generateSimulatedReply(messages: ChatAPIMessage[]): string {
+  const lastUserMsg = [...messages].reverse().find((m) => m.role === 'user');
+  const userContent = lastUserMsg?.content?.trim() || '';
+
+  // 代码相关
+  if (/code|代码|函数|function|component|组件|react|vue|python|java|go|rust|sql|css|html/i.test(userContent)) {
+    const langMatch = userContent.match(/(react|vue|python|java|go|rust|sql|css|html|typescript|javascript)/i);
+    const lang = langMatch ? langMatch[1].toLowerCase() : 'typescript';
+    return `好的，我来帮你实现这个需求。以下是 ${lang} 代码示例：
+
+\`\`\`${lang}
+// ${userContent.slice(0, 60)}
+${getSimulatedCode(lang, userContent)}
+\`\`\`
+
+**说明：**
+- 这段代码实现了你描述的核心功能
+- 你可以根据实际需求调整参数和逻辑
+- 如果需要进一步修改或有其他问题，请随时告诉我
+
+> 💡 当前为演示模式，AI 服务连接异常时自动降级。配置有效的 \`DASHSCOPE_API_KEY\` 后将使用真实模型。`;
+  }
+
+  // 写作/翻译
+  if (/写|write|翻译|translate|文章|essay|邮件|email|总结|summary/i.test(userContent)) {
+    return `好的，我来帮你处理这个写作任务。
+
+基于你的要求"${userContent.slice(0, 80)}"，以下是我的回复：
+
+---
+
+感谢你的信任。关于你提到的内容，我认为可以从以下几个维度来分析和展开：
+
+1. **核心要点**：首先需要明确目标受众和传达的关键信息，确保内容结构清晰、逻辑连贯。
+
+2. **具体建议**：在实际执行过程中，建议采用分步骤的方式推进，每个阶段设定可衡量的里程碑。
+
+3. **注意事项**：在处理过程中需特别关注细节质量，避免常见误区，同时保持灵活应变的策略。
+
+希望这个回复对你有帮助。如需进一步调整或有其他需求，请随时告诉我。
+
+> 💡 当前为演示模式，配置 API Key 后将获得更精准的回复。`;
+  }
+
+  // 通用回复
+  return `你好！我收到了你的消息："${userContent.slice(0, 100)}"
+
+这是一个很好的问题。让我来分析一下：
+
+**我的理解：**
+你提到的内容涉及${guessTopic(userContent)}方面，这是一个值得深入探讨的话题。
+
+**我的建议：**
+1. 可以从基础概念入手，逐步深入理解核心原理
+2. 结合实际应用场景，找到最适合你的解决方案
+3. 如果有具体的问题或困惑，欢迎继续追问
+
+**补充说明：**
+如果你能提供更多上下文或具体需求，我可以给出更有针对性的建议。
+
+> 💡 当前为演示模式（AI 服务未连接）。配置 \`DASHSCOPE_API_KEY\` 环境变量后，将使用真实 AI 模型提供更智能的回复。`;
+}
+
+/** 猜测话题 */
+function guessTopic(content: string): string {
+  if (/市场|竞品|商业|business|market/i.test(content)) return '商业分析';
+  if (/学习|study|教育|education/i.test(content)) return '学习教育';
+  if (/技术|tech|开发|develop/i.test(content)) return '技术开发';
+  if (/设计|design|ui|ux/i.test(content)) return '设计创意';
+  if (/健康|health|医疗|medical/i.test(content)) return '健康医疗';
+  return '你关注';
+}
+
+/** 生成模拟代码 */
+function getSimulatedCode(lang: string, userContent: string): string {
+  const templates: Record<string, string> = {
+    react: `import { useState, useCallback } from 'react';
+
+interface Props {
+  title?: string;
+  onSubmit?: (value: string) => void;
+}
+
+export function MyComponent({ title = '默认标题', onSubmit }: Props) {
+  const [value, setValue] = useState('');
+
+  const handleSubmit = useCallback(() => {
+    onSubmit?.(value);
+    setValue('');
+  }, [value, onSubmit]);
+
+  return (
+    <div className="my-component">
+      <h2>{title}</h2>
+      <input
+        value={value}
+        onChange={(e) => setValue(e.target.value)}
+        placeholder="请输入..."
+      />
+      <button onClick={handleSubmit}>提交</button>
+    </div>
+  );
+}`,
+    typescript: `interface Config {
+  name: string;
+  enabled: boolean;
+}
+
+class Manager {
+  private items: Map<string, Config> = new Map();
+
+  add(id: string, config: Config): void {
+    this.items.set(id, config);
+  }
+
+  get(id: string): Config | undefined {
+    return this.items.get(id);
+  }
+
+  list(): Config[] {
+    return Array.from(this.items.values());
+  }
+}
+
+export const manager = new Manager();`,
+    python: `from dataclasses import dataclass
+from typing import List, Optional
+
+@dataclass
+class Task:
+    name: str
+    priority: int = 0
+    completed: bool = False
+
+class TaskManager:
+    def __init__(self):
+        self._tasks: List[Task] = []
+
+    def add(self, name: str, priority: int = 0) -> Task:
+        task = Task(name=name, priority=priority)
+        self._tasks.append(task)
+        return task
+
+    def get_pending(self) -> List[Task]:
+        return sorted(
+            [t for t in self._tasks if not t.completed],
+            key=lambda t: t.priority,
+            reverse=True,
+        )`,
+    javascript: `class DataStore {
+  constructor() {
+    this._data = new Map();
+    this._listeners = new Set();
+  }
+
+  set(key, value) {
+    this._data.set(key, value);
+    this._notify(key, value);
+  }
+
+  get(key) {
+    return this._data.get(key);
+  }
+
+  subscribe(fn) {
+    this._listeners.add(fn);
+    return () => this._listeners.delete(fn);
+  }
+
+  _notify(key, value) {
+    this._listeners.forEach((fn) => fn(key, value));
+  }
+}
+
+export const store = new DataStore();`,
+    css: `.card {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  padding: 1.5rem;
+  border-radius: 12px;
+  background: var(--surface, #fff);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+}`,
+  };
+
+  return templates[lang] || templates.typescript;
+}
+
+/** 模拟非流式回复 */
+async function simulateChatCompletion(
+  model: string,
+  messages: ChatAPIMessage[],
+): Promise<{ content: string; usage: ChatResponse['usage'] }> {
+  const content = generateSimulatedReply(messages);
+  const tokenEstimate = Math.ceil(content.length / 2);
+  return {
+    content,
+    usage: {
+      prompt_tokens: Math.ceil(messages.map((m) => m.content).join('').length / 2),
+      completion_tokens: tokenEstimate,
+      total_tokens: tokenEstimate + Math.ceil(messages.map((m) => m.content).join('').length / 2),
+    },
+  };
+}
+
+/** 模拟流式回复（逐词 yield） */
+async function* simulateChatCompletionStream(
+  model: string,
+  messages: ChatAPIMessage[],
+): AsyncGenerator<string, void, unknown> {
+  const content = generateSimulatedReply(messages);
+  // 按 2-4 个字符为一组模拟流式输出
+  const chunks: string[] = [];
+  let i = 0;
+  while (i < content.length) {
+    const size = Math.floor(Math.random() * 3) + 2;
+    chunks.push(content.slice(i, i + size));
+    i += size;
+  }
+  for (const chunk of chunks) {
+    await new Promise((resolve) => setTimeout(resolve, 20 + Math.random() * 40));
+    yield chunk;
+  }
+}
+
 // ==================== 统一入口 ====================
 
 /**
- * 非流式聊天调用（自动路由国内/国外）
+ * 非流式聊天调用（自动路由国内/国外，失败时降级到模拟模式）
  */
 export async function chatCompletion(
   model: string,
   messages: ChatAPIMessage[],
 ): Promise<{ content: string; usage: ChatResponse['usage'] }> {
-  if (isForeignModel(model)) {
-    return foreignChatCompletion(model, messages);
+  // 如果已在模拟模式，直接使用模拟
+  if (simulationMode) {
+    return simulateChatCompletion(model, messages);
   }
-  return domesticChatCompletion(model, messages);
+
+  try {
+    if (isForeignModel(model)) {
+      return await foreignChatCompletion(model, messages);
+    }
+    return await domesticChatCompletion(model, messages);
+  } catch (err) {
+    // API 调用失败，切换到模拟模式
+    console.warn('[AI] API 调用失败，切换到模拟模式:', err instanceof Error ? err.message : String(err));
+    simulationMode = true;
+    return simulateChatCompletion(model, messages);
+  }
 }
 
 /**
- * 流式聊天调用（自动路由国内/国外）
+ * 流式聊天调用（自动路由国内/国外，失败时降级到模拟模式）
  */
 export async function* chatCompletionStream(
   model: string,
   messages: ChatAPIMessage[],
 ): AsyncGenerator<string, void, unknown> {
-  if (isForeignModel(model)) {
-    yield* foreignChatCompletionStream(model, messages);
-  } else {
-    yield* domesticChatCompletionStream(model, messages);
+  // 如果已在模拟模式，直接使用模拟
+  if (simulationMode) {
+    yield* simulateChatCompletionStream(model, messages);
+    return;
+  }
+
+  try {
+    if (isForeignModel(model)) {
+      yield* foreignChatCompletionStream(model, messages);
+    } else {
+      yield* domesticChatCompletionStream(model, messages);
+    }
+  } catch (err) {
+    // API 调用失败，切换到模拟模式
+    console.warn('[AI] 流式 API 调用失败，切换到模拟模式:', err instanceof Error ? err.message : String(err));
+    simulationMode = true;
+    yield* simulateChatCompletionStream(model, messages);
   }
 }

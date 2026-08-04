@@ -69,6 +69,13 @@ const chatRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) => {
     return { success: true, data: allModels } as ApiResponse<AIModel[]>;
   });
 
+  // GET /api/chat/history - 获取聊天历史记录
+  fastify.get('/api/chat/history', async (request) => {
+    const query = request.query as { projectId?: string };
+    const messages = store.getChatMessages(query.projectId);
+    return { success: true, data: messages };
+  });
+
   // POST /api/chat - 非流式聊天
   fastify.post<{ Body: ChatRequestBody }>(
     '/api/chat',

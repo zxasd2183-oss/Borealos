@@ -1,0 +1,450 @@
+/* ============================================================
+ * Aurora — 桌面端专用样式
+ * 仅在 Tauri WebView 内生效（通过 .aurora-desktop 类名限定）
+ * 包含：自定义标题栏、窗口控制按钮、更新通知
+ * ============================================================ */
+
+/* ---- 桌面端全局调整 ---- */
+.aurora-desktop {
+  --titlebar-height: 38px;
+}
+
+.aurora-desktop body {
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* 标题栏占位：主内容区下移 */
+.aurora-desktop .aurora-app {
+  padding-top: 0;
+  height: calc(100vh - var(--titlebar-height));
+}
+
+/* ============================================================
+ * 自定义标题栏
+ * ============================================================ */
+.desktop-titlebar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: var(--titlebar-height);
+  min-height: var(--titlebar-height);
+  padding: 0 8px;
+  background: rgba(255, 255, 255, 0.72);
+  backdrop-filter: saturate(180%) blur(20px);
+  -webkit-backdrop-filter: saturate(180%) blur(20px);
+  border-bottom: 0.5px solid rgba(0, 0, 0, 0.08);
+  user-select: none;
+  -webkit-user-select: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 9999;
+}
+
+/* 深色模式 */
+@media (prefers-color-scheme: dark) {
+  .desktop-titlebar {
+    background: rgba(30, 30, 32, 0.72);
+    border-bottom-color: rgba(255, 255, 255, 0.08);
+  }
+}
+
+.desktop-titlebar__left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 0 0 auto;
+}
+
+.desktop-titlebar__center {
+  flex: 1 1 auto;
+  height: 100%;
+}
+
+.desktop-titlebar__brand {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  pointer-events: none;
+}
+
+.desktop-titlebar__title {
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  color: var(--aurora-text-secondary, #86868b);
+}
+
+/* ============================================================
+ * macOS 红绿灯按钮
+ * ============================================================ */
+.traffic-lights {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 4px;
+}
+
+.traffic-light {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  -webkit-app-region: no-drag;
+  transition: filter 0.15s;
+}
+
+.traffic-light--close {
+  background-color: #ff5f57;
+  border: 0.5px solid #e0443e;
+}
+
+.traffic-light--minimize {
+  background-color: #ffbd2e;
+  border: 0.5px solid #dea123;
+}
+
+.traffic-light--maximize {
+  background-color: #28c840;
+  border: 0.5px solid #1aab29;
+}
+
+.traffic-lights:hover .traffic-light {
+  filter: brightness(1.05);
+}
+
+/* ============================================================
+ * Windows / Linux 窗口控制按钮
+ * ============================================================ */
+.window-controls {
+  display: flex;
+  align-items: center;
+  flex: 0 0 auto;
+  -webkit-app-region: no-drag;
+}
+
+.window-control {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 46px;
+  height: var(--titlebar-height);
+  border: none;
+  background-color: transparent;
+  color: var(--aurora-text-secondary, #86868b);
+  cursor: pointer;
+  transition: background-color 0.12s ease, color 0.12s ease;
+}
+
+.window-control:hover {
+  background-color: rgba(0, 0, 0, 0.06);
+  color: var(--aurora-text-primary, #1d1d1f);
+}
+
+.window-control:active {
+  background-color: rgba(0, 0, 0, 0.1);
+}
+
+.window-control--close:hover {
+  background-color: #e81123;
+  color: #fff;
+}
+
+.window-control--close:active {
+  background-color: #f1707a;
+  color: #fff;
+}
+
+/* 深色模式 */
+@media (prefers-color-scheme: dark) {
+  .window-control {
+    color: rgba(255, 255, 255, 0.6);
+  }
+  .window-control:hover {
+    background-color: rgba(255, 255, 255, 0.08);
+    color: rgba(255, 255, 255, 0.9);
+  }
+  .window-control:active {
+    background-color: rgba(255, 255, 255, 0.12);
+  }
+}
+
+/* ============================================================
+ * 更新通知 — 横幅
+ * ============================================================ */
+.update-banner {
+  position: fixed;
+  top: calc(var(--titlebar-height, 38px) + 12px);
+  right: 20px;
+  z-index: 9998;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 18px;
+  min-width: 340px;
+  max-width: 420px;
+  background: rgba(255, 255, 255, 0.9);
+  backdrop-filter: saturate(180%) blur(20px);
+  -webkit-backdrop-filter: saturate(180%) blur(20px);
+  border: 0.5px solid rgba(0, 0, 0, 0.08);
+  border-radius: 14px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12), 0 2px 8px rgba(0, 0, 0, 0.06);
+  animation: aurora-update-slide-in 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@media (prefers-color-scheme: dark) {
+  .update-banner {
+    background: rgba(40, 40, 42, 0.9);
+    border-color: rgba(255, 255, 255, 0.1);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3), 0 2px 8px rgba(0, 0, 0, 0.15);
+  }
+}
+
+.update-banner__icon {
+  font-size: 20px;
+  color: #007aff;
+  flex-shrink: 0;
+  animation: aurora-update-pulse 2s ease-in-out infinite;
+}
+
+.update-banner__content {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.update-banner__title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--aurora-text-primary, #1d1d1f);
+  margin-bottom: 2px;
+}
+
+.update-banner__body {
+  font-size: 12px;
+  color: var(--aurora-text-secondary, #86868b);
+  line-height: 1.4;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+.update-banner__actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.update-banner__btn {
+  padding: 6px 14px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+.update-banner__btn--primary {
+  background: #007aff;
+  color: #fff;
+}
+
+.update-banner__btn--primary:hover {
+  background: #0066d6;
+  transform: scale(1.02);
+}
+
+.update-banner__btn--primary:active {
+  background: #0055b3;
+  transform: scale(0.98);
+}
+
+.update-banner__btn--ghost {
+  background: transparent;
+  color: var(--aurora-text-secondary, #86868b);
+}
+
+.update-banner__btn--ghost:hover {
+  background: rgba(0, 0, 0, 0.05);
+  color: var(--aurora-text-primary, #1d1d1f);
+}
+
+/* ============================================================
+ * 更新通知 — Toast（检查中 / 下载中 / 完成 / 错误）
+ * ============================================================ */
+.update-toast {
+  position: fixed;
+  top: calc(var(--titlebar-height, 38px) + 12px);
+  right: 20px;
+  z-index: 9997;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 16px;
+  background: rgba(255, 255, 255, 0.9);
+  backdrop-filter: saturate(180%) blur(20px);
+  -webkit-backdrop-filter: saturate(180%) blur(20px);
+  border: 0.5px solid rgba(0, 0, 0, 0.08);
+  border-radius: 12px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+  font-size: 13px;
+  color: var(--aurora-text-primary, #1d1d1f);
+  animation: aurora-update-slide-in 0.3s ease;
+}
+
+@media (prefers-color-scheme: dark) {
+  .update-toast {
+    background: rgba(40, 40, 42, 0.9);
+    border-color: rgba(255, 255, 255, 0.1);
+    color: rgba(255, 255, 255, 0.9);
+  }
+}
+
+.update-toast__spinner {
+  width: 14px;
+  height: 14px;
+  border: 2px solid rgba(0, 122, 255, 0.2);
+  border-top-color: #007aff;
+  border-radius: 50%;
+  animation: aurora-update-spin 0.8s linear infinite;
+  flex-shrink: 0;
+}
+
+.update-toast--success {
+  border-color: rgba(40, 200, 64, 0.3);
+}
+
+.update-toast--success span {
+  color: #28c840;
+}
+
+.update-toast--error {
+  border-color: rgba(255, 95, 87, 0.3);
+}
+
+.update-toast--error span {
+  color: #ff5f57;
+}
+
+.update-toast__retry {
+  background: none;
+  border: 1px solid currentColor;
+  border-radius: 6px;
+  padding: 3px 10px;
+  font-size: 11px;
+  cursor: pointer;
+  color: inherit;
+  opacity: 0.8;
+  transition: opacity 0.15s;
+}
+
+.update-toast__retry:hover {
+  opacity: 1;
+}
+
+/* ============================================================
+ * 动画
+ * ============================================================ */
+@keyframes aurora-update-slide-in {
+  from {
+    opacity: 0;
+    transform: translateY(-12px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes aurora-update-pulse {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.7;
+    transform: scale(1.1);
+  }
+}
+
+@keyframes aurora-update-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* ============================================================
+ * 桌面端整体布局适配
+ * ============================================================ */
+
+/* 当标题栏存在时，主应用容器下移 */
+.aurora-desktop .aurora-app {
+  margin-top: var(--titlebar-height, 38px);
+  height: calc(100vh - var(--titlebar-height, 38px));
+}
+
+/* 启动画面也需下移 */
+.aurora-desktop .splash-container {
+  padding-top: var(--titlebar-height, 38px);
+}
+
+/* 登录界面也需下移 */
+.aurora-desktop .login-screen {
+  padding-top: var(--titlebar-height, 38px);
+}
+
+/* 加载状态也需下移 */
+.aurora-desktop .app--loading {
+  padding-top: var(--titlebar-height, 38px);
+}
+
+/* ============================================================
+ * 双窗口架构专用样式
+ * ============================================================ */
+
+/* ---- LOGIN 窗口（420×600 小窗） ---- */
+.aurora-login-window {
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+  background: #f5f5fa;
+  /* 无标题栏，内容直接撑满 */
+  --titlebar-height: 0px;
+}
+
+.aurora-login-window .splash-screen {
+  width: 100%;
+  height: 100%;
+}
+
+.aurora-login-window .login-screen {
+  padding-top: 0;
+  height: 100vh;
+  overflow-y: auto;
+}
+
+/* ---- MAIN 窗口加载态 ---- */
+.aurora-main-loading {
+  width: 100vw;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: #f5f5fa;
+}
+
+.aurora-main-loading .app-loading {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}

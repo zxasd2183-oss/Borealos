@@ -1,6 +1,6 @@
 /**
- * BorealOS SVG 图标系统
- * 替代所有 emoji 图标，提供清晰、统一的视觉风格
+ * Aurora SVG 图标系统
+ * 品牌设计 · 极光主题 · 统一视觉风格
  */
 import type { FC } from 'react';
 
@@ -323,18 +323,156 @@ export function getFileTypeIcon(name: string): FC<IconProps> {
   }
 }
 
-/* ==================== 品牌 Logo ==================== */
+/* ==================== 品牌 Logo — Aurora 极光 ==================== */
 
-export const BorealOsLogo: FC<IconProps> = ({ size = 24, className }) => (
+export const AuroraLogo: FC<IconProps> = ({ size = 24, className }) => (
   <svg width={size} height={size} viewBox="0 0 32 32" fill="none" className={className} style={{ flexShrink: 0 }}>
     <defs>
-      <linearGradient id="boreal-grad" x1="0%" y1="0%" x2="100%" y2="100%">
-        <stop offset="0%" stopColor="#007acc" />
-        <stop offset="100%" stopColor="#4ec9b0" />
+      {/* 极光渐变 — 蓝紫青 */}
+      <linearGradient id="aurora-grad-1" x1="0%" y1="100%" x2="100%" y2="0%">
+        <stop offset="0%" stopColor="#007AFF" />
+        <stop offset="50%" stopColor="#5856D6" />
+        <stop offset="100%" stopColor="#64D2FF" />
       </linearGradient>
+      <linearGradient id="aurora-grad-2" x1="20%" y1="100%" x2="80%" y2="0%">
+        <stop offset="0%" stopColor="#0066d6" />
+        <stop offset="60%" stopColor="#007AFF" />
+        <stop offset="100%" stopColor="#64D2FF" />
+      </linearGradient>
+      <radialGradient id="aurora-glow" cx="50%" cy="60%" r="50%">
+        <stop offset="0%" stopColor="#007AFF" stopOpacity="0.3" />
+        <stop offset="100%" stopColor="#007AFF" stopOpacity="0" />
+      </radialGradient>
+      <clipPath id="aurora-clip">
+        <rect width="32" height="32" rx="8" />
+      </clipPath>
     </defs>
-    <rect width="32" height="32" rx="7" fill="url(#boreal-grad)" />
-    <path d="M16 6L8 26h3l2-5h6l2 5h3L16 6z" fill="#fff" />
-    <path d="M13.5 18l2.5-6 2.5 6h-5z" fill="url(#boreal-grad)" />
+    {/* 深色底 */}
+    <rect width="32" height="32" rx="8" fill="#1a1a2e" />
+    <g clipPath="url(#aurora-clip)">
+      <rect width="32" height="32" fill="url(#aurora-glow)" />
+      <path d="M-2 28 Q4 20 2 12 Q0 6 6 0 L10 0 Q6 8 8 14 Q10 22 4 28 Z" fill="url(#aurora-grad-1)" opacity="0.9" />
+      <path d="M34 28 Q28 22 30 14 Q32 8 26 2 L22 0 Q26 10 24 16 Q22 24 28 28 Z" fill="url(#aurora-grad-2)" opacity="0.8" />
+      <path d="M14 28 Q13 18 15 10 Q16 4 16 0 L18 0 Q17 6 17 12 Q17 20 18 28 Z" fill="url(#aurora-grad-1)" opacity="0.65" />
+      <circle cx="22" cy="8" r="0.8" fill="#fff" opacity="0.8" />
+      <circle cx="9" cy="6" r="0.6" fill="#fff" opacity="0.6" />
+      <circle cx="25" cy="14" r="0.5" fill="#fff" opacity="0.5" />
+    </g>
+    <rect width="32" height="32" rx="8" fill="none" stroke="rgba(0, 122, 255, 0.4)" strokeWidth="0.5" />
   </svg>
 );
+
+/* ==================== 多视图导航图标 ==================== */
+
+export const WorkIcon: FC<IconProps> = (p) => (
+  <Svg {...p}>
+    <rect x="3" y="3" width="7" height="7" rx="1.5" fill="currentColor" fillOpacity="0.15" />
+    <rect x="14" y="3" width="7" height="4" rx="1.5" fill="currentColor" fillOpacity="0.1" />
+    <rect x="14" y="10" width="7" height="11" rx="1.5" fill="currentColor" fillOpacity="0.2" />
+    <rect x="3" y="13" width="7" height="8" rx="1.5" fill="currentColor" fillOpacity="0.1" />
+  </Svg>
+);
+
+export const ImageIcon: FC<IconProps> = (p) => (
+  <Svg {...p}>
+    <rect x="3" y="3" width="18" height="18" rx="2" />
+    <circle cx="8.5" cy="8.5" r="1.5" fill="currentColor" fillOpacity="0.3" />
+    <path d="M21 15l-5-5L5 21" />
+  </Svg>
+);
+
+export const CanvasIcon: FC<IconProps> = (p) => (
+  <Svg {...p}>
+    <rect x="3" y="3" width="18" height="18" rx="2" />
+    <path d="M3 9h18M9 3v18" opacity="0.4" />
+    <circle cx="6" cy="6" r="1" fill="currentColor" />
+    <circle cx="18" cy="18" r="1" fill="currentColor" />
+    <circle cx="6" cy="18" r="1" fill="currentColor" fillOpacity="0.5" />
+    <circle cx="18" cy="6" r="1" fill="currentColor" fillOpacity="0.5" />
+  </Svg>
+);
+
+export const CodeIcon: FC<IconProps> = (p) => (
+  <Svg {...p}>
+    <polyline points="16 18 22 12 16 6" />
+    <polyline points="8 6 2 12 8 18" />
+    <line x1="14" y1="4" x2="10" y2="20" opacity="0.5" />
+  </Svg>
+);
+
+export const BrowserIcon: FC<IconProps> = (p) => (
+  <Svg {...p}>
+    <rect x="2" y="3" width="20" height="18" rx="2" />
+    <path d="M2 8h20" />
+    <circle cx="5" cy="5.5" r="0.5" fill="currentColor" />
+    <circle cx="7" cy="5.5" r="0.5" fill="currentColor" />
+    <circle cx="9" cy="5.5" r="0.5" fill="currentColor" />
+  </Svg>
+);
+
+export const VideoIcon: FC<IconProps> = (p) => (
+  <Svg {...p}>
+    <rect x="2" y="6" width="14" height="12" rx="2" fill="currentColor" fillOpacity="0.1" />
+    <path d="M16 10l6-3v10l-6-3" />
+  </Svg>
+);
+
+/* ==================== 操作工具图标 ==================== */
+
+export const PaperclipIcon: FC<IconProps> = (p) => (
+  <Svg {...p}>
+    <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" />
+  </Svg>
+);
+
+export const MicIcon: FC<IconProps> = (p) => (
+  <Svg {...p}>
+    <rect x="9" y="2" width="6" height="12" rx="3" fill="currentColor" fillOpacity="0.15" />
+    <path d="M5 10v2a7 7 0 0 0 14 0v-2" />
+    <line x1="12" y1="19" x2="12" y2="22" />
+  </Svg>
+);
+
+export const ScreenshotIcon: FC<IconProps> = (p) => (
+  <Svg {...p}>
+    <path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2" />
+    <rect x="8" y="8" width="8" height="8" rx="1" fill="currentColor" fillOpacity="0.15" />
+  </Svg>
+);
+
+export const DownloadIcon: FC<IconProps> = (p) => (
+  <Svg {...p}>
+    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+    <polyline points="7 10 12 15 17 10" />
+    <line x1="12" y1="15" x2="12" y2="3" />
+  </Svg>
+);
+
+export const CopyIcon: FC<IconProps> = (p) => (
+  <Svg {...p}>
+    <rect x="9" y="9" width="13" height="13" rx="2" />
+    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+  </Svg>
+);
+
+export const PlayIcon: FC<IconProps> = (p) => (
+  <Svg {...p}>
+    <polygon points="5 3 19 12 5 21 5 3" fill="currentColor" fillOpacity="0.2" />
+  </Svg>
+);
+
+export const StopIcon: FC<IconProps> = (p) => (
+  <Svg {...p}>
+    <rect x="5" y="5" width="14" height="14" rx="2" fill="currentColor" fillOpacity="0.2" />
+  </Svg>
+);
+
+export const SparkleIcon: FC<IconProps> = (p) => (
+  <Svg {...p}>
+    <path d="M12 3l1.5 5.5L19 10l-5.5 1.5L12 17l-1.5-5.5L5 10l5.5-1.5L12 3z" fill="currentColor" fillOpacity="0.15" />
+    <path d="M19 16l.7 2.3L22 19l-2.3.7L19 22l-.7-2.3L16 19l2.3-.7L19 16z" fill="currentColor" fillOpacity="0.3" />
+  </Svg>
+);
+
+/** 兼容旧引用 */
+export const BorealOsLogo = AuroraLogo;

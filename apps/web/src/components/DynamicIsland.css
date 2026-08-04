@@ -1,0 +1,224 @@
+/* ============================================================
+ * Aurora — 灵动岛（Dynamic Island）样式
+ * 仿 Apple Dynamic Island 设计语言
+ * 药丸形态 ↔ 展开形态，弹簧动画过渡
+ * ============================================================ */
+
+.dynamic-island {
+  position: fixed;
+  top: 10px;
+  left: 50%;
+  transform: translateX(-50%) translateY(-100px);
+  z-index: 10000;
+  opacity: 0;
+  transition:
+    transform 0.5s cubic-bezier(0.32, 0.72, 0, 1),
+    opacity 0.3s ease;
+  pointer-events: none;
+}
+
+.dynamic-island--visible {
+  transform: translateX(-50%) translateY(0);
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.dynamic-island__inner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #000;
+  border-radius: 28px;
+  overflow: hidden;
+  transition:
+    width 0.5s cubic-bezier(0.32, 0.72, 0, 1),
+    height 0.5s cubic-bezier(0.32, 0.72, 0, 1),
+    border-radius 0.5s cubic-bezier(0.32, 0.72, 0, 1);
+  box-shadow:
+    0 4px 20px rgba(0, 0, 0, 0.15),
+    0 1px 4px rgba(0, 0, 0, 0.1);
+  cursor: pointer;
+  /* 收缩态尺寸 */
+  width: 120px;
+  height: 36px;
+  min-height: 36px;
+}
+
+.dynamic-island--expanded .dynamic-island__inner {
+  width: 360px;
+  min-height: 64px;
+  border-radius: 24px;
+  padding: 10px 18px;
+}
+
+/* 深色模式下灵动岛保持黑色 */
+@media (prefers-color-scheme: light) {
+  .dynamic-island__inner {
+    background: #000;
+  }
+}
+
+/* ---- 收缩态：药丸 ---- */
+
+.dynamic-island__pill {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  justify-content: center;
+}
+
+.dynamic-island__pill-text {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.8);
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 80px;
+}
+
+/* ---- 展开态：内容区 ---- */
+
+.dynamic-island__content {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  animation: island-fade-in 0.3s ease 0.15s both;
+}
+
+@keyframes island-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ---- AI 思考中：动态点 ---- */
+
+.dynamic-island__thinking {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.dynamic-island__dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #64D2FF;
+  animation: island-dot-pulse 1.4s ease-in-out infinite;
+}
+
+.dynamic-island__dot:nth-child(2) {
+  animation-delay: 0.2s;
+  background: #007AFF;
+}
+
+.dynamic-island__dot:nth-child(3) {
+  animation-delay: 0.4s;
+  background: #5856D6;
+}
+
+@keyframes island-dot-pulse {
+  0%, 80%, 100% {
+    transform: scale(0.6);
+    opacity: 0.5;
+  }
+  40% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+/* ---- 进度条 ---- */
+
+.dynamic-island__progress {
+  flex: 1 1 auto;
+  height: 6px;
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 3px;
+  overflow: hidden;
+  min-width: 80px;
+}
+
+.dynamic-island__progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #007AFF, #64D2FF);
+  border-radius: 3px;
+  transition: width 0.3s ease;
+}
+
+.dynamic-island__percent {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.7);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  flex-shrink: 0;
+  min-width: 36px;
+  text-align: right;
+}
+
+/* ---- 文本区 ---- */
+
+.dynamic-island__text {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.dynamic-island__title {
+  font-size: 13px;
+  font-weight: 600;
+  color: #fff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.dynamic-island__body {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.6);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-top: 1px;
+}
+
+/* ---- 图标 ---- */
+
+.dynamic-island__icon {
+  font-size: 18px;
+  flex-shrink: 0;
+}
+
+.dynamic-island__logo {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+/* ---- 响应式适配 ---- */
+
+@media (max-width: 480px) {
+  .dynamic-island--expanded .dynamic-island__inner {
+    width: calc(100vw - 32px);
+    max-width: 360px;
+  }
+}
+
+/* ---- 交互态 ---- */
+
+.dynamic-island__inner:hover {
+  filter: brightness(1.1);
+}
+
+.dynamic-island__inner:active {
+  transform: scale(0.98);
+  transition: transform 0.1s ease;
+}

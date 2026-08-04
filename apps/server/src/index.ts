@@ -9,6 +9,7 @@ import Fastify from 'fastify';
 import cors from '@fastify/cors';
 import websocket from '@fastify/websocket';
 import fastifyStatic from '@fastify/static';
+import multipart from '@fastify/multipart';
 import path from 'path';
 import fs from 'fs';
 
@@ -23,6 +24,12 @@ import authRoutes from './routes/auth';
 import syncRoutes from './routes/sync';
 import gatewayRoutes from './routes/gateway';
 import agentRoutes from './routes/agent';
+import imageRoutes from './routes/image';
+import workRoutes from './routes/work';
+import uploadRoutes from './routes/upload';
+import scheduleRoutes from './routes/schedule';
+import videoRoutes from './routes/video';
+import updateRoutes from './routes/update';
 import { createAuthMiddleware } from './auth/middleware';
 import { initDatabase, closeDatabase } from './db';
 import { seedData, ensureSystemUser } from './store';
@@ -47,6 +54,11 @@ async function main() {
 
   // 注册 WebSocket 插件 - 支持终端和聊天的实时通信
   await fastify.register(websocket);
+
+  // 注册 Multipart 插件 - 支持文件上传
+  await fastify.register(multipart, {
+    limits: { fileSize: 50 * 1024 * 1024 }, // 50MB
+  });
 
   // 注册静态文件服务 - 提供静态资源访问
   const publicDir = path.join(process.cwd(), 'public');
@@ -91,6 +103,12 @@ async function main() {
   await fastify.register(syncRoutes); // /api/sync/ws
   await fastify.register(gatewayRoutes); // /ws（统一网关）
   await fastify.register(agentRoutes); // /api/agent/ws（本地 Agent 连接）
+  await fastify.register(imageRoutes); // /api/image/*
+  await fastify.register(workRoutes); // /api/work/*
+  await fastify.register(uploadRoutes); // /api/upload/*
+  await fastify.register(scheduleRoutes); // /api/schedule/*
+  await fastify.register(videoRoutes); // /api/video/*
+  await fastify.register(updateRoutes); // /api/update/*
 
   // ==================== 服务前端静态文件 ====================
 

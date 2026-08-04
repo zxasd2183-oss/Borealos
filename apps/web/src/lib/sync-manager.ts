@@ -52,10 +52,10 @@ type SyncListener = (status: SyncStatus) => void;
 
 /** 获取或生成设备 ID */
 function getDeviceId(): string {
-  let id = localStorage.getItem('borealos_device_id');
+  let id = localStorage.getItem('aurora_device_id');
   if (!id) {
     id = `dev-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
-    localStorage.setItem('borealos_device_id', id);
+    localStorage.setItem('aurora_device_id', id);
   }
   return id;
 }

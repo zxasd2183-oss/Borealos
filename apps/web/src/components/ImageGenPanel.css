@@ -1,0 +1,1258 @@
+/* ============================================================
+ * ImageGenPanel — Aurora AI 图像生成面板样式
+ * ------------------------------------------------------------------
+ * 复用全局 Aurora 主题变量（chatgpt-theme.css）
+ * 蓝紫渐变 · 晶透玻璃 · 浅色主题 · imggen- 前缀
+ * ============================================================ */
+
+/* ---------- 关键帧 ---------- */
+@keyframes imggen-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes imggen-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes imggen-fade-scale {
+  from {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes imggen-shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+@keyframes imggen-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.45;
+  }
+}
+
+/* ---------- 旋转器 ---------- */
+.imggen-spinner {
+  display: inline-block;
+  animation: imggen-spin 0.7s linear infinite;
+}
+
+/* ---------- 主容器 ---------- */
+.imggen-panel {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  padding: 18px 20px 20px;
+  gap: 16px;
+  overflow-y: auto;
+  color: var(--text-primary);
+  font-family: var(--font-ui);
+}
+
+/* ============================================================
+ * 头部
+ * ============================================================ */
+.imggen-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-shrink: 0;
+}
+
+.imggen-header__title {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+}
+
+.imggen-header__logo {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: var(--radius-sm);
+  background: var(--accent-gradient);
+  color: #fff;
+  box-shadow: 0 3px 10px rgba(0, 122, 255, 0.28),
+    inset 0 1px 0 rgba(255, 255, 255, 0.25);
+}
+
+.imggen-header__title h2 {
+  font-size: 17px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+}
+
+.imggen-header__title p {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-top: 1px;
+}
+
+.imggen-header__meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* ============================================================
+ * 模型下拉选择器
+ * ============================================================ */
+.imggen-model {
+  position: relative;
+}
+
+.imggen-model__trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 7px 12px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  background: var(--bg-glass);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-full);
+  white-space: nowrap;
+  max-width: 240px;
+}
+.imggen-model__trigger:hover:not(:disabled) {
+  background: var(--bg-active);
+  color: var(--text-primary);
+  border-color: var(--border-focus);
+}
+.imggen-model__trigger:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.imggen-model__label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--accent-blue);
+}
+.imggen-model__label--muted {
+  color: var(--text-dim);
+}
+
+.imggen-model__chev--open {
+  transform: rotate(180deg);
+  transition: transform var(--dur-fast) var(--ease-out);
+}
+
+.imggen-model__menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 50;
+  min-width: 240px;
+  max-width: 320px;
+  padding: 5px;
+  list-style: none;
+  background: var(--bg-glass-ultra);
+  backdrop-filter: var(--glass-blur-ultra);
+  -webkit-backdrop-filter: var(--glass-blur-ultra);
+  border: 1px solid var(--border-glass);
+  border-radius: var(--radius-md);
+  box-shadow: var(--glass-shadow-modal);
+  animation: imggen-fade-scale var(--dur-fast) var(--ease-out);
+  transform-origin: top right;
+}
+
+.imggen-model__option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 9px 11px;
+  font-size: 13px;
+  color: var(--text-primary);
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-sm);
+  text-align: left;
+}
+.imggen-model__option:hover {
+  background: var(--bg-active);
+}
+.imggen-model__option--active {
+  color: var(--accent-blue);
+  background: var(--accent-blue-light);
+}
+
+.imggen-model__option-name {
+  font-weight: 500;
+}
+
+.imggen-model__option-desc {
+  font-size: 11.5px;
+  color: var(--text-muted);
+  margin-left: auto;
+  margin-right: 4px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 130px;
+}
+
+/* ============================================================
+ * 标签栏
+ * ============================================================ */
+.imggen-tabs {
+  display: flex;
+  gap: 3px;
+  padding: 4px;
+  background: var(--bg-glass);
+  backdrop-filter: var(--glass-blur-light);
+  -webkit-backdrop-filter: var(--glass-blur-light);
+  border: 1px solid var(--border-glass);
+  border-radius: var(--radius-lg);
+  flex-shrink: 0;
+}
+
+.imggen-tab {
+  flex: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 9px 10px;
+  font-size: 13.5px;
+  font-weight: 500;
+  color: var(--text-muted);
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-md);
+  white-space: nowrap;
+}
+.imggen-tab:hover {
+  color: var(--text-secondary);
+  background: var(--bg-hover);
+}
+.imggen-tab--active {
+  color: var(--accent-blue);
+  background: rgba(255, 255, 255, 0.85);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06),
+    inset 0 1px 0 rgba(255, 255, 255, 0.7);
+}
+
+/* ============================================================
+ * 表单区
+ * ============================================================ */
+.imggen-form {
+  flex-shrink: 0;
+}
+
+.imggen-form__group {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 18px;
+  background: var(--bg-glass-strong);
+  backdrop-filter: var(--glass-blur-light);
+  -webkit-backdrop-filter: var(--glass-blur-light);
+  border: 1px solid var(--border-glass);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--glass-shadow);
+  animation: imggen-fade-in var(--dur-normal) var(--ease-out);
+}
+
+.imggen-field {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.imggen-field__label {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  letter-spacing: -0.005em;
+}
+
+.imggen-field__optional {
+  font-weight: 400;
+  color: var(--text-dim);
+  font-size: 11.5px;
+}
+
+.imggen-row {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+.imggen-row .imggen-field {
+  flex: 1;
+  min-width: 150px;
+}
+
+/* ---------- 输入框 / 文本域 ---------- */
+.imggen-textarea,
+.imggen-input {
+  width: 100%;
+  font-family: var(--font-ui);
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--text-primary);
+  background: var(--bg-input);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-md);
+  outline: none;
+  transition: border-color var(--dur-fast) var(--ease-out),
+    box-shadow var(--dur-fast) var(--ease-out),
+    background var(--dur-fast) var(--ease-out);
+}
+
+.imggen-textarea {
+  resize: vertical;
+  min-height: 96px;
+  max-height: 240px;
+  padding: 11px 13px;
+}
+
+.imggen-input {
+  padding: 10px 13px;
+}
+
+.imggen-textarea:focus,
+.imggen-input:focus {
+  border-color: var(--border-focus);
+  box-shadow: 0 0 0 3.5px rgba(0, 122, 255, 0.1);
+  background: rgba(255, 255, 255, 0.88);
+}
+.imggen-textarea::placeholder,
+.imggen-input::placeholder {
+  color: var(--text-dim);
+}
+
+/* ============================================================
+ * 尺寸选择器
+ * ============================================================ */
+.imggen-sizes {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+}
+
+.imggen-size {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 6px 8px;
+  background: var(--bg-input);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-md);
+}
+.imggen-size:hover {
+  border-color: var(--border-focus);
+  background: rgba(255, 255, 255, 0.8);
+}
+.imggen-size--active {
+  border-color: var(--accent-blue);
+  background: var(--accent-blue-light);
+  box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.08);
+}
+
+.imggen-size__ratio {
+  width: 26px;
+  height: 26px;
+  max-width: 26px;
+  max-height: 26px;
+  border-radius: 4px;
+  border: 1.5px solid var(--text-dim);
+  background: transparent;
+  transition: border-color var(--dur-fast) var(--ease-out);
+}
+.imggen-size--active .imggen-size__ratio {
+  border-color: var(--accent-blue);
+  background: rgba(0, 122, 255, 0.12);
+}
+
+.imggen-size__dim {
+  font-size: 10.5px;
+  font-weight: 500;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+}
+.imggen-size--active .imggen-size__dim {
+  color: var(--accent-blue);
+}
+
+/* ============================================================
+ * 数量选择器
+ * ============================================================ */
+.imggen-count {
+  display: flex;
+  gap: 6px;
+}
+
+.imggen-count__btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  background: var(--bg-input);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-md);
+}
+.imggen-count__btn:hover:not(:disabled) {
+  border-color: var(--border-focus);
+  color: var(--text-primary);
+}
+.imggen-count__btn--active {
+  color: #fff;
+  background: var(--accent-gradient);
+  border-color: transparent;
+  box-shadow: 0 2px 8px rgba(0, 122, 255, 0.25);
+}
+.imggen-count__btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ============================================================
+ * 风格 chips（文生图）
+ * ============================================================ */
+.imggen-styles {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.imggen-style-chip {
+  padding: 7px 14px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  background: var(--bg-input);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-full);
+  white-space: nowrap;
+}
+.imggen-style-chip:hover {
+  border-color: var(--border-focus);
+  color: var(--text-primary);
+}
+.imggen-style-chip--active {
+  color: var(--accent-blue);
+  background: var(--accent-blue-light);
+  border-color: rgba(0, 122, 255, 0.3);
+}
+
+/* ============================================================
+ * 风格迁移预设画廊
+ * ============================================================ */
+.imggen-presets {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+  gap: 10px;
+}
+
+.imggen-preset {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  padding: 6px;
+  background: var(--bg-input);
+  border: 1.5px solid var(--border-primary);
+  border-radius: var(--radius-md);
+}
+.imggen-preset:hover {
+  border-color: var(--border-focus);
+  transform: translateY(-1px);
+}
+.imggen-preset--active {
+  border-color: var(--accent-blue);
+  box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.1);
+}
+
+.imggen-preset__thumb {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  border-radius: var(--radius-sm);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2);
+}
+
+.imggen-preset__check {
+  color: #fff;
+  filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.4));
+}
+
+.imggen-preset__name {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.imggen-preset--active .imggen-preset__name {
+  color: var(--accent-blue);
+  font-weight: 600;
+}
+
+/* ============================================================
+ * 图片上传区
+ * ============================================================ */
+.imggen-uploader {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 168px;
+  border: 2px dashed var(--border-primary);
+  border-radius: var(--radius-md);
+  background: var(--bg-input);
+  overflow: hidden;
+  outline: none;
+  transition: border-color var(--dur-fast) var(--ease-out),
+    background var(--dur-fast) var(--ease-out);
+}
+.imggen-uploader:focus-visible {
+  border-color: var(--border-focus);
+  box-shadow: 0 0 0 3.5px rgba(0, 122, 255, 0.1);
+}
+.imggen-uploader--drag {
+  border-color: var(--accent-blue);
+  background: var(--accent-blue-light);
+}
+.imggen-uploader--filled {
+  border-style: solid;
+  border-color: var(--border-primary);
+  min-height: auto;
+}
+
+.imggen-uploader__input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.imggen-uploader__empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 9px;
+  padding: 28px 18px;
+  color: var(--text-muted);
+  background: transparent;
+  border: none;
+}
+.imggen-uploader__empty:hover {
+  color: var(--accent-blue);
+}
+
+.imggen-uploader__title {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
+.imggen-uploader__hint {
+  font-size: 12px;
+  color: var(--text-dim);
+}
+
+.imggen-uploader__state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 32px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--accent-blue);
+}
+
+.imggen-uploader__preview {
+  position: relative;
+  width: 100%;
+}
+
+.imggen-uploader__preview img {
+  display: block;
+  width: 100%;
+  max-height: 320px;
+  object-fit: contain;
+  border-radius: var(--radius-sm);
+}
+
+.imggen-uploader__overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px;
+  background: linear-gradient(
+    to top,
+    rgba(0, 0, 0, 0.5) 0%,
+    transparent 50%
+  );
+  opacity: 0;
+  transition: opacity var(--dur-fast) var(--ease-out);
+}
+.imggen-uploader__preview:hover .imggen-uploader__overlay {
+  opacity: 1;
+}
+
+.imggen-uploader__replace,
+.imggen-uploader__clear {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 12px;
+  font-size: 12px;
+  font-weight: 500;
+  color: #fff;
+  background: rgba(255, 255, 255, 0.18);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: var(--radius-full);
+}
+.imggen-uploader__replace:hover,
+.imggen-uploader__clear:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+/* ============================================================
+ * 强度滑块
+ * ============================================================ */
+.imggen-slider-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.imggen-slider-value {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--accent-blue);
+  font-family: var(--font-mono);
+  background: var(--accent-blue-light);
+  padding: 2px 9px;
+  border-radius: var(--radius-full);
+}
+
+.imggen-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 8px;
+  border-radius: var(--radius-full);
+  background: linear-gradient(
+    to right,
+    var(--accent-blue) 0%,
+    var(--accent-purple) var(--imggen-progress, 60%),
+    var(--bg-active) var(--imggen-progress, 60%),
+    var(--bg-active) 100%
+  );
+  outline: none;
+  cursor: pointer;
+}
+
+.imggen-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #fff;
+  border: 2px solid var(--accent-blue);
+  box-shadow: 0 2px 6px rgba(0, 122, 255, 0.3);
+  transition: transform var(--dur-fast) var(--ease-spring);
+}
+.imggen-slider::-webkit-slider-thumb:hover {
+  transform: scale(1.15);
+}
+
+.imggen-slider::-moz-range-thumb {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #fff;
+  border: 2px solid var(--accent-blue);
+  box-shadow: 0 2px 6px rgba(0, 122, 255, 0.3);
+}
+
+.imggen-slider-track {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  color: var(--text-dim);
+  margin-top: 2px;
+}
+
+/* ============================================================
+ * 生成按钮
+ * ============================================================ */
+.imggen-submit {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px 20px;
+  font-size: 14.5px;
+  font-weight: 600;
+  color: var(--text-on-accent);
+  background: var(--accent-gradient);
+  border: none;
+  border-radius: var(--radius-md);
+  white-space: nowrap;
+  box-shadow: 0 3px 10px rgba(0, 122, 255, 0.25),
+    inset 0 1px 0 rgba(255, 255, 255, 0.22);
+  margin-top: 2px;
+}
+.imggen-submit:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 18px rgba(0, 122, 255, 0.35),
+    inset 0 1px 0 rgba(255, 255, 255, 0.28);
+}
+.imggen-submit:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+/* ============================================================
+ * 错误横幅
+ * ============================================================ */
+.imggen-error {
+  display: flex;
+  align-items: flex-start;
+  gap: 11px;
+  padding: 13px 15px;
+  background: rgba(255, 69, 58, 0.07);
+  border: 1px solid rgba(255, 69, 58, 0.18);
+  border-radius: var(--radius-md);
+  animation: imggen-fade-in var(--dur-fast) var(--ease-out);
+  flex-shrink: 0;
+}
+
+.imggen-error__icon {
+  display: inline-flex;
+  color: var(--accent-red);
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.imggen-error__body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+}
+
+.imggen-error__title {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--accent-red);
+}
+
+.imggen-error__msg {
+  font-size: 12.5px;
+  color: var(--text-secondary);
+  word-break: break-word;
+  line-height: 1.5;
+}
+
+.imggen-error__close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+  background: transparent;
+  border: none;
+  padding: 2px;
+  border-radius: var(--radius-xs);
+  flex-shrink: 0;
+}
+.imggen-error__close:hover {
+  color: var(--accent-red);
+  background: rgba(255, 69, 58, 0.1);
+}
+
+/* ============================================================
+ * 结果区
+ * ============================================================ */
+.imggen-results {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  flex: 1;
+  min-height: 0;
+}
+
+.imggen-results__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-shrink: 0;
+}
+
+.imggen-results__head h3 {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.imggen-results__count {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--accent-blue);
+  background: var(--accent-blue-light);
+  padding: 1px 8px;
+  border-radius: var(--radius-full);
+}
+
+.imggen-results__clear {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 11px;
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--text-muted);
+  background: var(--bg-glass);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-full);
+}
+.imggen-results__clear:hover {
+  color: var(--accent-red);
+  border-color: rgba(255, 69, 58, 0.25);
+  background: rgba(255, 69, 58, 0.05);
+}
+
+/* ---------- 空状态 ---------- */
+.imggen-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 48px 20px;
+  text-align: center;
+}
+
+.imggen-empty__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 64px;
+  height: 64px;
+  border-radius: var(--radius-lg);
+  color: var(--text-dim);
+  background: var(--bg-glass);
+  border: 1px solid var(--border-primary);
+  margin-bottom: 4px;
+}
+
+.imggen-empty__title {
+  font-size: 14.5px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.imggen-empty__hint {
+  font-size: 12.5px;
+  color: var(--text-dim);
+}
+
+/* ============================================================
+ * 结果网格
+ * ============================================================ */
+.imggen-gallery {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 14px;
+}
+
+.imggen-gallery--loading {
+  /* 骨架占位时保持网格对齐 */
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+}
+
+/* ---------- 加载骨架 ---------- */
+.imggen-skeleton {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  aspect-ratio: 1 / 1;
+  border-radius: var(--radius-md);
+  background: var(--bg-glass);
+  border: 1px solid var(--border-primary);
+  overflow: hidden;
+  color: var(--accent-blue);
+}
+
+.imggen-skeleton__shimmer {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    100deg,
+    transparent 20%,
+    rgba(255, 255, 255, 0.55) 50%,
+    transparent 80%
+  );
+  background-size: 200% 100%;
+  animation: imggen-shimmer 1.6s ease-in-out infinite;
+}
+
+.imggen-skeleton__icon {
+  position: relative;
+  z-index: 1;
+}
+
+/* ---------- 结果卡片 ---------- */
+.imggen-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  background: var(--bg-glass-ultra);
+  border: 1px solid var(--border-glass);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  box-shadow: var(--glass-shadow);
+  transition: transform var(--dur-normal) var(--ease-spring),
+    box-shadow var(--dur-normal) var(--ease-out);
+  animation: imggen-fade-in var(--dur-normal) var(--ease-out);
+}
+.imggen-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--glass-shadow-strong);
+}
+
+.imggen-card__media {
+  position: relative;
+  display: block;
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  background: var(--bg-active);
+  cursor: pointer;
+  overflow: hidden;
+}
+
+.imggen-card__media img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  transition: transform var(--dur-slow) var(--ease-out);
+}
+.imggen-card__media:hover img {
+  transform: scale(1.04);
+}
+
+.imggen-card__overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding: 12px;
+  background: linear-gradient(
+    to top,
+    rgba(0, 0, 0, 0.45) 0%,
+    transparent 55%
+  );
+  opacity: 0;
+  transition: opacity var(--dur-fast) var(--ease-out);
+}
+.imggen-card__media:hover .imggen-card__overlay {
+  opacity: 1;
+}
+
+.imggen-card__zoom {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 11px;
+  font-size: 12px;
+  font-weight: 500;
+  color: #fff;
+  background: rgba(255, 255, 255, 0.2);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  border-radius: var(--radius-full);
+}
+
+.imggen-card__bar {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px;
+  border-top: 1px solid var(--border-primary);
+}
+
+.imggen-card__btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  padding: 7px;
+  color: var(--text-muted);
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-sm);
+}
+.imggen-card__btn:hover:not(:disabled) {
+  color: var(--accent-blue);
+  background: var(--accent-blue-light);
+}
+.imggen-card__btn--accent:hover:not(:disabled) {
+  color: var(--accent-purple);
+  background: rgba(88, 86, 214, 0.1);
+}
+.imggen-card__btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ============================================================
+ * 灯箱（大图预览）
+ * ============================================================ */
+.imggen-lightbox {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 32px;
+  background: rgba(20, 20, 40, 0.72);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  animation: imggen-fade-in var(--dur-fast) var(--ease-out);
+}
+
+.imggen-lightbox__close {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 42px;
+  height: 42px;
+  color: #fff;
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 50%;
+}
+.imggen-lightbox__close:hover {
+  background: rgba(255, 255, 255, 0.22);
+}
+
+.imggen-lightbox__nav {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 46px;
+  height: 46px;
+  color: #fff;
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 50%;
+}
+.imggen-lightbox__nav:hover {
+  background: rgba(255, 255, 255, 0.22);
+}
+.imggen-lightbox__nav--prev {
+  left: 20px;
+}
+.imggen-lightbox__nav--next {
+  right: 20px;
+}
+
+.imggen-lightbox__inner {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  max-width: 92vw;
+  max-height: 90vh;
+  animation: imggen-fade-scale var(--dur-normal) var(--ease-out);
+}
+
+.imggen-lightbox__img {
+  max-width: 92vw;
+  max-height: 74vh;
+  object-fit: contain;
+  border-radius: var(--radius-md);
+  box-shadow: var(--glass-shadow-modal);
+}
+
+.imggen-lightbox__meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  width: 100%;
+  max-width: 720px;
+}
+
+.imggen-lightbox__prompt {
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.85);
+  line-height: 1.5;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  flex: 1;
+  min-width: 0;
+}
+
+.imggen-lightbox__actions {
+  flex-shrink: 0;
+}
+
+.imggen-lightbox__btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #fff;
+  background: rgba(255, 255, 255, 0.16);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  border-radius: var(--radius-full);
+  white-space: nowrap;
+}
+.imggen-lightbox__btn:hover {
+  background: rgba(255, 255, 255, 0.28);
+}
+
+.imggen-lightbox__count {
+  position: absolute;
+  top: -28px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 12px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+/* ============================================================
+ * 响应式
+ * ============================================================ */
+@media (max-width: 720px) {
+  .imggen-panel {
+    padding: 14px;
+    gap: 12px;
+  }
+
+  .imggen-header {
+    flex-wrap: wrap;
+  }
+
+  .imggen-tabs {
+    overflow-x: auto;
+  }
+  .imggen-tab {
+    flex: 0 0 auto;
+    padding: 8px 14px;
+  }
+
+  .imggen-form__group {
+    padding: 14px;
+  }
+
+  .imggen-sizes {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .imggen-row {
+    flex-direction: column;
+  }
+
+  .imggen-gallery {
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: 10px;
+  }
+
+  .imggen-lightbox {
+    padding: 16px;
+  }
+  .imggen-lightbox__nav {
+    width: 38px;
+    height: 38px;
+  }
+  .imggen-lightbox__nav--prev {
+    left: 8px;
+  }
+  .imggen-lightbox__nav--next {
+    right: 8px;
+  }
+}
+
+@media (max-width: 420px) {
+  .imggen-gallery {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .imggen-presets {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .imggen-lightbox__meta {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}

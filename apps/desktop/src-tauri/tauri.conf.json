@@ -1,26 +1,47 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "BorealOS",
-  "version": "0.1.0",
-  "identifier": "dev.borealos.desktop",
+  "productName": "Aurora",
+  "version": "0.2.0",
+  "identifier": "dev.aurora.app",
   "build": {
-    "beforeDevCommand": "node node_modules/vite/bin/vite.js",
-    "devUrl": "http://localhost:1420",
-    "beforeBuildCommand": "node node_modules/vite/bin/vite.js build",
-    "frontendDist": "../dist"
+    "beforeDevCommand": "cd ../web && npx vite --port 5173 --host",
+    "devUrl": "http://localhost:5173",
+    "beforeBuildCommand": "cd ../web && npx vite build",
+    "frontendDist": "../../web/dist"
   },
   "app": {
     "windows": [
       {
-        "title": "BorealOS",
+        "label": "login",
+        "title": "Aurora — 登录",
+        "width": 420,
+        "height": 600,
+        "minWidth": 420,
+        "minHeight": 600,
+        "maxWidth": 420,
+        "maxHeight": 600,
+        "decorations": false,
+        "transparent": false,
+        "resizable": false,
+        "fullscreen": false,
+        "center": true,
+        "hidden": false,
+        "alwaysOnTop": true
+      },
+      {
+        "label": "main",
+        "title": "Aurora — 极光智能",
         "width": 1280,
         "height": 800,
-        "minWidth": 800,
+        "minWidth": 900,
         "minHeight": 600,
         "decorations": false,
         "transparent": false,
         "resizable": true,
-        "fullscreen": false
+        "fullscreen": false,
+        "center": true,
+        "hidden": true,
+        "visible": false
       }
     ],
     "security": {
@@ -29,7 +50,27 @@
   },
   "bundle": {
     "active": true,
-    "targets": ["deb", "appimage"],
-    "icon": ["icons/icon.png", "icons/icon.ico"]
+    "targets": ["deb", "appimage", "nsis", "app", "dmg"],
+    "icon": ["icons/icon.png", "icons/icon.ico"],
+    "publisher": "Aurora",
+    "category": "Productivity",
+    "shortDescription": "Aurora AI 智能工作站",
+    "longDescription": "Aurora — 极光智能 AI 工作站，集成对话、Work 模式、图片生成、自由画布等功能"
+  },
+  "plugins": {
+    "updater": {
+      "active": true,
+      "endpoints": [
+        "http://localhost:3001/api/update/check/{{target}}/{{arch}}/{{current_version}}",
+        "https://aurora-update-server.example.com/api/update/check/{{target}}/{{arch}}/{{current_version}}"
+      ],
+      "pubkey": "",
+      "windows": {
+        "installMode": "passive"
+      }
+    },
+    "global-shortcut": {
+      "active": true
+    }
   }
 }

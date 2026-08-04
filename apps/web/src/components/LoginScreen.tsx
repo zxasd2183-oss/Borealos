@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import type { FC } from 'react';
-import { BorealOsLogo } from './Icons';
+import { AuroraLogo } from './Icons';
 
 /** 用户信息 */
 export interface UserInfo {
@@ -59,8 +59,8 @@ const LoginScreen: FC<LoginScreenProps> = ({ onLogin }) => {
       }
 
       // 保存 token 到 localStorage
-      localStorage.setItem('borealos_token', data.data.accessToken);
-      localStorage.setItem('borealos_user', JSON.stringify(data.data.user));
+      localStorage.setItem('aurora_token', data.data.accessToken);
+      localStorage.setItem('aurora_user', JSON.stringify(data.data.user));
 
       onLogin(data.data.user, data.data.accessToken);
     } catch (err) {
@@ -70,9 +70,21 @@ const LoginScreen: FC<LoginScreenProps> = ({ onLogin }) => {
   };
 
   const handleQuickLogin = () => {
-    setEmail('admin@borealos.dev');
-    setPassword('admin123');
-    setMode('login');
+    // 演示模式 — 直接创建虚拟用户，跳过后端认证
+    const demoUser: UserInfo = {
+      id: 'demo-user',
+      email: 'demo@aurora.dev',
+      name: 'Aurora 演示用户',
+      avatar: null,
+      role: 'user',
+      plan: 'pro',
+      usage: { tokens: 0, requests: 0, storage: 0 },
+      createdAt: Date.now(),
+      lastLoginAt: Date.now(),
+    };
+    localStorage.setItem('aurora_token', 'demo-token-' + Date.now());
+    localStorage.setItem('aurora_user', JSON.stringify(demoUser));
+    onLogin(demoUser, 'demo-token');
   };
 
   return (
@@ -88,11 +100,11 @@ const LoginScreen: FC<LoginScreenProps> = ({ onLogin }) => {
       <div className="login-card">
         {/* Logo */}
         <div className="login-card__logo">
-          <BorealOsLogo size={56} />
+          <AuroraLogo size={56} />
         </div>
-        <h1 className="login-card__title">BorealOS</h1>
+        <h1 className="login-card__title">Aurora</h1>
         <p className="login-card__subtitle">
-          AI 驱动的跨平台云端 IDE
+          极光智能 · 触手可及
         </p>
 
         {/* 模式切换 */}
@@ -162,15 +174,13 @@ const LoginScreen: FC<LoginScreenProps> = ({ onLogin }) => {
           </button>
         </form>
 
-        {/* 快速登录 */}
+        {/* 免登录体验 */}
         <button className="login-quick" onClick={handleQuickLogin}>
-          使用演示账号体验
+          免登录直接体验 →
         </button>
 
         <p className="login-hint">
-          {mode === 'login'
-            ? '还没有账号？点击上方"注册"创建新账号'
-            : '已有账号？点击上方"登录"直接进入'}
+          点击上方按钮可跳过登录，直接进入主界面预览
         </p>
       </div>
     </div>

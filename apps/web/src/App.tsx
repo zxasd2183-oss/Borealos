@@ -1,54 +1,39 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { apiClient } from './lib/api-client';
-import { syncManager } from './lib/sync-manager';
-import type { SyncStatus } from './lib/sync-manager';
-import ActivityBar from './components/ActivityBar';
-import type { ActivityView } from './components/ActivityBar';
-import FileTree from './components/FileTree';
-import Editor from './components/Editor';
-import Terminal from './components/Terminal';
-import ChatPanel from './components/ChatPanel';
-import StatusBar from './components/StatusBar';
-import UsagePanel from './components/UsagePanel';
-import ProgressPanel from './components/ProgressPanel';
+import {
+  isTauri,
+  isMobile,
+  getCurrentWindowLabel,
+  transitionToMain,
+  onLoginSuccess,
+  sendNativeNotification,
+  isMainWindowActive,
+} from './lib/tauri-env';
 import LoginScreen from './components/LoginScreen';
 import type { UserInfo } from './components/LoginScreen';
-import GitPanel from './components/GitPanel';
-import BrainPanel from './components/BrainPanel';
-import TaskAnalysisModal from './components/TaskAnalysisModal';
-import type { TaskAnalysis } from './components/TaskAnalysisModal';
-import AgentBadge from './components/AgentBadge';
-import DynamicIsland from './components/DynamicIsland';
-import { SearchIcon, GitIcon, SettingsIcon, SyncIcon } from './components/Icons';
+import ConversationSidebar from './components/ConversationSidebar';
+import type { Conversation } from './components/ConversationSidebar';
+import ChatPanel from './components/ChatPanel';
+import SplashScreen from './components/SplashScreen';
+import WorkPanel from './components/WorkPanel';
+import ImageGenPanel from './components/ImageGenPanel';
+import FreeCanvas from './components/FreeCanvas';
+import DesktopTitlebar from './components/DesktopTitlebar';
+import UpdateNotification from './components/UpdateNotification';
+import DynamicIslandComponent, { DynamicIsland } from './components/DynamicIsland';
+import type { IslandData } from './components/DynamicIsland';
+import {
+  AiIcon,
+  WorkIcon,
+  ImageIcon,
+  CanvasIcon,
+  CodeIcon,
+  SettingsIcon,
+  AuroraLogo,
+} from './components/Icons';
 
-/* ============================================================
- * 前端本地类型定义（简化版，供组件间共享）
- * ============================================================ */
-
-/** 文件树节点（与后端 GET /api/files 返回结构对齐） */
-export interface FileNode {
-  id: string;
-  projectId: string;
-  name: string;
-  path: string;
-  content: string;
-  language: string;
-  isDirectory: boolean;
-  createdAt: string;
-  updatedAt: string;
-  /** 客户端构建树时补全 */
-  type: 'file' | 'directory';
-  children?: FileNode[];
-}
-
-/** 编辑器标签页 */
-export interface EditorTab {
-  path: string;
-  name: string;
-  language: string;
-  content: string;
-  isDirty: boolean;
-}
+/** 视图类型 */
+type ViewType = 'chat' | 'work' | 'image' | 'canvas' | 'code';
 
 /** 聊天消息 */
 export interface ChatMessage {
@@ -56,415 +41,496 @@ export interface ChatMessage {
   role: 'user' | 'assistant' | 'system';
   content: string;
   timestamp: number;
+  images?: string[];
 }
 
-/** 光标位置 */
-export interface CursorPosition {
-  lineNumber: number;
-  column: number;
+/** 生成唯一 ID */
+function genId(): string {
+  return `msg-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 }
+
+/** 从消息列表生成会话标题 */
+function generateTitle(messages: ChatMessage[]): string {
+  const firstUserMsg = messages.find((m) => m.role === 'user');
+  if (!firstUserMsg) return '新对话';
+  const title = firstUserMsg.content.slice(0, 30);
+  return firstUserMsg.content.length > 30 ? `${title}...` : title;
+}
+
+/** 导航项配置 */
+const NAV_ITEMS: { type: ViewType; label: string; icon: typeof AiIcon }[] = [
+  { type: 'chat', label: '对话', icon: AiIcon },
+  { type: 'work', label: 'Work', icon: WorkIcon },
+  { type: 'image', label: '图片生成', icon: ImageIcon },
+  { type: 'canvas', label: '自由画布', icon: CanvasIcon },
+  { type: 'code', label: '代码', icon: CodeIcon },
+];
 
 /* ============================================================
- * 主应用组件
+ * 主应用组件 — Aurora 多视图 AI 工作站
+ *
+ * 双窗口架构：
+ *   - login 窗口（420×600）：启动动画 + 登录界面，登录成功后切换到 main 窗口
+ *   - main 窗口（1280×800）：主应用主体 + 灵动岛 + 桌面标题栏
+ *   - 浏览器模式：单窗口，启动动画 → 登录 → 主应用
  * ============================================================ */
 const App: React.FC = () => {
+  // ---- 桌面端检测 ----
+  const desktopMode = isTauri();
+
+  // ---- 窗口标签（login / main / null=浏览器） ----
+  const [windowLabel, setWindowLabel] = useState<string | null | undefined>(undefined);
+
+  // ---- 启动动画 ----
+  const [showSplash, setShowSplash] = useState(true);
+
   // ---- 用户认证状态 ----
   const [user, setUser] = useState<UserInfo | null>(null);
   const [authChecked, setAuthChecked] = useState(false);
 
-  // ---- 当前项目状态 ----
-  const [currentProjectId, setCurrentProjectId] = useState<string | undefined>(undefined);
-  const [currentAgent, setCurrentAgent] = useState<string | undefined>(undefined);
+  // ---- 视图导航 ----
+  const [activeView, setActiveView] = useState<ViewType>('chat');
 
-  // ---- 任务分析状态 ----
-  const [taskAnalysisVisible, setTaskAnalysisVisible] = useState(false);
-  const [pendingTask, setPendingTask] = useState<string>('');
-
-  // ---- 多设备同步状态 ----
-  const [syncStatus, setSyncStatus] = useState<SyncStatus>({
-    lastSyncAt: null,
-    syncing: false,
-    error: null,
-    pendingChanges: 0,
-  });
-
-  // ---- 编辑器标签页状态 ----
-  const [openTabs, setOpenTabs] = useState<EditorTab[]>([]);
-  const [activeTabPath, setActiveTabPath] = useState<string | null>(null);
-
-  // ---- 聊天状态 ----
-  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([
-    {
-      id: 'welcome',
-      role: 'system',
-      content: '欢迎使用 BorealOS AI 助手！我可以帮你编写代码、解释概念、调试问题。请随时提问。',
-      timestamp: Date.now(),
-    },
-  ]);
+  // ---- 会话状态 ----
+  const [conversations, setConversations] = useState<Conversation[]>([]);
+  const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isAiThinking, setIsAiThinking] = useState(false);
 
-  // ---- 活动栏视图状态 ----
-  const [activeView, setActiveView] = useState<ActivityView>('explorer');
+  // ---- 侧边栏状态 ----
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
-  // ---- 终端显示/隐藏 ----
-  const [showTerminal, setShowTerminal] = useState(false);
-
-  // ---- 状态栏信息 ----
-  const [cursorPosition, setCursorPosition] = useState<CursorPosition>({
-    lineNumber: 1,
-    column: 1,
-  });
+  // 选中的模型
+  const [selectedModel, setSelectedModel] = useState('qwen3.6-flash');
 
   // 消息 ID 计数器
-  const messageIdRef = useRef(0);
+  const messagesRef = useRef<ChatMessage[]>([]);
+  messagesRef.current = messages;
 
-  // 聊天消息引用（避免 useCallback 依赖问题）
-  const chatMessagesRef = useRef(chatMessages);
-  chatMessagesRef.current = chatMessages;
+  // ---- 检测窗口标签 ----
+  useEffect(() => {
+    getCurrentWindowLabel().then((label) => {
+      setWindowLabel(label);
+      // main 窗口或浏览器：从 localStorage 恢复登录状态
+      if (label === 'main' || label === null) {
+        const savedUser = localStorage.getItem('aurora_user');
+        const savedToken = localStorage.getItem('aurora_token');
+        if (savedUser && savedToken) {
+          try {
+            setUser(JSON.parse(savedUser));
+          } catch {
+            localStorage.removeItem('aurora_user');
+            localStorage.removeItem('aurora_token');
+          }
+        }
+        setAuthChecked(true);
+      } else {
+        // login 窗口不需要检查认证
+        setAuthChecked(true);
+      }
+    });
+  }, []);
 
-  // 应用启动时连接 WebSocket 网关（自动重连 + 心跳由 SDK 管理）
+  // ---- 桌面端 main 窗口：监听 login-success 事件 ----
+  useEffect(() => {
+    if (windowLabel !== 'main' || isMobile()) return;
+    let cleanup: (() => void) | null = null;
+    onLoginSuccess((data) => {
+      const userData = data.user as UserInfo;
+      localStorage.setItem('aurora_token', data.token);
+      localStorage.setItem('aurora_user', JSON.stringify(userData));
+      setUser(userData);
+    }).then((unsub) => {
+      cleanup = unsub;
+    });
+    return () => {
+      if (cleanup) cleanup();
+    };
+  }, [windowLabel]);
+
+  // ---- 灵动岛原生通知桥接 ----
+  // 当主窗口不在前台时，灵动岛消息通过 OS 原生通知中心推送
+  useEffect(() => {
+    if (!desktopMode) return;
+
+    const unsub = DynamicIsland.subscribe(async (data: IslandData | null) => {
+      if (!data || data.type === 'idle') return;
+
+      // 检查主窗口是否在前台
+      const active = await isMainWindowActive();
+      if (active) return; // 前台时由 UI 灵动岛显示，不需要原生通知
+
+      // 后台时推送原生通知
+      const title = data.title || 'Aurora';
+      const body = data.body || (data.type === 'thinking' ? 'AI 思考中…' : '');
+      if (body) {
+        sendNativeNotification(title, body);
+      }
+    });
+
+    return () => unsub();
+  }, [windowLabel, desktopMode]);
+
+  // 应用启动时连接 WebSocket
   useEffect(() => {
     apiClient.ws.connect();
     return () => {
-      // 组件卸载时断开连接
       apiClient.ws.disconnect();
     };
   }, []);
 
-  // 监听欢迎页快捷操作发出的视图切换事件
+  // 从 localStorage 恢复会话
   useEffect(() => {
-    const handleSwitchView = (e: Event) => {
-      const view = (e as CustomEvent).detail as ActivityView;
-      setActiveView(view);
-    };
-    const handleFocusChat = () => {
-      setActiveView('ai');
-    };
-    window.addEventListener('borealos:switch-view', handleSwitchView);
-    window.addEventListener('borealos:focus-chat', handleFocusChat);
-    return () => {
-      window.removeEventListener('borealos:switch-view', handleSwitchView);
-      window.removeEventListener('borealos:focus-chat', handleFocusChat);
-    };
-  }, []);
-
-  // 自动同步编辑器状态到云端
-  useEffect(() => {
-    if (user && openTabs.length > 0) {
-      syncManager.uploadEditorState({
-        openTabs: openTabs.map((t) => ({
-          path: t.path,
-          name: t.name,
-          content: t.content,
-        })),
-        activeTab: activeTabPath,
-        cursorPositions: {},
-      });
-    }
-  }, [openTabs, activeTabPath, user]);
-
-  // 自动同步聊天历史到云端
-  useEffect(() => {
-    if (user && chatMessages.length > 1) {
-      syncManager.uploadChatHistory(chatMessages);
-    }
-  }, [chatMessages, user]);
-
-  // 检查本地存储中的登录状态
-  useEffect(() => {
-    const savedUser = localStorage.getItem('borealos_user');
-    const savedToken = localStorage.getItem('borealos_token');
-    if (savedUser && savedToken) {
-      try {
-        setUser(JSON.parse(savedUser));
-      } catch {
-        localStorage.removeItem('borealos_user');
-        localStorage.removeItem('borealos_token');
+    if (!user) return;
+    try {
+      const saved = localStorage.getItem(`aurora_conversations_${user.id}`);
+      if (saved) {
+        const parsed = JSON.parse(saved) as Conversation[];
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          setConversations(parsed);
+        }
       }
-    }
-    setAuthChecked(true);
-  }, []);
+    } catch {}
+  }, [user]);
+
+  // 保存会话到 localStorage
+  useEffect(() => {
+    if (!user || conversations.length === 0) return;
+    try {
+      localStorage.setItem(
+        `aurora_conversations_${user.id}`,
+        JSON.stringify(conversations),
+      );
+    } catch {}
+  }, [conversations, user]);
 
   /** 登录成功回调 */
-  const handleLogin = useCallback((loggedInUser: UserInfo, _token: string) => {
-    setUser(loggedInUser);
-    // 启动多设备同步
-    syncManager.start(loggedInUser.id);
-  }, []);
+  const handleLogin = useCallback(
+    async (loggedInUser: UserInfo, token: string) => {
+      // 桌面端 login 窗口：切换到 main 窗口
+      if (windowLabel === 'login') {
+        await transitionToMain({ token, user: loggedInUser });
+        // Rust 端会关闭 login 窗口，无需更新状态
+        return;
+      }
+      // 浏览器 / 移动端 main 窗口：直接设置用户
+      setUser(loggedInUser);
+    },
+    [windowLabel],
+  );
 
   /** 退出登录 */
   const handleLogout = useCallback(() => {
-    // 停止同步
-    syncManager.stop();
-    localStorage.removeItem('borealos_token');
-    localStorage.removeItem('borealos_user');
+    localStorage.removeItem('aurora_token');
+    localStorage.removeItem('aurora_user');
     setUser(null);
+    setConversations([]);
+    setMessages([]);
+    setActiveConversationId(null);
   }, []);
 
-  // 监听同步状态变化
-  useEffect(() => {
-    const unsub = syncManager.onStatusChange((status) => {
-      setSyncStatus(status);
-    });
-    return unsub;
+  /** 新建对话 */
+  const handleNewConversation = useCallback(() => {
+    setMessages([]);
+    setActiveConversationId(null);
+    setActiveView('chat');
   }, []);
 
-  // 监听同步数据事件（从其他设备拉取的数据）
-  useEffect(() => {
-    const handleSyncData = (e: Event) => {
-      const detail = (e as CustomEvent).detail;
-      if (detail?.editorState) {
-        // 合并编辑器状态
-        const remoteState = detail.editorState;
-        if (remoteState.openTabs && Array.isArray(remoteState.openTabs)) {
-          // 只在没有本地修改时应用远程状态
-          if (openTabs.length === 0) {
-            setOpenTabs(remoteState.openTabs.map((t: any) => ({
-              path: t.path,
-              name: t.name,
-              language: 'plaintext',
-              content: t.content || '',
-              isDirty: false,
-            })));
-            setActiveTabPath(remoteState.activeTab || null);
-          }
-        }
+  /** 选择对话 */
+  const handleSelectConversation = useCallback((id: string) => {
+    const conv = conversations.find((c) => c.id === id);
+    if (!conv) return;
+    setActiveConversationId(id);
+    setActiveView('chat');
+    try {
+      const saved = localStorage.getItem(`aurora_messages_${id}`);
+      if (saved) {
+        setMessages(JSON.parse(saved));
+      } else {
+        setMessages([]);
       }
-      if (detail?.chatHistory && Array.isArray(detail.chatHistory) && chatMessages.length <= 1) {
-        // 只在聊天记录很少时应用远程历史
-        setChatMessages(detail.chatHistory);
-      }
-    };
-    window.addEventListener('borealos:sync-data', handleSyncData as EventListener);
-    return () => window.removeEventListener('borealos:sync-data', handleSyncData as EventListener);
-  }, [openTabs.length, chatMessages.length]);
-
-  /* ---------- 编辑器相关操作 ---------- */
-
-  /** 打开文件（若已打开则切换到对应标签页） */
-  const handleOpenFile = useCallback((node: FileNode) => {
-    if (node.type !== 'file') return;
-
-    setOpenTabs((prev) => {
-      // 若该文件已打开，直接激活
-      const existing = prev.find((tab) => tab.path === node.path);
-      if (existing) {
-        return prev;
-      }
-      // 使用后端返回的真实文件内容
-      const newTab: EditorTab = {
-        path: node.path,
-        name: node.name,
-        language: node.language || 'plaintext',
-        content: node.content || '',
-        isDirty: false,
-      };
-      return [...prev, newTab];
-    });
-    setActiveTabPath(node.path);
-  }, []);
-
-  /** 关闭标签页 */
-  const handleCloseTab = useCallback(
-    (path: string) => {
-      setOpenTabs((prev) => {
-        const idx = prev.findIndex((tab) => tab.path === path);
-        if (idx === -1) return prev;
-        const next = prev.filter((tab) => tab.path !== path);
-        // 若关闭的是当前激活的标签页，则切换到相邻标签页
-        if (activeTabPath === path) {
-          const newActive = next[idx] ?? next[idx - 1] ?? null;
-          setActiveTabPath(newActive ? newActive.path : null);
-        }
-        return next;
-      });
-    },
-    [activeTabPath],
-  );
-
-  /** 切换激活标签页 */
-  const handleSelectTab = useCallback((path: string) => {
-    setActiveTabPath(path);
-  }, []);
-
-  /** 文件内容变更 */
-  const handleContentChange = useCallback((path: string, content: string) => {
-    setOpenTabs((prev) =>
-      prev.map((tab) =>
-        tab.path === path ? { ...tab, content, isDirty: true } : tab,
-      ),
-    );
-  }, []);
-
-  /** 光标位置变更（更新状态栏） */
-  const handleCursorChange = useCallback((position: CursorPosition) => {
-    setCursorPosition(position);
-  }, []);
-
-  /** 保存文件（清除脏标记） */
-  const handleSaveFile = useCallback(() => {
-    setOpenTabs((prev) =>
-      prev.map((tab) => (tab.path === activeTabPath ? { ...tab, isDirty: false } : tab)),
-    );
-  }, [activeTabPath]);
-
-  /* ---------- 聊天相关操作 ---------- */
-
-  /** 任务分析确认回调 */
-  const handleTaskConfirm = useCallback((answers: Record<string, string>, analysis: TaskAnalysis) => {
-    // 关闭弹窗
-    setTaskAnalysisVisible(false);
-
-    // 构建确认信息消息
-    const confirmMessage = `✅ 任务已确认\n\n📋 **任务**: ${pendingTask}\n\n📝 **确认信息**:\n${
-      Object.entries(answers).map(([k, v]) => `- ${v}`).join('\n')
-    }\n\n🚀 **执行计划**:\n${analysis.plan.map((p, i) => `${i + 1}. ${p}`).join('\n')}`;
-
-    // 添加系统消息
-    setChatMessages((prev) => [
-      ...prev,
-      {
-        id: `msg-${messageIdRef.current++}`,
-        role: 'system',
-        content: confirmMessage,
-        timestamp: Date.now(),
-      },
-    ]);
-
-    // 继续正常的 AI 聊天流程
-    handleSendMessage(pendingTask, undefined, true);
-    setPendingTask('');
-  }, [pendingTask]);
-
-  /** 发送聊天消息（使用 @borealos/api SDK 的 chat.stream 流式输出） */
-  const handleSendMessage = useCallback(async (content: string, model?: string, skipAnalysis = false) => {
-    // 任务分析流程：检测是否是任务描述
-    if (!skipAnalysis && isTaskDescription(content)) {
-      setPendingTask(content);
-      setTaskAnalysisVisible(true);
-      return;
+    } catch {
+      setMessages([]);
     }
+  }, [conversations]);
 
+  /** 删除对话 */
+  const handleDeleteConversation = useCallback((id: string) => {
+    setConversations((prev) => prev.filter((c) => c.id !== id));
+    localStorage.removeItem(`aurora_messages_${id}`);
+    if (activeConversationId === id) {
+      setMessages([]);
+      setActiveConversationId(null);
+    }
+  }, [activeConversationId]);
+
+  /** 重命名对话 */
+  const handleRenameConversation = useCallback((id: string, title: string) => {
+    setConversations((prev) =>
+      prev.map((c) => (c.id === id ? { ...c, title } : c)),
+    );
+  }, []);
+
+  /** 保存消息到 localStorage */
+  const saveMessages = useCallback((convId: string, msgs: ChatMessage[]) => {
+    try {
+      localStorage.setItem(`aurora_messages_${convId}`, JSON.stringify(msgs));
+    } catch {}
+  }, []);
+
+  /** 发送聊天消息（通过 /api/chat/ws 流式 WebSocket） */
+  const handleSendMessage = useCallback(async (content: string, model?: string) => {
     const userMessage: ChatMessage = {
-      id: `msg-${messageIdRef.current++}`,
+      id: genId(),
       role: 'user',
       content,
       timestamp: Date.now(),
     };
-    setChatMessages((prev) => [...prev, userMessage]);
+
+    const newMessages = [...messagesRef.current, userMessage];
+    setMessages(newMessages);
     setIsAiThinking(true);
 
-    // 创建流式回复消息占位
-    const streamingId = `msg-${messageIdRef.current++}`;
-    setChatMessages((prev) => [
-      ...prev,
-      { id: streamingId, role: 'assistant', content: '', timestamp: Date.now() },
-    ]);
+    // 灵动岛：AI 思考中
+    DynamicIsland.show({
+      type: 'thinking',
+      title: 'AI 思考中',
+      body: content.slice(0, 40),
+      duration: 0,
+    });
 
-    /** 更新流式消息内容 */
+    const streamingId = genId();
+    const assistantMessage: ChatMessage = {
+      id: streamingId,
+      role: 'assistant',
+      content: '',
+      timestamp: Date.now(),
+    };
+    setMessages([...newMessages, assistantMessage]);
+
     const updateStreaming = (text: string) => {
-      setChatMessages((prev) =>
+      setMessages((prev) =>
         prev.map((m) => (m.id === streamingId ? { ...m, content: text } : m)),
       );
     };
 
-    /** 回退到 POST 非流式接口（使用 @borealos/api 的 BorealOSClient） */
-    const tryPostFallback = async () => {
-      try {
-        const result = await apiClient.chat.send(content, { model });
-        updateStreaming(result.content || '(空回复)');
-      } catch {
-        updateStreaming('⚠️ AI 服务暂时不可用，请检查后端服务是否已启动后重试。');
-      } finally {
-        setIsAiThinking(false);
+    /** 保存对话并更新侧边栏 */
+    const persistConversation = (finalContent: string) => {
+      const finalMessages = [...newMessages, { ...assistantMessage, content: finalContent }];
+      if (!activeConversationId) {
+        const newConv: Conversation = {
+          id: `conv-${Date.now()}`,
+          title: generateTitle(finalMessages),
+          lastMessage: content,
+          updatedAt: Date.now(),
+          messageCount: finalMessages.length,
+        };
+        setConversations((prev) => [newConv, ...prev]);
+        setActiveConversationId(newConv.id);
+        saveMessages(newConv.id, finalMessages);
+      } else {
+        setConversations((prev) =>
+          prev.map((c) =>
+            c.id === activeConversationId
+              ? {
+                  ...c,
+                  lastMessage: content,
+                  updatedAt: Date.now(),
+                  messageCount: finalMessages.length,
+                  title: c.messageCount === 0 ? generateTitle(finalMessages) : c.title,
+                }
+              : c,
+          ),
+        );
+        saveMessages(activeConversationId, finalMessages);
       }
     };
 
-    // 构建历史消息（排除系统欢迎消息和空流式占位）
-    const history = chatMessagesRef.current
+    const history = newMessages
       .filter((m) => (m.role === 'user' || m.role === 'assistant') && m.content.length > 0)
       .map((m) => ({ role: m.role as 'user' | 'assistant', content: m.content }));
 
-    // 使用 SDK 的 chat.stream 进行流式聊天
+    const useModel = model || selectedModel;
+
+    // ---- 通过直接 WebSocket 连接 /api/chat/ws 进行流式聊天 ----
+    const proto = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const wsUrl = `${proto}//${window.location.host}/api/chat/ws`;
+
     try {
-      // 确保 WebSocket 已连接
-      if (!apiClient.ws.isConnected()) {
-        apiClient.ws.connect();
-        // 等待连接建立（最多 3 秒）
-        await new Promise<void>((resolve) => {
-          const timeout = setTimeout(() => resolve(), 3000);
-          apiClient.ws.on('open', () => {
-            clearTimeout(timeout);
-            resolve();
-          });
-        });
-      }
-
+      const ws = new WebSocket(wsUrl);
       let fullContent = '';
-      const finalContent = await apiClient.chat.stream(
-        content,
-        { model, history },
-        (delta: string) => {
-          fullContent += delta;
-          updateStreaming(fullContent);
-        },
-      );
+      let settled = false;
 
-      // 流式完成
-      updateStreaming(finalContent || fullContent);
+      await new Promise<void>((resolve, reject) => {
+        const timeout = setTimeout(() => {
+          if (!settled) {
+            settled = true;
+            try { ws.close(); } catch {}
+            reject(new Error('连接超时'));
+          }
+        }, 30000);
+
+        ws.onopen = () => {
+          // 发送聊天请求（与服务端 /api/chat/ws 格式匹配）
+          ws.send(JSON.stringify({
+            message: content,
+            model: useModel,
+            history,
+          }));
+        };
+
+        ws.onmessage = (ev: MessageEvent) => {
+          try {
+            const data = JSON.parse(ev.data as string);
+            if (data.type === 'chunk' && data.content) {
+              fullContent += data.content;
+              updateStreaming(fullContent);
+            } else if (data.type === 'done') {
+              if (settled) return;
+              settled = true;
+              clearTimeout(timeout);
+              const final = data.content || fullContent;
+              updateStreaming(final);
+              resolve();
+            } else if (data.type === 'error') {
+              if (settled) return;
+              settled = true;
+              clearTimeout(timeout);
+              reject(new Error(data.error || 'AI 服务错误'));
+            }
+          } catch {
+            // 忽略解析错误
+          }
+        };
+
+        ws.onerror = () => {
+          if (!settled) {
+            settled = true;
+            clearTimeout(timeout);
+            reject(new Error('WebSocket 连接失败'));
+          }
+        };
+
+        ws.onclose = () => {
+          if (!settled) {
+            settled = true;
+            clearTimeout(timeout);
+            if (fullContent) {
+              resolve(); // 已收到部分内容，视为成功
+            } else {
+              reject(new Error('连接已关闭'));
+            }
+          }
+        };
+      });
+
       setIsAiThinking(false);
-    } catch {
-      // 流式失败，回退到非流式
-      await tryPostFallback();
-    }
-  }, []);
-
-  /* ---------- 菜单栏操作 ---------- */
-  const handleMenuAction = useCallback(
-    (action: string) => {
-      switch (action) {
-        case 'new-file':
-          // 新建文件：创建一个未命名标签页
-          handleOpenFile({
-            id: '',
-            projectId: '',
-            name: 'untitled.txt',
-            path: `/untitled-${Date.now()}.txt`,
-            content: '',
-            language: 'plaintext',
-            isDirectory: false,
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
-            type: 'file',
+      // 灵动岛：回复完成
+      DynamicIsland.show({
+        type: 'notification',
+        title: '回复完成',
+        body: fullContent.slice(0, 50) + (fullContent.length > 50 ? '…' : ''),
+        duration: 3000,
+      });
+      persistConversation(fullContent || '(空回复)');
+    } catch (streamErr) {
+      // 流式失败，降级到 POST 非流式
+      try {
+        const res = await fetch('/api/chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ message: content, model: useModel, history }),
+        });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+        const reply = data?.data?.content || data?.content || '';
+        if (reply) {
+          updateStreaming(reply);
+          setIsAiThinking(false);
+          DynamicIsland.show({
+            type: 'notification',
+            title: '回复完成',
+            body: reply.slice(0, 50) + (reply.length > 50 ? '…' : ''),
+            duration: 3000,
           });
-          break;
-        case 'save':
-          handleSaveFile();
-          break;
-        case 'clear-terminal':
-          // 终端清屏通过自定义事件通知 Terminal 组件
-          window.dispatchEvent(new CustomEvent('borealos:clear-terminal'));
-          break;
-        default:
-          break;
+          persistConversation(reply);
+        } else {
+          throw new Error('空回复');
+        }
+      } catch {
+        // 最终降级：显示友好提示
+        const fallback = `AI 服务暂时不可用。\n\n你的消息："${content}"\n\n请确保后端服务已启动。`;
+        updateStreaming(fallback);
+        setIsAiThinking(false);
+        DynamicIsland.show({
+          type: 'notification',
+          title: 'AI 服务不可用',
+          body: '请检查后端服务是否已启动',
+          duration: 5000,
+        });
+        persistConversation(fallback);
       }
-    },
-    [handleOpenFile, handleSaveFile],
-  );
+    }
+  }, [activeConversationId, saveMessages, selectedModel]);
 
-  // 当前激活的标签页
-  const activeTab = openTabs.find((tab) => tab.path === activeTabPath) ?? null;
+  /** 处理斜杠命令 */
+  const handleSlashCommand = useCallback((cmd: string, args: string) => {
+    switch (cmd) {
+      case 'work':
+        setActiveView('work');
+        break;
+      case 'image':
+        setActiveView('image');
+        break;
+      case 'canvas':
+        setActiveView('canvas');
+        break;
+      case 'code':
+        setActiveView('code');
+        break;
+      case 'new':
+        handleNewConversation();
+        break;
+      case 'clear':
+        setMessages([]);
+        break;
+      default:
+        // 未知命令，作为普通消息发送
+        if (args) handleSendMessage(args);
+    }
+  }, [handleNewConversation, handleSendMessage]);
+
+  // ============================================================
+  // 渲染逻辑：根据窗口标签分支
+  // ============================================================
+
+  // 等待窗口标签检测完成
+  if (windowLabel === undefined) {
+    return null;
+  }
+
+  // ---- LOGIN 窗口：启动动画 + 登录界面 ----
+  if (windowLabel === 'login') {
+    return (
+      <div className="aurora-desktop aurora-login-window">
+        {showSplash ? (
+          <SplashScreen onFinish={() => setShowSplash(false)} />
+        ) : (
+          <LoginScreen onLogin={handleLogin} />
+        )}
+      </div>
+    );
+  }
+
+  // ---- MAIN 窗口 / 浏览器模式 ----
 
   // 未完成认证检查时显示加载状态
   if (!authChecked) {
     return (
-      <div className="app app--loading">
-        <div className="ambient-bg">
-          <div className="ambient-orb ambient-orb--blue" />
-          <div className="ambient-orb ambient-orb--purple" />
-          <div className="ambient-orb ambient-orb--green" />
-          <div className="ambient-grain" />
-        </div>
+      <div className={`app app--loading${desktopMode ? ' aurora-desktop' : ''}`}>
+        {desktopMode && <DesktopTitlebar />}
+        {desktopMode && <UpdateNotification />}
+        {showSplash && <SplashScreen onFinish={() => setShowSplash(false)} />}
         <div className="app-loading">
           <div className="app-loading__spinner">
             <div />
@@ -474,240 +540,146 @@ const App: React.FC = () => {
     );
   }
 
-  // 未登录时显示登录界面
-  if (!user) {
-    return <LoginScreen onLogin={handleLogin} />;
+  // 浏览器模式：未登录时显示登录界面
+  // 移动端 main 窗口也走此分支（移动端无双窗口，登录内联）
+  if ((windowLabel === null || (windowLabel === 'main' && isMobile())) && !user) {
+    return (
+      <div className={desktopMode ? 'aurora-desktop' : ''}>
+        {desktopMode && <DesktopTitlebar />}
+        {desktopMode && <UpdateNotification />}
+        {showSplash && <SplashScreen onFinish={() => setShowSplash(false)} />}
+        <LoginScreen onLogin={handleLogin} />
+      </div>
+    );
   }
 
+  // 桌面端 main 窗口：等待 login-success 事件或 localStorage 用户
+  if (windowLabel === 'main' && !isMobile() && !user) {
+    return (
+      <div className="aurora-desktop aurora-main-loading">
+        <DesktopTitlebar />
+        <div className="app-loading">
+          <div className="app-loading__spinner">
+            <div />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ---- 主应用内容 ----
   return (
-    <div className="app">
-      {/* 流动光效背景 — 浮动渐变球体 + 噪点纹理 */}
-      <div className="ambient-bg">
-        <div className="ambient-orb ambient-orb--blue" />
-        <div className="ambient-orb ambient-orb--purple" />
-        <div className="ambient-orb ambient-orb--green" />
-        <div className="ambient-orb ambient-orb--pink" />
-        <div className="ambient-grain" />
-      </div>
-
-      {/* 顶部区域 — 仅灵动岛居中，无传统菜单栏 */}
-      <div className="app-topbar" />
-
-      {/* 主体区域：活动栏 + 侧边栏 + 编辑器/终端 + 聊天面板 */}
-      <div className="app-body">
-        {/* 活动栏（最左侧垂直图标栏） */}
-        <ActivityBar activeView={activeView} onViewChange={setActiveView} />
-
-        {/* 左侧侧边栏 - 根据活动栏视图切换内容 */}
-        <div className="sidebar-content" key={activeView}>
-        {activeView === 'explorer' && (
-          <FileTree onOpenFile={handleOpenFile} activePath={activeTabPath} />
-        )}
-        {activeView === 'usage' && <UsagePanel />}
-        {activeView === 'progress' && <ProgressPanel />}
-        {activeView === 'search' && (
-          <div className="sidebar-placeholder">
-            <div className="sidebar-placeholder__header">搜索</div>
-            <div className="sidebar-placeholder__body">
-              <SearchIcon size={48} />
-              <p>搜索功能开发中</p>
-            </div>
+    <div className={desktopMode ? 'aurora-desktop' : ''}>
+      {desktopMode && <DesktopTitlebar />}
+      {desktopMode && <UpdateNotification />}
+      {/* 灵动岛 — 在桌面 main 窗口和移动端渲染 */}
+      {desktopMode && <DynamicIslandComponent />}
+      {windowLabel === null && showSplash && (
+        <SplashScreen onFinish={() => setShowSplash(false)} />
+      )}
+      <div className="aurora-app">
+        {/* 左侧导航栏 */}
+        <nav className="aurora-nav">
+          <div className="aurora-nav__logo">
+            <AuroraLogo size={32} />
           </div>
-        )}
-        {activeView === 'git' && (
-          <GitPanel projectId={currentProjectId} />
-        )}
-        {activeView === 'brain' && (
-          <BrainPanel projectId={currentProjectId} />
-        )}
-        {activeView === 'settings' && (
-          <div className="sidebar-placeholder sidebar-placeholder--settings">
-            <div className="sidebar-placeholder__header">设置</div>
-            <div className="settings-panel">
-              {/* 用户信息卡片 */}
-              <div className="user-profile-card">
-                <div className="user-profile-card__avatar">
-                  {user.avatar ? (
-                    <img src={user.avatar} alt={user.name} />
-                  ) : (
-                    <span>{user.name.charAt(0).toUpperCase()}</span>
-                  )}
-                </div>
-                <div className="user-profile-card__info">
-                  <div className="user-profile-card__name">{user.name}</div>
-                  <div className="user-profile-card__email">{user.email}</div>
-                  <div className="user-profile-card__badge user-profile-card__badge--pro">
-                    {user.plan === 'pro' ? 'Pro 会员' : '免费版'}
-                  </div>
-                </div>
-              </div>
-
-              {/* 用量统计 */}
-              {user.usage && (
-                <div className="user-usage">
-                  <div className="user-usage__item">
-                    <span className="user-usage__label">Token 用量</span>
-                    <span className="user-usage__value">{(user.usage.tokens / 1000).toFixed(1)}K</span>
-                  </div>
-                  <div className="user-usage__item">
-                    <span className="user-usage__label">请求次数</span>
-                    <span className="user-usage__value">{user.usage.requests}</span>
-                  </div>
-                  <div className="user-usage__item">
-                    <span className="user-usage__label">存储空间</span>
-                    <span className="user-usage__value">{(user.usage.storage / 1024 / 1024).toFixed(1)}MB</span>
-                  </div>
-                </div>
-              )}
-
-              {/* 多设备同步状态 */}
-              <div className="sync-status-panel">
-                <div className="sync-status-panel__header">
-                  <SyncIcon size={16} />
-                  <span>多设备同步</span>
-                </div>
-                <div className="sync-status-panel__info">
-                  <div className="sync-status-panel__item">
-                    <span className="sync-status-panel__label">设备</span>
-                    <span className="sync-status-panel__value">
-                      {syncManager.getDeviceInfo().deviceName}
-                    </span>
-                  </div>
-                  <div className="sync-status-panel__item">
-                    <span className="sync-status-panel__label">状态</span>
-                    <span className={`sync-status-panel__value sync-status-panel__value--${
-                      syncStatus.error ? 'error' : syncStatus.syncing ? 'syncing' : 'ok'
-                    }`}>
-                      {syncStatus.error ? '同步失败' : syncStatus.syncing ? '同步中...' : '已同步'}
-                    </span>
-                  </div>
-                  <div className="sync-status-panel__item">
-                    <span className="sync-status-panel__label">最后同步</span>
-                    <span className="sync-status-panel__value">
-                      {syncStatus.lastSyncAt
-                        ? new Date(syncStatus.lastSyncAt).toLocaleTimeString('zh-CN')
-                        : '从未'}
-                    </span>
-                  </div>
-                  {syncStatus.pendingChanges > 0 && (
-                    <div className="sync-status-panel__item">
-                      <span className="sync-status-panel__label">待同步</span>
-                      <span className="sync-status-panel__value">{syncStatus.pendingChanges} 项</span>
-                    </div>
-                  )}
-                </div>
+          <div className="aurora-nav__items">
+            {NAV_ITEMS.map((item) => {
+              const Icon = item.icon;
+              return (
                 <button
-                  className="sync-status-panel__btn"
-                  onClick={() => syncManager.forceSync()}
-                  disabled={syncStatus.syncing}
+                  key={item.type}
+                  className={`aurora-nav__item ${activeView === item.type ? 'aurora-nav__item--active' : ''}`}
+                  onClick={() => setActiveView(item.type)}
+                  data-tooltip={item.label}
                 >
-                  {syncStatus.syncing ? '同步中...' : '立即同步'}
+                  <Icon size={22} />
+                  <span className="aurora-nav__label">{item.label}</span>
                 </button>
-              </div>
-
-              {/* 退出登录按钮 */}
-              <button className="logout-btn" onClick={handleLogout}>
-                退出登录
-              </button>
-            </div>
+              );
+            })}
           </div>
-        )}
-        </div>
-
-        {/* 中间区域：编辑器 + 终端 */}
-        <div className={`center-pane ${showTerminal ? 'center-pane--terminal-open' : ''}`}>
-          {/* Monaco 编辑器（含标签页） */}
-          <Editor
-            tabs={openTabs}
-            activeTabPath={activeTabPath}
-            onSelectTab={handleSelectTab}
-            onCloseTab={handleCloseTab}
-            onContentChange={handleContentChange}
-            onCursorChange={handleCursorChange}
-            onAction={handleMenuAction}
-            onToggleTerminal={() => setShowTerminal(!showTerminal)}
-          />
-
-          {/* 底部终端 — 始终渲染，通过 CSS 控制显隐 */}
-          <div className="terminal-wrapper">
+          <div className="aurora-nav__bottom">
             <button
-              className="terminal-toggle-btn"
-              onClick={() => setShowTerminal(!showTerminal)}
-              title={showTerminal ? '隐藏终端' : '打开终端'}
+              className="aurora-nav__item"
+              title="设置"
             >
-              <span className="terminal-toggle-btn__icon">{showTerminal ? '▾' : '▸'}</span>
-              <span>终端</span>
+              <SettingsIcon size={22} />
             </button>
-            <Terminal />
           </div>
-        </div>
+        </nav>
 
-        {/* 右侧 AI 聊天面板（始终显示） */}
-        <ChatPanel
-          messages={chatMessages}
-          isThinking={isAiThinking}
-          onSend={handleSendMessage}
-        />
-      </div>
-
-      {/* 底部状态栏 */}
-      <StatusBar
-        activeFile={activeTab}
-        cursorPosition={cursorPosition}
-      >
-        <div className="status-bar__agent">
-          <AgentBadge
-            agentId={currentAgent}
-            size="sm"
-            editable
-            onChange={(agentId) => setCurrentAgent(agentId)}
+        {/* 会话栏（仅聊天视图显示） */}
+        {activeView === 'chat' && (
+          <ConversationSidebar
+            conversations={conversations}
+            activeId={activeConversationId}
+            collapsed={sidebarCollapsed}
+            user={user}
+            onSelect={handleSelectConversation}
+            onNew={handleNewConversation}
+            onDelete={handleDeleteConversation}
+            onRename={handleRenameConversation}
+            onToggle={() => setSidebarCollapsed(!sidebarCollapsed)}
+            onLogout={handleLogout}
           />
-        </div>
-      </StatusBar>
+        )}
 
-      {/* 任务分析弹窗 */}
-      <TaskAnalysisModal
-        task={pendingTask}
-        visible={taskAnalysisVisible}
-        onClose={() => {
-          setTaskAnalysisVisible(false);
-          setPendingTask('');
-        }}
-        onConfirm={handleTaskConfirm}
-      />
-
-      {/* 同步状态指示器 */}
-      {syncStatus.syncing && (
-        <div className="sync-indicator">
-          <SyncIcon size={14} className="sync-indicator__icon" />
-          <span>同步中...</span>
-        </div>
-      )}
-      {syncStatus.error && (
-        <div className="sync-indicator sync-indicator--error">
-          <span>同步失败: {syncStatus.error}</span>
-        </div>
-      )}
-
-      {/* 灵动岛 — 顶部居中，仿 iPhone Dynamic Island */}
-      <DynamicIsland />
+        {/* 主内容区 */}
+        <main className="aurora-main">
+          {activeView === 'chat' && (
+            <div key="chat" className="aurora-view-wrapper aurora-view-wrapper--chat">
+              <ChatPanel
+                messages={messages}
+                isThinking={isAiThinking}
+                onSend={handleSendMessage}
+                onToggleSidebar={() => setSidebarCollapsed(!sidebarCollapsed)}
+                sidebarCollapsed={sidebarCollapsed}
+                selectedModel={selectedModel}
+                onModelChange={setSelectedModel}
+                onSlashCommand={handleSlashCommand}
+              />
+            </div>
+          )}
+          {activeView === 'work' && (
+            <div key="work" className="aurora-view-wrapper">
+              <header className="aurora-view-header">
+                <h1>Work 模式</h1>
+                <p>主模型编排 · 子模型并行执行</p>
+              </header>
+              <WorkPanel model={selectedModel} />
+            </div>
+          )}
+          {activeView === 'image' && (
+            <div key="image" className="aurora-view-wrapper">
+              <header className="aurora-view-header">
+                <h1>AI 图片生成</h1>
+                <p>文生图 · 图生图 · 风格迁移</p>
+              </header>
+              <ImageGenPanel />
+            </div>
+          )}
+          {activeView === 'canvas' && (
+            <div key="canvas" className="aurora-view-wrapper aurora-view-wrapper--canvas">
+              <FreeCanvas />
+            </div>
+          )}
+          {activeView === 'code' && (
+            <div key="code" className="aurora-view-wrapper aurora-view-wrapper--code">
+              <header className="aurora-view-header">
+                <h1>代码编辑器</h1>
+                <p>Monaco 编辑器 · 终端 · 调试</p>
+              </header>
+              <div className="aurora-placeholder">
+                <CodeIcon size={64} />
+                <p>代码编辑器即将上线</p>
+              </div>
+            </div>
+          )}
+        </main>
+      </div>
     </div>
   );
 };
-
-/**
- * 检测用户消息是否是任务描述（触发分析流程）
- * 包含关键词：实现、修改、创建、修复、重构、部署、添加、优化、更新、开发
- */
-function isTaskDescription(message: string): boolean {
-  const keywords = [
-    '实现', '修改', '创建', '修复', '重构', '部署',
-    '添加', '优化', '更新', '开发', '完成', '弄',
-    '接入', '集成', '改造', '升级', '迁移',
-  ];
-  const lower = message.toLowerCase();
-  // 消息长度 > 5 且包含关键词
-  return message.length > 5 && keywords.some((kw) => lower.includes(kw));
-}
 
 export default App;

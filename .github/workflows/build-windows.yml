@@ -1,4 +1,4 @@
-name: Build macOS DMG
+name: Build Windows EXE
 
 on:
   push:
@@ -7,8 +7,8 @@ on:
   workflow_dispatch:
 
 jobs:
-  build-macos:
-    runs-on: macos-latest
+  build-windows:
+    runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
 
@@ -24,8 +24,6 @@ jobs:
 
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
-        with:
-          targets: aarch64-apple-darwin,x86_64-apple-darwin
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
@@ -33,16 +31,15 @@ jobs:
       - name: Build frontend
         run: pnpm --filter @borealos/web build
 
-      - name: Build Tauri macOS (Universal)
+      - name: Build Tauri Windows
         working-directory: apps/desktop
         run: |
           cargo install tauri-cli --version "^2.0"
-          cargo tauri build --target universal-apple-darwin
+          cargo tauri build
 
-      - name: Upload DMG
+      - name: Upload EXE
         uses: actions/upload-artifact@v4
         with:
-          name: aurora-macos
+          name: aurora-windows
           path: |
-            apps/desktop/src-tauri/target/universal-apple-darwin/release/bundle/dmg/*.dmg
-            apps/desktop/src-tauri/target/universal-apple-darwin/release/bundle/macos/*.app
+            apps/desktop/src-tauri/target/release/bundle/nsis/*.exe
