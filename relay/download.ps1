@@ -284,12 +284,8 @@ Write-Host "  [3/7] 下载中转服务器..." -ForegroundColor Yellow
 
 $tarball = Join-Path $installDir "borealos-relay-v2.tar.gz"
 try {
-    $curlTest = Get-Command curl -ErrorAction SilentlyContinue
-    if ($curlTest) {
-        & curl -o "$tarball" "$DOWNLOAD_URL" --silent --show-error 2>&1 | Out-Null
-    } else {
-        Invoke-WebRequest -Uri $DOWNLOAD_URL -OutFile $tarball -UseBasicParsing
-    }
+    $ProgressPreference = 'SilentlyContinue'
+    Invoke-WebRequest -Uri $DOWNLOAD_URL -OutFile $tarball -UseBasicParsing -TimeoutSec 120
 } catch {
     Write-Host "  下载失败: $($_.Exception.Message)" -ForegroundColor Red
     exit 1
