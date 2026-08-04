@@ -347,9 +347,19 @@ Write-Host "  [4/7] 解压..." -ForegroundColor Yellow
 
 $relayDir = Join-Path $installDir "relay"
 if (Test-Path $relayDir) {
+    # 先尝试关闭可能占用目录的 node 进程
+    Get-Process node -ErrorAction SilentlyContinue | Where-Object { $_.Path -like "$relayDir*" } | Stop-Process -Force -ErrorAction SilentlyContinue
+    Start-Sleep -Milliseconds 500
+    # 尝试备份旧目录，失败则直接覆盖
     $backupDir = "$relayDir-backup-$(Get-Date -Format 'yyyyMMdd-HHmmss')"
-    Rename-Item $relayDir $backupDir
-    Write-Host "  已备份旧目录: $backupDir" -ForegroundColor DarkGray
+    try {
+        Rename-Item $relayDir $backupDir -ErrorAction Stop
+        Write-Host "  已备份旧目录: $backupDir" -ForegroundColor DarkGray
+    } catch {
+        Write-Host "  旧目录被占用，直接覆盖..." -ForegroundColor DarkGray
+        Remove-Item $relayDir -Recurse -Force -ErrorAction SilentlyContinue
+        Start-Sleep -Milliseconds 500
+    }
 }
 
 & tar -xzf "$tarball" -C "$installDir" 2>$null
