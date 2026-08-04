@@ -1,0 +1,56 @@
+version: '1.0'
+name: build-android-apk
+displayName: 构建 Android APK
+
+triggers:
+  push:
+    tags:
+      include:
+        - '^v.*'
+  schedule: []
+
+variables:
+  RUST_VERSION: 'stable'
+
+stages:
+  - stage: build
+    displayName: 构建 APK
+    strategy: naturally
+    trigger: auto
+    steps:
+      - step: build@nodejs
+        name: build_frontend
+        displayName: 构建前端
+        nodeVersion: 20
+        commands:
+          - npm install -g pnpm
+          - pnpm install --frozen-lockfile
+          - pnpm --filter @borealos/web build
+        artifacts:
+          - name: FRONTEND_DIST
+            path:
+              - ./apps/web/dist
+
+      - step: build@shell
+        name: build_apk
+        displayName: 构建 Android APK
+        dependArtifacts:
+          - FRONTEND_DIST
+        commands:
+          # 安装 Rust
+          - curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+          - source "$HOME/.cargo/env"
+          # 安装 Tauri CLI
+          - cargo install tauri-cli --version "^2.0"
+          # 添加 Android 编译目标
+          - rustup target add aarch64-linux-android armv7-linux-androideabi i686-linux-android x86_64-linux-android
+          # 设置 Android SDK (使用 Gitee Go 预装或环境变量)
+          - export ANDROID_HOME=${ANDROID_HOME:-/usr/local/android-sdk}
+          # 初始化 Android 项目
+          - cd apps/desktop && cargo tauri android init
+          # 构建 APK
+          - cargo tauri android build --apk
+        artifacts:
+          - name: APK_OUTPUT
+            path:
+              - ./apps/desktop/src-tauri/gen/android/app/build/outputs/apk/**/*.apk
