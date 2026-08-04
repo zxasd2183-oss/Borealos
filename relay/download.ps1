@@ -321,10 +321,29 @@ if ($proxyReady -or (Test-Proxy)) {
     Write-Host "  [!] Set proxy env vars after starting v2rayN" -ForegroundColor Yellow
 }
 
-# ---- 3. Download relay server ----
+# ---- 3. Clean old files + Download relay server ----
 Write-Host ""
-Write-Host "  [3/7] Download relay server..." -ForegroundColor Yellow
+Write-Host "  [3/7] Clean old + Download relay server..." -ForegroundColor Yellow
 
+$relayDir = Join-Path $installDir "relay"
+
+# Clean up old backup directories and old tarballs BEFORE downloading new one
+$oldBackups = Get-ChildItem -Path $installDir -Filter "relay-backup-*" -Directory -ErrorAction SilentlyContinue
+if ($oldBackups) {
+    Write-Host "  Cleaning old backups..." -ForegroundColor DarkGray
+    foreach ($b in $oldBackups) {
+        Remove-Item $b.FullName -Recurse -Force -ErrorAction SilentlyContinue
+    }
+    Write-Host "  [OK] Old backups removed" -ForegroundColor DarkGray
+}
+
+# Remove old tarballs
+$oldTarballs = Get-ChildItem -Path $installDir -Filter "borealos-relay-*.tar.gz" -ErrorAction SilentlyContinue
+foreach ($t in $oldTarballs) {
+    Remove-Item $t.FullName -Force -ErrorAction SilentlyContinue
+}
+
+# Now download fresh tarball
 $tarball = Join-Path $installDir "borealos-relay-v2.tar.gz"
 try {
     $ProgressPreference = 'SilentlyContinue'
@@ -346,18 +365,6 @@ Write-Host "  [OK] Downloaded ($size KB)" -ForegroundColor Green
 Write-Host ""
 Write-Host "  [4/7] Extract..." -ForegroundColor Yellow
 
-$relayDir = Join-Path $installDir "relay"
-
-# Clean up old backup directories
-$oldBackups = Get-ChildItem -Path $installDir -Filter "relay-backup-*" -Directory -ErrorAction SilentlyContinue
-if ($oldBackups) {
-    Write-Host "  Cleaning old backups..." -ForegroundColor DarkGray
-    foreach ($b in $oldBackups) {
-        Remove-Item $b.FullName -Recurse -Force -ErrorAction SilentlyContinue
-    }
-    Write-Host "  [OK] Old backups removed" -ForegroundColor DarkGray
-}
-
 if (Test-Path $relayDir) {
     # Stop node processes using relay dir
     Get-Process node -ErrorAction SilentlyContinue | Where-Object { $_.Path -like "$relayDir*" } | Stop-Process -Force -ErrorAction SilentlyContinue
@@ -368,15 +375,9 @@ if (Test-Path $relayDir) {
     Write-Host "  [OK] Old relay dir removed" -ForegroundColor DarkGray
 }
 
-# Clean up old tarball
-$oldTarballs = Get-ChildItem -Path $installDir -Filter "borealos-relay-*.tar.gz" -ErrorAction SilentlyContinue
-foreach ($t in $oldTarballs) {
-    Remove-Item $t.FullName -Force -ErrorAction SilentlyContinue
-}
-
 & tar -xzf "$tarball" -C "$installDir" 2>$null
 if ($LASTEXITCODE -ne 0) {
-    Write-Host "  Install tar: winget install GnuWin32.Tar" -ForegroundColor White
+    Write-Host "  [X] Extract failed. Try: winget install GnuWin32.Tar" -ForegroundColor Red
     exit 1
 }
 
