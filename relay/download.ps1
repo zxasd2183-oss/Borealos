@@ -66,16 +66,46 @@ Write-Host "  [2/7] 检查/安装 v2rayN 代理..." -ForegroundColor Yellow
 $v2rayDir = Join-Path $installDir "v2rayN"
 $proxyReady = $false
 
-# 检查代理是否已经在运行
-function Test-Proxy {
+# 检查代理端口是否在监听（TCP 连接测试，比 HTTP 请求更可靠）
+function Test-Port {
+    param([int]$Port)
     try {
-        $response = Invoke-WebRequest -Uri "http://127.0.0.1:$PROXY_HTTP_PORT" -Method HEAD -TimeoutSec 2 -UseBasicParsing -ErrorAction Stop
+        $tcp = New-Object System.Net.Sockets.TcpClient
+        $tcp.Connect("127.0.0.1", $Port)
+        $tcp.Close()
         return $true
     } catch {
-        # 端口有响应说明代理在跑（即使返回错误）
-        if ($_.Exception.Response) { return $true }
         return $false
     }
+}
+
+# 检查代理是否在运行（检测多个常见端口 + 系统代理设置）
+function Test-Proxy {
+    # 1. 检查 v2rayN 默认端口
+    $commonPorts = @(10809, 10808, 1080, 7890, 7891, 8080, 8888)
+    foreach ($p in $commonPorts) {
+        if (Test-Port -Port $p) {
+            $script:PROXY_HTTP_PORT = $p
+            $script:PROXY_URL = "http://127.0.0.1:$p"
+            return $true
+        }
+    }
+    # 2. 检查系统代理设置
+    try {
+        $reg = Get-ItemProperty -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Internet Settings" -ErrorAction Stop
+        if ($reg.ProxyEnable -eq 1 -and $reg.ProxyServer) {
+            $server = $reg.ProxyServer
+            if ($server -match "(\d+\.){3}\d+:(\d+)") {
+                $port = [int]$Matches[2]
+                if (Test-Port -Port $port) {
+                    $script:PROXY_HTTP_PORT = $port
+                    $script:PROXY_URL = "http://$server"
+                    return $true
+                }
+            }
+        }
+    } catch {}
+    return $false
 }
 
 # 快速解压（Expand-Archive 对大 zip 极慢，改用 .NET ZipFile）
