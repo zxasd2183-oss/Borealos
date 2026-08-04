@@ -369,6 +369,26 @@ if ($LASTEXITCODE -ne 0) {
 }
 Write-Host "  ✓ 解压完成" -ForegroundColor Green
 
+# ---- 4b. 下载 frpc.exe（frp 客户端）----
+Write-Host ""
+Write-Host "  [4b/7] 下载 frp 客户端..." -ForegroundColor Yellow
+
+$frpcExe = Join-Path $relayDir "frpc.exe"
+if (Test-Path $frpcExe) {
+    Write-Host "  ✓ frpc.exe 已存在" -ForegroundColor Green
+} else {
+    $frpcUrl = "http://$VPS_HOST`:$DOWNLOAD_PORT/frpc.exe"
+    try {
+        $ProgressPreference = 'SilentlyContinue'
+        Invoke-WebRequest -Uri $frpcUrl -OutFile $frpcExe -UseBasicParsing -TimeoutSec 120
+        $frpcSize = [math]::Round((Get-Item $frpcExe).Length / 1MB, 1)
+        Write-Host "  ✓ frpc.exe 下载完成 ($frpcSize MB)" -ForegroundColor Green
+    } catch {
+        Write-Host "  ✗ frpc.exe 下载失败: $($_.Exception.Message)" -ForegroundColor Yellow
+        Write-Host "    手动下载: https://github.com/fatedier/frp/releases" -ForegroundColor DarkGray
+    }
+}
+
 # ---- 5. 安装中转服务器依赖 ----
 Write-Host ""
 Write-Host "  [5/7] 安装中转服务器依赖..." -ForegroundColor Yellow
