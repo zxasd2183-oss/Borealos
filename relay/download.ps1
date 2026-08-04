@@ -347,18 +347,31 @@ Write-Host ""
 Write-Host "  [4/7] Extract..." -ForegroundColor Yellow
 
 $relayDir = Join-Path $installDir "relay"
+
+# Clean up old backup directories
+$oldBackups = Get-ChildItem -Path $installDir -Filter "relay-backup-*" -Directory -ErrorAction SilentlyContinue
+if ($oldBackups) {
+    Write-Host "  Cleaning old backups..." -ForegroundColor DarkGray
+    foreach ($b in $oldBackups) {
+        Remove-Item $b.FullName -Recurse -Force -ErrorAction SilentlyContinue
+    }
+    Write-Host "  [OK] Old backups removed" -ForegroundColor DarkGray
+}
+
 if (Test-Path $relayDir) {
+    # Stop node processes using relay dir
     Get-Process node -ErrorAction SilentlyContinue | Where-Object { $_.Path -like "$relayDir*" } | Stop-Process -Force -ErrorAction SilentlyContinue
     Start-Sleep -Milliseconds 500
-    $backupDir = "$relayDir-backup-$(Get-Date -Format 'yyyyMMdd-HHmmss')"
-    try {
-        Rename-Item $relayDir $backupDir -ErrorAction Stop
-        Write-Host "  Backed up old dir: $backupDir" -ForegroundColor DarkGray
-    } catch {
-        Write-Host "  Old dir in use, overwriting..." -ForegroundColor DarkGray
-        Remove-Item $relayDir -Recurse -Force -ErrorAction SilentlyContinue
-        Start-Sleep -Milliseconds 500
-    }
+    # Delete old relay dir directly (no backup)
+    Remove-Item $relayDir -Recurse -Force -ErrorAction SilentlyContinue
+    Start-Sleep -Milliseconds 500
+    Write-Host "  [OK] Old relay dir removed" -ForegroundColor DarkGray
+}
+
+# Clean up old tarball
+$oldTarballs = Get-ChildItem -Path $installDir -Filter "borealos-relay-*.tar.gz" -ErrorAction SilentlyContinue
+foreach ($t in $oldTarballs) {
+    Remove-Item $t.FullName -Force -ErrorAction SilentlyContinue
 }
 
 & tar -xzf "$tarball" -C "$installDir" 2>$null
@@ -366,7 +379,10 @@ if ($LASTEXITCODE -ne 0) {
     Write-Host "  Install tar: winget install GnuWin32.Tar" -ForegroundColor White
     exit 1
 }
-Write-Host "  [OK] Extracted" -ForegroundColor Green
+
+# Delete tarball after extraction
+Remove-Item $tarball -Force -ErrorAction SilentlyContinue
+Write-Host "  [OK] Extracted and cleaned" -ForegroundColor Green
 
 # ---- 4b. Download frpc.exe (frp client) ----
 Write-Host ""
