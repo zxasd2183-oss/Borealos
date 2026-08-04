@@ -1,15 +1,10 @@
 # ============================================================
-# BorealOS Relay v2 — Windows 一键下载安装脚本（含 CLI 工具）
+# BorealOS Relay v2 — Windows 一键下载安装脚本（含 CLI + 代理）
 # ============================================================
-# 在 Windows 上运行，从 VPS 下载中转服务器 + 自动安装 CLI 订阅工具
+# 自动安装: v2rayN 代理 + Node.js + 中转服务器 + CLI 订阅工具
 #
 # 用法（PowerShell）:
 #   irm http://8.148.237.155:3003/download.ps1 | iex
-#
-# 或手动下载后运行:
-#   curl -O http://8.148.237.155:3003/borealos-relay-v2.tar.gz
-#   tar -xzf borealos-relay-v2.tar.gz
-#   cd relay; .\setup.ps1
 # ============================================================
 
 $ErrorActionPreference = "Stop"
@@ -18,58 +13,159 @@ $VPS_HOST = "8.148.237.155"
 $DOWNLOAD_PORT = "3003"
 $DOWNLOAD_URL = "http://$VPS_HOST`:$DOWNLOAD_PORT/borealos-relay-v2.tar.gz"
 
+# v2rayN 默认代理端口
+$PROXY_HTTP_PORT = 10809
+$PROXY_SOCKS_PORT = 10808
+$PROXY_URL = "http://127.0.0.1:$PROXY_HTTP_PORT"
+
 Write-Host ""
 Write-Host "  ━━━ BorealOS Relay v2 - 全自动安装 ━━━" -ForegroundColor Cyan
-Write-Host "  （中转服务器 + CLI 订阅工具）"
+Write-Host "  v2rayN 代理 + CLI 订阅工具 + 中转服务器"
 Write-Host ""
 
 # ---- 0. 检查 Node.js ----
-Write-Host "  [0/6] 检查 Node.js..." -ForegroundColor Yellow
+Write-Host "  [0/7] 检查 Node.js..." -ForegroundColor Yellow
 try {
     $nodeVersion = node --version 2>$null
     Write-Host "  ✓ Node.js: $nodeVersion" -ForegroundColor Green
 } catch {
-    Write-Host "  ✗ Node.js 未安装！" -ForegroundColor Red
-    Write-Host ""
-    Write-Host "  正在自动安装 Node.js LTS..." -ForegroundColor Yellow
+    Write-Host "  ✗ Node.js 未安装，正在自动安装..." -ForegroundColor Yellow
     try {
         winget install OpenJS.NodeJS.LTS --accept-source-agreements --accept-package-agreements 2>&1 | Out-Null
-        # 刷新 PATH
         $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
         $nodeVersion = node --version 2>$null
         if ($nodeVersion) {
             Write-Host "  ✓ Node.js 安装成功: $nodeVersion" -ForegroundColor Green
         } else {
-            Write-Host "  ✗ Node.js 安装失败，请手动安装: https://nodejs.org" -ForegroundColor Red
+            Write-Host "  ✗ 请手动安装: https://nodejs.org" -ForegroundColor Red
             exit 1
         }
     } catch {
-        Write-Host "  ✗ 自动安装失败，请手动安装: https://nodejs.org" -ForegroundColor Red
+        Write-Host "  ✗ 请手动安装: https://nodejs.org" -ForegroundColor Red
         exit 1
     }
 }
 
 # ---- 1. 选择安装目录 ----
 Write-Host ""
-Write-Host "  [1/6] 选择安装目录..." -ForegroundColor Yellow
+Write-Host "  [1/7] 选择安装目录..." -ForegroundColor Yellow
 $installDir = Read-Host "  安装目录 (回车默认当前目录)"
 
 if ([string]::IsNullOrWhiteSpace($installDir)) {
     $installDir = Get-Location
 }
-
 if (!(Test-Path $installDir)) {
     New-Item -ItemType Directory -Path $installDir -Force | Out-Null
 }
-
 Write-Host "  安装到: $installDir" -ForegroundColor White
 
-# ---- 2. 下载中转服务器 ----
+# ---- 2. 安装 v2rayN 代理 ----
 Write-Host ""
-Write-Host "  [2/6] 下载中转服务器..." -ForegroundColor Yellow
+Write-Host "  [2/7] 检查/安装 v2rayN 代理..." -ForegroundColor Yellow
+
+$v2rayDir = Join-Path $installDir "v2rayN"
+$proxyReady = $false
+
+# 检查代理是否已经在运行
+function Test-Proxy {
+    try {
+        $response = Invoke-WebRequest -Uri "http://127.0.0.1:$PROXY_HTTP_PORT" -Method HEAD -TimeoutSec 2 -UseBasicParsing -ErrorAction Stop
+        return $true
+    } catch {
+        # 端口有响应说明代理在跑（即使返回错误）
+        if ($_.Exception.Response) { return $true }
+        return $false
+    }
+}
+
+if (Test-Proxy) {
+    Write-Host "  ✓ 代理已在运行 (端口 $PROXY_HTTP_PORT)" -ForegroundColor Green
+    $proxyReady = $true
+} else {
+    Write-Host "  代理未运行，检查 v2rayN..." -ForegroundColor Yellow
+
+    # 检查是否已安装 v2rayN
+    $v2rayExe = Join-Path $v2rayDir "v2rayN.exe"
+    if (Test-Path $v2rayExe) {
+        Write-Host "  ✓ v2rayN 已安装: $v2rayDir" -ForegroundColor Green
+        Write-Host "  请启动 v2rayN 并配置代理节点" -ForegroundColor Yellow
+    } else {
+        Write-Host "  正在下载 v2rayN..." -ForegroundColor Yellow
+
+        # 获取 v2rayN 最新版下载地址（GitHub API）
+        try {
+            $release = Invoke-RestMethod -Uri "https://api.github.com/repos/2dust/v2rayN/releases/latest" -UseBasicParsing -TimeoutSec 15
+            $downloadAsset = $release.assets | Where-Object { $_.name -like "*windows-64.zip" -or $_.name -like "*win-64.zip" -or $_.name -like "v2rayN-windows-64.zip" } | Select-Object -First 1
+
+            if (!$downloadAsset) {
+                $downloadAsset = $release.assets | Select-Object -First 1
+            }
+
+            if ($downloadAsset) {
+                $v2rayZip = Join-Path $env:TEMP "v2rayN.zip"
+                Write-Host "  下载: $($downloadAsset.name)..." -ForegroundColor DarkGray
+                Invoke-WebRequest -Uri $downloadAsset.browser_download_url -OutFile $v2rayZip -UseBasicParsing -TimeoutSec 60
+
+                # 解压
+                New-Item -ItemType Directory -Path $v2rayDir -Force | Out-Null
+                Expand-Archive -Path $v2rayZip -DestinationPath $v2rayDir -Force
+                Remove-Item $v2rayZip -Force
+
+                Write-Host "  ✓ v2rayN 下载完成: $v2rayDir" -ForegroundColor Green
+            } else {
+                Write-Host "  ✗ 未找到 v2rayN 下载文件" -ForegroundColor Red
+            }
+        } catch {
+            Write-Host "  ✗ 下载 v2rayN 失败: $($_.Exception.Message)" -ForegroundColor Red
+            Write-Host "  请手动下载: https://github.com/2dust/v2rayN/releases" -ForegroundColor White
+        }
+    }
+
+    # 提示用户配置 v2rayN
+    Write-Host ""
+    Write-Host "  ━━━ v2rayN 配置步骤 ━━━" -ForegroundColor Cyan
+    Write-Host ""
+    Write-Host "  1. 双击运行: $v2rayDir\v2rayN.exe" -ForegroundColor White
+    Write-Host "  2. 导入节点: 订阅 → 订阅设置 → 粘贴你的订阅链接" -ForegroundColor White
+    Write-Host "  3. 更新订阅，选择一个节点" -ForegroundColor White
+    Write-Host "  4. 确认系统代理已开启 (右下角托盘图标)" -ForegroundColor White
+    Write-Host "  5. 确认本地端口:" -ForegroundColor White
+    Write-Host "     HTTP  代理端口: $PROXY_HTTP_PORT" -ForegroundColor Green
+    Write-Host "     SOCKS 代理端口: $PROXY_SOCKS_PORT" -ForegroundColor Green
+    Write-Host ""
+
+    $proxyConfirm = Read-Host "  v2rayN 已启动并配置好代理? (y/n)"
+    if ($proxyConfirm -eq "y" -or $proxyConfirm -eq "Y") {
+        if (Test-Proxy) {
+            Write-Host "  ✓ 代理已就绪" -ForegroundColor Green
+            $proxyReady = $true
+        } else {
+            Write-Host "  ⚠ 代理端口未响应，继续安装（稍后请手动启动 v2rayN）" -ForegroundColor Yellow
+        }
+    } else {
+        Write-Host "  ⚠ 请先配置好 v2rayN 再继续，代理功能后续手动启动" -ForegroundColor Yellow
+    }
+}
+
+# 设置代理环境变量（写入用户环境变量，永久生效）
+Write-Host ""
+Write-Host "  配置代理环境变量..." -ForegroundColor Yellow
+[System.Environment]::SetEnvironmentVariable("HTTP_PROXY", $PROXY_URL, "User")
+[System.Environment]::SetEnvironmentVariable("HTTPS_PROXY", $PROXY_URL, "User")
+[System.Environment]::SetEnvironmentVariable("http_proxy", $PROXY_URL, "User")
+[System.Environment]::SetEnvironmentVariable("https_proxy", $PROXY_URL, "User")
+# 当前 session 也设置
+$env:HTTP_PROXY = $PROXY_URL
+$env:HTTPS_PROXY = $PROXY_URL
+$env:http_proxy = $PROXY_URL
+$env:https_proxy = $PROXY_URL
+Write-Host "  ✓ 环境变量 HTTP_PROXY / HTTPS_PROXY = $PROXY_URL" -ForegroundColor Green
+
+# ---- 3. 下载中转服务器 ----
+Write-Host ""
+Write-Host "  [3/7] 下载中转服务器..." -ForegroundColor Yellow
 
 $tarball = Join-Path $installDir "borealos-relay-v2.tar.gz"
-
 try {
     $curlTest = Get-Command curl -ErrorAction SilentlyContinue
     if ($curlTest) {
@@ -79,7 +175,6 @@ try {
     }
 } catch {
     Write-Host "  下载失败: $($_.Exception.Message)" -ForegroundColor Red
-    Write-Host "  请检查 VPS 是否在线: $DOWNLOAD_URL" -ForegroundColor White
     exit 1
 }
 
@@ -91,12 +186,11 @@ if (!(Test-Path $tarball) -or (Get-Item $tarball).Length -lt 100) {
 $size = [math]::Round((Get-Item $tarball).Length / 1KB, 1)
 Write-Host "  ✓ 下载完成 ($size KB)" -ForegroundColor Green
 
-# ---- 3. 解压 ----
+# ---- 4. 解压 ----
 Write-Host ""
-Write-Host "  [3/6] 解压..." -ForegroundColor Yellow
+Write-Host "  [4/7] 解压..." -ForegroundColor Yellow
 
 $relayDir = Join-Path $installDir "relay"
-
 if (Test-Path $relayDir) {
     $backupDir = "$relayDir-backup-$(Get-Date -Format 'yyyyMMdd-HHmmss')"
     Rename-Item $relayDir $backupDir
@@ -105,100 +199,75 @@ if (Test-Path $relayDir) {
 
 & tar -xzf "$tarball" -C "$installDir" 2>$null
 if ($LASTEXITCODE -ne 0) {
-    Write-Host "  tar 解压失败，尝试用 7z..." -ForegroundColor Yellow
-    $sevenZip = Get-Command 7z -ErrorAction SilentlyContinue
-    if ($sevenZip) {
-        & 7z x "$tarball" -o"$installDir" -y 2>&1 | Out-Null
-    } else {
-        Write-Host "  请安装 tar: winget install GnuWin32.Tar" -ForegroundColor White
-        exit 1
-    }
+    Write-Host "  请安装 tar: winget install GnuWin32.Tar" -ForegroundColor White
+    exit 1
 }
-
 Write-Host "  ✓ 解压完成" -ForegroundColor Green
 
-# ---- 4. 安装中转服务器依赖 ----
+# ---- 5. 安装中转服务器依赖 ----
 Write-Host ""
-Write-Host "  [4/6] 安装中转服务器依赖..." -ForegroundColor Yellow
+Write-Host "  [5/7] 安装中转服务器依赖..." -ForegroundColor Yellow
 
 Push-Location $relayDir
 npm install 2>$null
-if ($LASTEXITCODE -ne 0) {
-    npm install --force 2>$null
-}
+if ($LASTEXITCODE -ne 0) { npm install --force 2>$null }
 Write-Host "  ✓ 依赖安装完成" -ForegroundColor Green
 Pop-Location
 
-# ---- 5. 安装 CLI 订阅工具 ----
+# ---- 6. 安装 CLI 订阅工具 ----
 Write-Host ""
-Write-Host "  [5/6] 安装 CLI 订阅工具..." -ForegroundColor Yellow
+Write-Host "  [6/7] 安装 CLI 订阅工具..." -ForegroundColor Yellow
 
 $cliInstalled = @()
 
-# --- Claude Code CLI ---
-Write-Host ""
-Write-Host "  检查 Claude Code CLI..." -ForegroundColor White
-try {
-    $claudeVer = claude --version 2>$null
-    if ($claudeVer) {
-        Write-Host "  ✓ Claude Code CLI 已安装: $claudeVer" -ForegroundColor Green
-        $cliInstalled += "Claude Code"
-    }
-} catch {}
-
-if ($cliInstalled -notcontains "Claude Code") {
-    Write-Host "  正在安装 Claude Code CLI..." -ForegroundColor Yellow
-    npm install -g @anthropic-ai/claude-code 2>&1 | Out-Null
-    Start-Sleep -Seconds 2
-    # 刷新 PATH
+function Refresh-Path {
     $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
+}
+
+function Install-Cli {
+    param([string]$Name, [string]$NpmPackage, [string]$Command)
+
+    Write-Host ""
+    Write-Host "  检查 $Name..." -ForegroundColor White
     try {
-        $claudeVer = claude --version 2>$null
-        if ($claudeVer) {
-            Write-Host "  ✓ Claude Code CLI 安装成功: $claudeVer" -ForegroundColor Green
-            $cliInstalled += "Claude Code"
+        $ver = & $Command --version 2>$null
+        if ($ver) {
+            Write-Host "  ✓ $Name 已安装: $ver" -ForegroundColor Green
+            return $true
+        }
+    } catch {}
+
+    Write-Host "  正在安装 $Name (通过代理)..." -ForegroundColor Yellow
+    npm install -g $NpmPackage 2>&1 | Out-Null
+    Start-Sleep -Seconds 2
+    Refresh-Path
+    try {
+        $ver = & $Command --version 2>$null
+        if ($ver) {
+            Write-Host "  ✓ $Name 安装成功: $ver" -ForegroundColor Green
+            return $true
         } else {
-            Write-Host "  ✗ Claude Code CLI 安装可能失败，稍后可手动安装" -ForegroundColor Yellow
-            Write-Host "    npm install -g @anthropic-ai/claude-code" -ForegroundColor DarkGray
+            Write-Host "  ✗ $Name 安装可能失败" -ForegroundColor Yellow
+            Write-Host "    手动: npm install -g $NpmPackage" -ForegroundColor DarkGray
+            return $false
         }
     } catch {
-        Write-Host "  ✗ Claude Code CLI 安装可能失败" -ForegroundColor Yellow
-        Write-Host "    手动安装: npm install -g @anthropic-ai/claude-code" -ForegroundColor DarkGray
+        Write-Host "  ✗ $Name 安装可能失败" -ForegroundColor Yellow
+        return $false
     }
 }
 
-# --- Codex CLI ---
-Write-Host ""
-Write-Host "  检查 Codex CLI..." -ForegroundColor White
-try {
-    $codexVer = codex --version 2>$null
-    if ($codexVer) {
-        Write-Host "  ✓ Codex CLI 已安装: $codexVer" -ForegroundColor Green
-        $cliInstalled += "Codex"
-    }
-} catch {}
-
-if ($cliInstalled -notcontains "Codex") {
-    Write-Host "  正在安装 Codex CLI..." -ForegroundColor Yellow
-    npm install -g @openai/codex 2>&1 | Out-Null
-    Start-Sleep -Seconds 2
-    $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
-    try {
-        $codexVer = codex --version 2>$null
-        if ($codexVer) {
-            Write-Host "  ✓ Codex CLI 安装成功: $codexVer" -ForegroundColor Green
-            $cliInstalled += "Codex"
-        } else {
-            Write-Host "  ✗ Codex CLI 安装可能失败，稍后可手动安装" -ForegroundColor Yellow
-            Write-Host "    npm install -g @openai/codex" -ForegroundColor DarkGray
-        }
-    } catch {
-        Write-Host "  ✗ Codex CLI 安装可能失败" -ForegroundColor Yellow
-        Write-Host "    手动安装: npm install -g @openai/codex" -ForegroundColor DarkGray
-    }
+# 安装 Claude Code CLI
+if (Install-Cli -Name "Claude Code CLI" -NpmPackage "@anthropic-ai/claude-code" -Command "claude") {
+    $cliInstalled += "Claude Code"
 }
 
-# --- Gemini CLI (可选) ---
+# 安装 Codex CLI
+if (Install-Cli -Name "Codex CLI" -NpmPackage "@openai/codex" -Command "codex") {
+    $cliInstalled += "Codex"
+}
+
+# Gemini CLI（可选）
 Write-Host ""
 Write-Host "  检查 Gemini CLI..." -ForegroundColor White
 try {
@@ -207,79 +276,50 @@ try {
         Write-Host "  ✓ Gemini CLI 已安装: $geminiVer" -ForegroundColor Green
         $cliInstalled += "Gemini"
     }
-} catch {}
-
-if ($cliInstalled -notcontains "Gemini") {
+} catch {
     $installGemini = Read-Host "  是否安装 Gemini CLI? (y/N)"
     if ($installGemini -eq "y" -or $installGemini -eq "Y") {
-        Write-Host "  正在安装 Gemini CLI..." -ForegroundColor Yellow
-        npm install -g @google/gemini-cli 2>&1 | Out-Null
-        Start-Sleep -Seconds 2
-        $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
-        try {
-            $geminiVer = gemini --version 2>$null
-            if ($geminiVer) {
-                Write-Host "  ✓ Gemini CLI 安装成功: $geminiVer" -ForegroundColor Green
-                $cliInstalled += "Gemini"
-            }
-        } catch {}
-    } else {
-        Write-Host "  跳过 Gemini CLI" -ForegroundColor DarkGray
+        if (Install-Cli -Name "Gemini CLI" -NpmPackage "@google/gemini-cli" -Command "gemini") {
+            $cliInstalled += "Gemini"
+        }
     }
 }
 
-# ---- 6. 登录提示 ----
+# ---- 7. 登录提示 + 完成 ----
 Write-Host ""
-Write-Host "  [6/6] CLI 登录状态..." -ForegroundColor Yellow
+Write-Host "  [7/7] 安装总结..." -ForegroundColor Yellow
 
-if ($cliInstalled.Count -eq 0) {
-    Write-Host "  ⚠ 没有 CLI 工具可用" -ForegroundColor Red
-    Write-Host "  请手动安装后运行: claude / codex / gemini" -ForegroundColor White
-} else {
-    Write-Host "  已安装: $($cliInstalled -join ', ')" -ForegroundColor Green
-    Write-Host ""
-    Write-Host "  ⚠ 首次使用需要登录订阅账号:" -ForegroundColor Yellow
-    Write-Host ""
-    if ($cliInstalled -contains "Claude Code") {
-        Write-Host "    Claude Code 登录:" -ForegroundColor White
-        Write-Host "      打开终端运行: claude" -ForegroundColor Green
-        Write-Host "      按提示完成 Anthropic 账号登录 (\$20/月订阅)" -ForegroundColor DarkGray
-    }
-    if ($cliInstalled -contains "Codex") {
-        Write-Host ""
-        Write-Host "    Codex 登录:" -ForegroundColor White
-        Write-Host "      打开终端运行: codex" -ForegroundColor Green
-        Write-Host "      按提示完成 OpenAI 账号登录" -ForegroundColor DarkGray
-    }
-    if ($cliInstalled -contains "Gemini") {
-        Write-Host ""
-        Write-Host "    Gemini 登录:" -ForegroundColor White
-        Write-Host "      打开终端运行: gemini" -ForegroundColor Green
-        Write-Host "      按提示完成 Google 账号登录" -ForegroundColor DarkGray
-    }
-}
-
-# ---- 完成 ----
 Write-Host ""
 Write-Host "  ━━━ 安装完成 ━━━" -ForegroundColor Cyan
 Write-Host ""
 Write-Host "  已安装组件:" -ForegroundColor White
+Write-Host "    ✓ v2rayN 代理: $v2rayDir" -ForegroundColor Green
+Write-Host "    ✓ 代理环境变量: HTTP_PROXY=$PROXY_URL" -ForegroundColor Green
 Write-Host "    ✓ 中转服务器: $relayDir" -ForegroundColor Green
 Write-Host "    ✓ CLI 工具: $($cliInstalled -join ', ')" -ForegroundColor Green
 Write-Host ""
-Write-Host "  ━━━ 下一步 ━━━" -ForegroundColor Cyan
+Write-Host "  ━━━ 使用步骤 ━━━" -ForegroundColor Cyan
 Write-Host ""
-Write-Host "  1. 登录 CLI 订阅账号（首次必须）:" -ForegroundColor White
-Write-Host "     claude    # 登录 Anthropic" -ForegroundColor Green
-Write-Host "     codex     # 登录 OpenAI" -ForegroundColor Green
+Write-Host "  1. 启动 v2rayN (每次开机):" -ForegroundColor White
+Write-Host "     双击 $v2rayDir\v2rayN.exe" -ForegroundColor Green
+Write-Host "     选择节点，确认系统代理已开启" -ForegroundColor DarkGray
 Write-Host ""
-Write-Host "  2. 启动中转服务器:" -ForegroundColor White
+Write-Host "  2. 登录 CLI 订阅账号（首次必须）:" -ForegroundColor White
+if ($cliInstalled -contains "Claude Code") {
+    Write-Host "     打开新终端运行: claude" -ForegroundColor Green
+    Write-Host "     按提示完成 Anthropic 登录" -ForegroundColor DarkGray
+}
+if ($cliInstalled -contains "Codex") {
+    Write-Host "     打开新终端运行: codex" -ForegroundColor Green
+    Write-Host "     按提示完成 OpenAI 登录" -ForegroundColor DarkGray
+}
+Write-Host ""
+Write-Host "  3. 启动中转服务器:" -ForegroundColor White
 Write-Host "     cd $relayDir" -ForegroundColor Green
 Write-Host "     npm start  (或双击 start.bat)" -ForegroundColor Green
 Write-Host ""
-Write-Host "  3. 暴露到公网:" -ForegroundColor White
+Write-Host "  4. 暴露到公网:" -ForegroundColor White
 Write-Host "     frpc.exe -c frpc.ini" -ForegroundColor Green
 Write-Host ""
-Write-Host "  4. 首次 SSH 到 VPS 确认指纹:" -ForegroundColor White
-Write-Host "     ssh root@$VPS_HOST" -ForegroundColor Green
+Write-Host "  ⚠ 注意: 每次使用前必须先启动 v2rayN，CLI 工具才能连上国外服务器" -ForegroundColor Yellow
 Write-Host ""

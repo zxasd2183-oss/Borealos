@@ -238,6 +238,17 @@ app.post('/api/cli/execute', authMiddleware, async (req, res) => {
     const fullPrompt = options.messages ? buildPrompt(prompt, options.messages) : prompt;
     const workDir = options.workDir || process.cwd();
 
+    // CLI 工具需要走代理才能连上国外服务器（v2rayN 默认 HTTP 代理端口 10809）
+    const PROXY_URL = process.env.HTTP_PROXY || 'http://127.0.0.1:10809';
+    const cliEnv = {
+      ...process.env,
+      FORCE_COLOR: '0',
+      HTTP_PROXY: PROXY_URL,
+      HTTPS_PROXY: PROXY_URL,
+      http_proxy: PROXY_URL,
+      https_proxy: PROXY_URL,
+    };
+
     if (cliType === 'claude') {
       // Claude Code CLI
       const args = ['-p', fullPrompt, '--output-format', 'stream-json'];
@@ -248,7 +259,7 @@ app.post('/api/cli/execute', authMiddleware, async (req, res) => {
       }
       proc = spawn(cli.command, args, {
         cwd: workDir,
-        env: { ...process.env, FORCE_COLOR: '0' },
+        env: cliEnv,
         stdio: ['pipe', 'pipe', 'pipe'],
       });
     } else if (cliType === 'codex') {
@@ -256,7 +267,7 @@ app.post('/api/cli/execute', authMiddleware, async (req, res) => {
       const args = ['--quiet', fullPrompt];
       proc = spawn(cli.command, args, {
         cwd: workDir,
-        env: { ...process.env, FORCE_COLOR: '0' },
+        env: cliEnv,
         stdio: ['pipe', 'pipe', 'pipe'],
       });
     } else if (cliType === 'gemini') {
@@ -264,7 +275,7 @@ app.post('/api/cli/execute', authMiddleware, async (req, res) => {
       const args = [fullPrompt];
       proc = spawn(cli.command, args, {
         cwd: workDir,
-        env: { ...process.env, FORCE_COLOR: '0' },
+        env: cliEnv,
         stdio: ['pipe', 'pipe', 'pipe'],
       });
     } else {
