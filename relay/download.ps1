@@ -1,11 +1,18 @@
 # ============================================================
-# BorealOS Relay v2 — Windows 一键下载安装脚本（含 CLI + 代理）
+# BorealOS Relay v2 - Windows One-Click Installer (ASCII Only)
 # ============================================================
-# 自动安装: v2rayN 代理 + Node.js + 中转服务器 + CLI 订阅工具
+# Auto-install: v2rayN proxy + Node.js + relay server + CLI tools
 #
-# 用法（PowerShell）:
+# Usage (PowerShell):
 #   irm http://8.148.237.155:3003/download.ps1 | iex
+#
+# Or use boot.ps1 (recommended if you see garbled text):
+#   irm http://8.148.237.155:3003/boot.ps1 | iex
 # ============================================================
+
+# Force UTF-8 for console (helps when run as file or via boot.ps1)
+try { [Console]::OutputEncoding = [System.Text.Encoding]::UTF8 } catch {}
+try { chcp 65001 > $null } catch {}
 
 $ErrorActionPreference = "Stop"
 
@@ -13,43 +20,45 @@ $VPS_HOST = "8.148.237.155"
 $DOWNLOAD_PORT = "3003"
 $DOWNLOAD_URL = "http://$VPS_HOST`:$DOWNLOAD_PORT/borealos-relay-v2.tar.gz"
 
-# v2rayN 默认代理端口
+# v2rayN default proxy port
 $PROXY_HTTP_PORT = 10809
 $PROXY_SOCKS_PORT = 10808
 $PROXY_URL = "http://127.0.0.1:$PROXY_HTTP_PORT"
 
 Write-Host ""
-Write-Host "  ━━━ BorealOS Relay v2 - 全自动安装 ━━━" -ForegroundColor Cyan
-Write-Host "  v2rayN 代理 + CLI 订阅工具 + 中转服务器"
+Write-Host "  ========================================" -ForegroundColor Cyan
+Write-Host "    BorealOS Relay v2 - Full Auto Install" -ForegroundColor Cyan
+Write-Host "    v2rayN + CLI Tools + Relay Server" -ForegroundColor Cyan
+Write-Host "  ========================================" -ForegroundColor Cyan
 Write-Host ""
 
-# ---- 0. 检查 Node.js ----
-Write-Host "  [0/7] 检查 Node.js..." -ForegroundColor Yellow
+# ---- 0. Check Node.js ----
+Write-Host "  [0/7] Check Node.js..." -ForegroundColor Yellow
 try {
     $nodeVersion = node --version 2>$null
-    Write-Host "  ✓ Node.js: $nodeVersion" -ForegroundColor Green
+    Write-Host "  [OK] Node.js: $nodeVersion" -ForegroundColor Green
 } catch {
-    Write-Host "  ✗ Node.js 未安装，正在自动安装..." -ForegroundColor Yellow
+    Write-Host "  [!] Node.js not found, auto-installing..." -ForegroundColor Yellow
     try {
         winget install OpenJS.NodeJS.LTS --accept-source-agreements --accept-package-agreements 2>&1 | Out-Null
         $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
         $nodeVersion = node --version 2>$null
         if ($nodeVersion) {
-            Write-Host "  ✓ Node.js 安装成功: $nodeVersion" -ForegroundColor Green
+            Write-Host "  [OK] Node.js installed: $nodeVersion" -ForegroundColor Green
         } else {
-            Write-Host "  ✗ 请手动安装: https://nodejs.org" -ForegroundColor Red
+            Write-Host "  [X] Please install manually: https://nodejs.org" -ForegroundColor Red
             exit 1
         }
     } catch {
-        Write-Host "  ✗ 请手动安装: https://nodejs.org" -ForegroundColor Red
+        Write-Host "  [X] Please install manually: https://nodejs.org" -ForegroundColor Red
         exit 1
     }
 }
 
-# ---- 1. 选择安装目录 ----
+# ---- 1. Choose install directory ----
 Write-Host ""
-Write-Host "  [1/7] 选择安装目录..." -ForegroundColor Yellow
-$installDir = Read-Host "  安装目录 (回车默认当前目录)"
+Write-Host "  [1/7] Choose install directory..." -ForegroundColor Yellow
+$installDir = Read-Host "  Install dir (Enter = current dir)"
 
 if ([string]::IsNullOrWhiteSpace($installDir)) {
     $installDir = Get-Location
@@ -57,16 +66,16 @@ if ([string]::IsNullOrWhiteSpace($installDir)) {
 if (!(Test-Path $installDir)) {
     New-Item -ItemType Directory -Path $installDir -Force | Out-Null
 }
-Write-Host "  安装到: $installDir" -ForegroundColor White
+Write-Host "  Install to: $installDir" -ForegroundColor White
 
-# ---- 2. 安装 v2rayN 代理 ----
+# ---- 2. Install v2rayN proxy ----
 Write-Host ""
-Write-Host "  [2/7] 检查/安装 v2rayN 代理..." -ForegroundColor Yellow
+Write-Host "  [2/7] Check/Install v2rayN proxy..." -ForegroundColor Yellow
 
 $v2rayDir = Join-Path $installDir "v2rayN"
 $proxyReady = $false
 
-# 检查代理端口是否在监听（TCP 连接测试，比 HTTP 请求更可靠）
+# Check if proxy port is listening (TCP test)
 function Test-Port {
     param([int]$Port)
     try {
@@ -79,9 +88,8 @@ function Test-Port {
     }
 }
 
-# 检查代理是否在运行（检测多个常见端口 + 系统代理设置）
+# Check if proxy is running (scan common ports + system proxy)
 function Test-Proxy {
-    # 1. 检查 v2rayN 默认端口
     $commonPorts = @(10809, 10808, 1080, 7890, 7891, 8080, 8888)
     foreach ($p in $commonPorts) {
         if (Test-Port -Port $p) {
@@ -90,7 +98,6 @@ function Test-Proxy {
             return $true
         }
     }
-    # 2. 检查系统代理设置
     try {
         $reg = Get-ItemProperty -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Internet Settings" -ErrorAction Stop
         if ($reg.ProxyEnable -eq 1 -and $reg.ProxyServer) {
@@ -108,7 +115,7 @@ function Test-Proxy {
     return $false
 }
 
-# 快速解压（Expand-Archive 对大 zip 极慢，改用 .NET ZipFile）
+# Fast unzip (Expand-Archive is slow for large zips, use .NET ZipFile)
 function Expand-ZipFast {
     param([string]$ZipPath, [string]$DestPath)
     Add-Type -AssemblyName System.IO.Compression.FileSystem -ErrorAction SilentlyContinue
@@ -118,19 +125,18 @@ function Expand-ZipFast {
 }
 
 if (Test-Proxy) {
-    Write-Host "  ✓ 代理已在运行 (端口 $PROXY_HTTP_PORT)" -ForegroundColor Green
+    Write-Host "  [OK] Proxy already running (port $PROXY_HTTP_PORT)" -ForegroundColor Green
     $proxyReady = $true
 } else {
-    Write-Host "  代理未运行，检查 v2rayN..." -ForegroundColor Yellow
+    Write-Host "  Proxy not running, checking v2rayN..." -ForegroundColor Yellow
 
-    # 检查是否已安装 v2rayN（当前目录 + 解压子目录 + 常见位置）
+    # Check if v2rayN is already installed
     $v2rayExe = $null
     $searchPaths = @(
         (Join-Path $v2rayDir "v2rayN.exe"),
         (Join-Path $v2rayDir "v2rayN\v2rayN.exe"),
         (Join-Path $v2rayDir "v2rayN-windows-64\v2rayN.exe")
     )
-    # 也搜索桌面和常见下载位置
     $searchPaths += @(
         (Join-Path ([Environment]::GetFolderPath('Desktop')) "v2rayN\v2rayN.exe"),
         (Join-Path $env:USERPROFILE "v2rayN\v2rayN.exe"),
@@ -140,35 +146,34 @@ if (Test-Proxy) {
         if (Test-Path $p) { $v2rayExe = $p; break }
     }
 
-    # 用 Get-Command 做最后兜底
     if (!$v2rayExe) {
         try { $found = Get-Command v2rayN -ErrorAction Stop; if ($found) { $v2rayExe = $found.Source } } catch {}
     }
 
     if ($v2rayExe) {
         $v2rayDir = Split-Path $v2rayExe -Parent
-        Write-Host "  ✓ v2rayN 已安装: $v2rayDir" -ForegroundColor Green
-        Write-Host "  请启动 v2rayN 并配置代理节点" -ForegroundColor Yellow
+        Write-Host "  [OK] v2rayN found: $v2rayDir" -ForegroundColor Green
+        Write-Host "  Please start v2rayN and configure proxy node" -ForegroundColor Yellow
     } else {
-        # 询问用户是否已有 v2rayN
-        $hasV2ray = Read-Host "  未检测到 v2rayN，是否已有? 输入路径直接回车跳过下载，输入 n 下载"
+        # Ask user if they already have v2rayN
+        $hasV2ray = Read-Host "  v2rayN not found. Enter path (or 'n' to download)"
         if ($hasV2ray -and $hasV2ray -ne "n" -and $hasV2ray -ne "N") {
             $userPath = $hasV2ray.Trim('"').Trim("'")
             $userExe = if ($userPath -like "*.exe") { $userPath } else { Join-Path $userPath "v2rayN.exe" }
             if (Test-Path $userExe) {
                 $v2rayExe = $userExe
                 $v2rayDir = Split-Path $userExe -Parent
-                Write-Host "  ✓ 找到 v2rayN: $v2rayDir" -ForegroundColor Green
+                Write-Host "  [OK] Found v2rayN: $v2rayDir" -ForegroundColor Green
             } else {
-                Write-Host "  ⚠ 未在该路径找到 v2rayN.exe，跳过" -ForegroundColor Yellow
+                Write-Host "  [!] v2rayN.exe not found at that path, skipping" -ForegroundColor Yellow
             }
         }
     }
 
     if (!$v2rayExe) {
-        Write-Host "  正在下载 v2rayN..." -ForegroundColor Yellow
+        Write-Host "  Downloading v2rayN..." -ForegroundColor Yellow
 
-        # GitHub 加速镜像列表（国内直连 GitHub 经常超时）
+        # GitHub mirror list
         $mirrors = @(
             "https://ghfast.top",
             "https://gh-proxy.com",
@@ -178,12 +183,12 @@ if (Test-Proxy) {
 
         $v2rayDownloaded = $false
 
-        # 先尝试通过 GitHub API 获取最新版（带超时）
+        # Try GitHub API first
         $release = $null
         try {
             $release = Invoke-RestMethod -Uri "https://api.github.com/repos/2dust/v2rayN/releases/latest" -UseBasicParsing -TimeoutSec 10
         } catch {
-            Write-Host "  GitHub API 超时，尝试镜像源..." -ForegroundColor DarkGray
+            Write-Host "  GitHub API timeout, trying mirrors..." -ForegroundColor DarkGray
         }
 
         if ($release) {
@@ -196,41 +201,40 @@ if (Test-Proxy) {
                 $originalUrl = $downloadAsset.browser_download_url
                 $v2rayZip = Join-Path $env:TEMP "v2rayN.zip"
 
-                # 依次尝试: 直连 → 各镜像
                 $urlsToTry = @($originalUrl)
                 foreach ($m in $mirrors) {
                     $urlsToTry += "$m/$originalUrl"
                 }
 
                 foreach ($url in $urlsToTry) {
-                    $source = if ($url -eq $originalUrl) { "GitHub 直连" } else { $url.Split('/')[2] }
-                    Write-Host "  尝试下载 ($source)..." -ForegroundColor DarkGray
+                    $source = if ($url -eq $originalUrl) { "GitHub direct" } else { $url.Split('/')[2] }
+                    Write-Host "  Trying ($source)..." -ForegroundColor DarkGray
                     try {
                         Invoke-WebRequest -Uri $url -OutFile $v2rayZip -UseBasicParsing -TimeoutSec 120
                         $fileSize = (Get-Item $v2rayZip).Length
                         if ($fileSize -gt 100000) {
-                            Write-Host "  ✓ 下载成功 ($source, $([math]::Round($fileSize/1MB,1)) MB)" -ForegroundColor Green
+                            Write-Host "  [OK] Downloaded ($source, $([math]::Round($fileSize/1MB,1)) MB)" -ForegroundColor Green
                             $v2rayDownloaded = $true
                             break
                         }
                     } catch {
-                        Write-Host "  ✗ $source 失败: $($_.Exception.Message)" -ForegroundColor DarkGray
+                        Write-Host "  [X] $source failed: $($_.Exception.Message)" -ForegroundColor DarkGray
                         continue
                     }
                 }
 
                 if ($v2rayDownloaded) {
-                    Write-Host "  正在解压..." -ForegroundColor DarkGray
+                    Write-Host "  Extracting..." -ForegroundColor DarkGray
                     Expand-ZipFast -ZipPath $v2rayZip -DestPath $v2rayDir
                     Remove-Item $v2rayZip -Force
-                    Write-Host "  ✓ v2rayN 解压完成: $v2rayDir" -ForegroundColor Green
+                    Write-Host "  [OK] v2rayN extracted: $v2rayDir" -ForegroundColor Green
                 }
             }
         }
 
-        # 如果 API 或下载都失败了，尝试从镜像直接下载已知版本
+        # Fallback: direct download from mirrors
         if (!$v2rayDownloaded) {
-            Write-Host "  尝试从镜像源直接下载..." -ForegroundColor Yellow
+            Write-Host "  Trying direct mirror download..." -ForegroundColor Yellow
             $directUrls = @(
                 "https://ghfast.top/https://github.com/2dust/v2rayN/releases/latest/download/v2rayN-windows-64.zip",
                 "https://gh-proxy.com/https://github.com/2dust/v2rayN/releases/latest/download/v2rayN-windows-64.zip",
@@ -239,65 +243,64 @@ if (Test-Proxy) {
             $v2rayZip = Join-Path $env:TEMP "v2rayN.zip"
             foreach ($url in $directUrls) {
                 $source = $url.Split('/')[2]
-                Write-Host "  尝试 ($source)..." -ForegroundColor DarkGray
+                Write-Host "  Trying ($source)..." -ForegroundColor DarkGray
                 try {
                     Invoke-WebRequest -Uri $url -OutFile $v2rayZip -UseBasicParsing -TimeoutSec 120
                     $fileSize = (Get-Item $v2rayZip).Length
                     if ($fileSize -gt 100000) {
-                        Write-Host "  ✓ 下载成功 ($source, $([math]::Round($fileSize/1MB,1)) MB)" -ForegroundColor Green
-                        Write-Host "  正在解压..." -ForegroundColor DarkGray
+                        Write-Host "  [OK] Downloaded ($source, $([math]::Round($fileSize/1MB,1)) MB)" -ForegroundColor Green
+                        Write-Host "  Extracting..." -ForegroundColor DarkGray
                         Expand-ZipFast -ZipPath $v2rayZip -DestPath $v2rayDir
                         Remove-Item $v2rayZip -Force
-                        Write-Host "  ✓ v2rayN 解压完成: $v2rayDir" -ForegroundColor Green
+                        Write-Host "  [OK] v2rayN extracted: $v2rayDir" -ForegroundColor Green
                         $v2rayDownloaded = $true
                         break
                     }
                 } catch {
-                    Write-Host "  ✗ $source 失败" -ForegroundColor DarkGray
+                    Write-Host "  [X] $source failed" -ForegroundColor DarkGray
                     continue
                 }
             }
         }
 
         if (!$v2rayDownloaded) {
-            Write-Host "  ✗ 所有下载源均失败" -ForegroundColor Red
-            Write-Host "  请手动下载 v2rayN:" -ForegroundColor White
-            Write-Host "    镜像1: https://ghfast.top/https://github.com/2dust/v2rayN/releases" -ForegroundColor Cyan
-            Write-Host "    镜像2: https://gh-proxy.com/https://github.com/2dust/v2rayN/releases" -ForegroundColor Cyan
-            Write-Host "    解压到: $v2rayDir" -ForegroundColor White
+            Write-Host "  [X] All download sources failed" -ForegroundColor Red
+            Write-Host "  Manual download:" -ForegroundColor White
+            Write-Host "    https://ghfast.top/https://github.com/2dust/v2rayN/releases" -ForegroundColor Cyan
+            Write-Host "    Extract to: $v2rayDir" -ForegroundColor White
         }
     }
 
-    # 提示用户配置 v2rayN
+    # Prompt user to configure v2rayN
     Write-Host ""
-    Write-Host "  ━━━ v2rayN 配置步骤 ━━━" -ForegroundColor Cyan
+    Write-Host "  ===== v2rayN Setup Guide =====" -ForegroundColor Cyan
     Write-Host ""
-    Write-Host "  1. 双击运行: $v2rayDir\v2rayN.exe" -ForegroundColor White
-    Write-Host "  2. 导入节点: 订阅 → 订阅设置 → 粘贴你的订阅链接" -ForegroundColor White
-    Write-Host "  3. 更新订阅，选择一个节点" -ForegroundColor White
-    Write-Host "  4. 确认系统代理已开启 (右下角托盘图标)" -ForegroundColor White
-    Write-Host "  5. 确认本地端口:" -ForegroundColor White
-    Write-Host "     HTTP  代理端口: $PROXY_HTTP_PORT" -ForegroundColor Green
-    Write-Host "     SOCKS 代理端口: $PROXY_SOCKS_PORT" -ForegroundColor Green
+    Write-Host "  1. Run: $v2rayDir\v2rayN.exe" -ForegroundColor White
+    Write-Host "  2. Import node: Subscription -> Settings -> paste your URL" -ForegroundColor White
+    Write-Host "  3. Update subscription, select a node" -ForegroundColor White
+    Write-Host "  4. Enable system proxy (tray icon)" -ForegroundColor White
+    Write-Host "  5. Verify ports:" -ForegroundColor White
+    Write-Host "     HTTP  proxy: $PROXY_HTTP_PORT" -ForegroundColor Green
+    Write-Host "     SOCKS proxy: $PROXY_SOCKS_PORT" -ForegroundColor Green
     Write-Host ""
 
-    $proxyConfirm = Read-Host "  v2rayN 已启动并配置好代理? (y/n)"
+    $proxyConfirm = Read-Host "  v2rayN started and proxy configured? (y/n)"
     if ($proxyConfirm -eq "y" -or $proxyConfirm -eq "Y") {
         if (Test-Proxy) {
-            Write-Host "  ✓ 代理已就绪" -ForegroundColor Green
+            Write-Host "  [OK] Proxy ready" -ForegroundColor Green
             $proxyReady = $true
         } else {
-            Write-Host "  ⚠ 代理端口未响应，继续安装（稍后请手动启动 v2rayN）" -ForegroundColor Yellow
+            Write-Host "  [!] Proxy port not responding, continuing anyway" -ForegroundColor Yellow
         }
     } else {
-        Write-Host "  ⚠ 请先配置好 v2rayN 再继续，代理功能后续手动启动" -ForegroundColor Yellow
+        Write-Host "  [!] Please configure v2rayN later" -ForegroundColor Yellow
     }
 }
 
-# 设置代理环境变量 — 仅在代理实际运行时才设置
+# Set proxy env vars
 Write-Host ""
 if ($proxyReady -or (Test-Proxy)) {
-    Write-Host "  配置代理环境变量（代理已运行）..." -ForegroundColor Yellow
+    Write-Host "  Setting proxy env vars (proxy running)..." -ForegroundColor Yellow
     [System.Environment]::SetEnvironmentVariable("HTTP_PROXY", $PROXY_URL, "User")
     [System.Environment]::SetEnvironmentVariable("HTTPS_PROXY", $PROXY_URL, "User")
     [System.Environment]::SetEnvironmentVariable("http_proxy", $PROXY_URL, "User")
@@ -306,57 +309,53 @@ if ($proxyReady -or (Test-Proxy)) {
     $env:HTTPS_PROXY = $PROXY_URL
     $env:http_proxy = $PROXY_URL
     $env:https_proxy = $PROXY_URL
-    Write-Host "  ✓ 环境变量 HTTP_PROXY / HTTPS_PROXY = $PROXY_URL" -ForegroundColor Green
+    Write-Host "  [OK] HTTP_PROXY / HTTPS_PROXY = $PROXY_URL" -ForegroundColor Green
 } else {
-    Write-Host "  代理未运行，跳过代理环境变量（使用国内 npm 镜像）..." -ForegroundColor Yellow
-    # 清除可能残留的代理变量，避免 npm ECONNREFUSED
+    Write-Host "  Proxy not running, using npm mirror..." -ForegroundColor Yellow
     $env:HTTP_PROXY = $null
     $env:HTTPS_PROXY = $null
     $env:http_proxy = $null
     $env:https_proxy = $null
-    # 设置 npm 国内镜像
     npm config set registry https://registry.npmmirror.com 2>$null
-    Write-Host "  ✓ npm 镜像: registry.npmmirror.com" -ForegroundColor Green
-    Write-Host "  ⚠ 启动 v2rayN 后再手动设置代理环境变量" -ForegroundColor Yellow
+    Write-Host "  [OK] npm mirror: registry.npmmirror.com" -ForegroundColor Green
+    Write-Host "  [!] Set proxy env vars after starting v2rayN" -ForegroundColor Yellow
 }
 
-# ---- 3. 下载中转服务器 ----
+# ---- 3. Download relay server ----
 Write-Host ""
-Write-Host "  [3/7] 下载中转服务器..." -ForegroundColor Yellow
+Write-Host "  [3/7] Download relay server..." -ForegroundColor Yellow
 
 $tarball = Join-Path $installDir "borealos-relay-v2.tar.gz"
 try {
     $ProgressPreference = 'SilentlyContinue'
     Invoke-WebRequest -Uri $DOWNLOAD_URL -OutFile $tarball -UseBasicParsing -TimeoutSec 120
 } catch {
-    Write-Host "  下载失败: $($_.Exception.Message)" -ForegroundColor Red
+    Write-Host "  [X] Download failed: $($_.Exception.Message)" -ForegroundColor Red
     exit 1
 }
 
 if (!(Test-Path $tarball) -or (Get-Item $tarball).Length -lt 100) {
-    Write-Host "  下载失败，文件不完整" -ForegroundColor Red
+    Write-Host "  [X] Download incomplete" -ForegroundColor Red
     exit 1
 }
 
 $size = [math]::Round((Get-Item $tarball).Length / 1KB, 1)
-Write-Host "  ✓ 下载完成 ($size KB)" -ForegroundColor Green
+Write-Host "  [OK] Downloaded ($size KB)" -ForegroundColor Green
 
-# ---- 4. 解压 ----
+# ---- 4. Extract ----
 Write-Host ""
-Write-Host "  [4/7] 解压..." -ForegroundColor Yellow
+Write-Host "  [4/7] Extract..." -ForegroundColor Yellow
 
 $relayDir = Join-Path $installDir "relay"
 if (Test-Path $relayDir) {
-    # 先尝试关闭可能占用目录的 node 进程
     Get-Process node -ErrorAction SilentlyContinue | Where-Object { $_.Path -like "$relayDir*" } | Stop-Process -Force -ErrorAction SilentlyContinue
     Start-Sleep -Milliseconds 500
-    # 尝试备份旧目录，失败则直接覆盖
     $backupDir = "$relayDir-backup-$(Get-Date -Format 'yyyyMMdd-HHmmss')"
     try {
         Rename-Item $relayDir $backupDir -ErrorAction Stop
-        Write-Host "  已备份旧目录: $backupDir" -ForegroundColor DarkGray
+        Write-Host "  Backed up old dir: $backupDir" -ForegroundColor DarkGray
     } catch {
-        Write-Host "  旧目录被占用，直接覆盖..." -ForegroundColor DarkGray
+        Write-Host "  Old dir in use, overwriting..." -ForegroundColor DarkGray
         Remove-Item $relayDir -Recurse -Force -ErrorAction SilentlyContinue
         Start-Sleep -Milliseconds 500
     }
@@ -364,44 +363,44 @@ if (Test-Path $relayDir) {
 
 & tar -xzf "$tarball" -C "$installDir" 2>$null
 if ($LASTEXITCODE -ne 0) {
-    Write-Host "  请安装 tar: winget install GnuWin32.Tar" -ForegroundColor White
+    Write-Host "  Install tar: winget install GnuWin32.Tar" -ForegroundColor White
     exit 1
 }
-Write-Host "  ✓ 解压完成" -ForegroundColor Green
+Write-Host "  [OK] Extracted" -ForegroundColor Green
 
-# ---- 4b. 下载 frpc.exe（frp 客户端）----
+# ---- 4b. Download frpc.exe (frp client) ----
 Write-Host ""
-Write-Host "  [4b/7] 下载 frp 客户端..." -ForegroundColor Yellow
+Write-Host "  [4b/7] Download frp client..." -ForegroundColor Yellow
 
 $frpcExe = Join-Path $relayDir "frpc.exe"
 if (Test-Path $frpcExe) {
-    Write-Host "  ✓ frpc.exe 已存在" -ForegroundColor Green
+    Write-Host "  [OK] frpc.exe already exists" -ForegroundColor Green
 } else {
     $frpcUrl = "http://$VPS_HOST`:$DOWNLOAD_PORT/frpc.exe"
     try {
         $ProgressPreference = 'SilentlyContinue'
         Invoke-WebRequest -Uri $frpcUrl -OutFile $frpcExe -UseBasicParsing -TimeoutSec 120
         $frpcSize = [math]::Round((Get-Item $frpcExe).Length / 1MB, 1)
-        Write-Host "  ✓ frpc.exe 下载完成 ($frpcSize MB)" -ForegroundColor Green
+        Write-Host "  [OK] frpc.exe downloaded ($frpcSize MB)" -ForegroundColor Green
     } catch {
-        Write-Host "  ✗ frpc.exe 下载失败: $($_.Exception.Message)" -ForegroundColor Yellow
-        Write-Host "    手动下载: https://github.com/fatedier/frp/releases" -ForegroundColor DarkGray
+        Write-Host "  [X] frpc.exe download failed: $($_.Exception.Message)" -ForegroundColor Yellow
+        Write-Host "    Manual: https://github.com/fatedier/frp/releases" -ForegroundColor DarkGray
     }
 }
 
-# ---- 5. 安装中转服务器依赖 ----
+# ---- 5. Install relay server deps ----
 Write-Host ""
-Write-Host "  [5/7] 安装中转服务器依赖..." -ForegroundColor Yellow
+Write-Host "  [5/7] Install relay server deps..." -ForegroundColor Yellow
 
 Push-Location $relayDir
 cmd /c "npm install 2>nul"
 if ($LASTEXITCODE -ne 0) { cmd /c "npm install --force 2>nul" }
-Write-Host "  ✓ 依赖安装完成" -ForegroundColor Green
+Write-Host "  [OK] Deps installed" -ForegroundColor Green
 Pop-Location
 
-# ---- 6. 安装 CLI 订阅工具 ----
+# ---- 6. Install CLI tools ----
 Write-Host ""
-Write-Host "  [6/7] 安装 CLI 订阅工具..." -ForegroundColor Yellow
+Write-Host "  [6/7] Install CLI tools..." -ForegroundColor Yellow
 
 $cliInstalled = @()
 
@@ -413,57 +412,56 @@ function Install-Cli {
     param([string]$Name, [string]$NpmPackage, [string]$Command)
 
     Write-Host ""
-    Write-Host "  检查 $Name..." -ForegroundColor White
+    Write-Host "  Checking $Name..." -ForegroundColor White
     try {
         $ver = & $Command --version 2>$null
         if ($ver) {
-            Write-Host "  ✓ $Name 已安装: $ver" -ForegroundColor Green
+            Write-Host "  [OK] $Name installed: $ver" -ForegroundColor Green
             return $true
         }
     } catch {}
 
-    Write-Host "  正在安装 $Name..." -ForegroundColor Yellow
-    # 用 cmd /c 包装避免 PowerShell 把 npm stderr 当错误
+    Write-Host "  Installing $Name..." -ForegroundColor Yellow
     cmd /c "npm install -g $NpmPackage 2>nul & exit 0"
     Start-Sleep -Seconds 2
     Refresh-Path
     try {
         $ver = & $Command --version 2>$null
         if ($ver) {
-            Write-Host "  ✓ $Name 安装成功: $ver" -ForegroundColor Green
+            Write-Host "  [OK] $Name installed: $ver" -ForegroundColor Green
             return $true
         } else {
-            Write-Host "  ✗ $Name 安装可能失败" -ForegroundColor Yellow
-            Write-Host "    手动: npm install -g $NpmPackage" -ForegroundColor DarkGray
+            Write-Host "  [X] $Name install may have failed" -ForegroundColor Yellow
+            Write-Host "    Manual: npm install -g $NpmPackage" -ForegroundColor DarkGray
             return $false
         }
     } catch {
-        Write-Host "  ✗ $Name 安装可能失败" -ForegroundColor Yellow
+        Write-Host "  [X] $Name install may have failed" -ForegroundColor Yellow
         return $false
     }
 }
 
-# 安装 Claude Code CLI
+# Claude Code CLI
 if (Install-Cli -Name "Claude Code CLI" -NpmPackage "@anthropic-ai/claude-code" -Command "claude") {
     $cliInstalled += "Claude Code"
 }
 
-# 安装 Codex CLI
+# Codex CLI
 if (Install-Cli -Name "Codex CLI" -NpmPackage "@openai/codex" -Command "codex") {
     $cliInstalled += "Codex"
 }
 
-# Gemini CLI（可选）
+# Gemini CLI (optional)
 Write-Host ""
-Write-Host "  检查 Gemini CLI..." -ForegroundColor White
+Write-Host "  Checking Gemini CLI..." -ForegroundColor White
 try {
     $geminiVer = gemini --version 2>$null
     if ($geminiVer) {
-        Write-Host "  ✓ Gemini CLI 已安装: $geminiVer" -ForegroundColor Green
+        Write-Host "  [OK] Gemini CLI installed: $geminiVer" -ForegroundColor Green
         $cliInstalled += "Gemini"
     }
 } catch {
-    $installGemini = Read-Host "  是否安装 Gemini CLI? (y/N)"
+    $installGemini = Read-Host "  Install Gemini CLI? (y/N)"
     if ($installGemini -eq "y" -or $installGemini -eq "Y") {
         if (Install-Cli -Name "Gemini CLI" -NpmPackage "@google/gemini-cli" -Command "gemini") {
             $cliInstalled += "Gemini"
@@ -471,41 +469,46 @@ try {
     }
 }
 
-# ---- 7. 登录提示 + 完成 ----
+# ---- 7. Summary ----
 Write-Host ""
-Write-Host "  [7/7] 安装总结..." -ForegroundColor Yellow
+Write-Host "  [7/7] Install Summary" -ForegroundColor Yellow
 
 Write-Host ""
-Write-Host "  ━━━ 安装完成 ━━━" -ForegroundColor Cyan
+Write-Host "  ========================================" -ForegroundColor Cyan
+Write-Host "    Install Complete!" -ForegroundColor Cyan
+Write-Host "  ========================================" -ForegroundColor Cyan
 Write-Host ""
-Write-Host "  已安装组件:" -ForegroundColor White
-Write-Host "    ✓ v2rayN 代理: $v2rayDir" -ForegroundColor Green
-Write-Host "    ✓ 代理环境变量: HTTP_PROXY=$PROXY_URL" -ForegroundColor Green
-Write-Host "    ✓ 中转服务器: $relayDir" -ForegroundColor Green
-Write-Host "    ✓ CLI 工具: $($cliInstalled -join ', ')" -ForegroundColor Green
+Write-Host "  Installed components:" -ForegroundColor White
+Write-Host "    [OK] v2rayN proxy: $v2rayDir" -ForegroundColor Green
+Write-Host "    [OK] Proxy env: HTTP_PROXY=$PROXY_URL" -ForegroundColor Green
+Write-Host "    [OK] Relay server: $relayDir" -ForegroundColor Green
+Write-Host "    [OK] CLI tools: $($cliInstalled -join ', ')" -ForegroundColor Green
 Write-Host ""
-Write-Host "  ━━━ 使用步骤 ━━━" -ForegroundColor Cyan
+Write-Host "  ========================================" -ForegroundColor Cyan
+Write-Host "    Usage Steps" -ForegroundColor Cyan
+Write-Host "  ========================================" -ForegroundColor Cyan
 Write-Host ""
-Write-Host "  1. 启动 v2rayN (每次开机):" -ForegroundColor White
-Write-Host "     双击 $v2rayDir\v2rayN.exe" -ForegroundColor Green
-Write-Host "     选择节点，确认系统代理已开启" -ForegroundColor DarkGray
+Write-Host "  1. Start v2rayN (every boot):" -ForegroundColor White
+Write-Host "     Double-click: $v2rayDir\v2rayN.exe" -ForegroundColor Green
+Write-Host "     Select node, enable system proxy" -ForegroundColor DarkGray
 Write-Host ""
-Write-Host "  2. 登录 CLI 订阅账号（首次必须）:" -ForegroundColor White
+Write-Host "  2. Login CLI accounts (first time only):" -ForegroundColor White
 if ($cliInstalled -contains "Claude Code") {
-    Write-Host "     打开新终端运行: claude" -ForegroundColor Green
-    Write-Host "     按提示完成 Anthropic 登录" -ForegroundColor DarkGray
+    Write-Host "     Open new terminal, run: claude" -ForegroundColor Green
+    Write-Host "     Follow prompts to login Anthropic" -ForegroundColor DarkGray
 }
 if ($cliInstalled -contains "Codex") {
-    Write-Host "     打开新终端运行: codex" -ForegroundColor Green
-    Write-Host "     按提示完成 OpenAI 登录" -ForegroundColor DarkGray
+    Write-Host "     Open new terminal, run: codex" -ForegroundColor Green
+    Write-Host "     Follow prompts to login OpenAI" -ForegroundColor DarkGray
 }
 Write-Host ""
-Write-Host "  3. 启动中转服务器:" -ForegroundColor White
-Write-Host "     cd $relayDir" -ForegroundColor Green
-Write-Host "     npm start  (或双击 start.bat)" -ForegroundColor Green
+Write-Host "  3. Start relay server + frp tunnel:" -ForegroundColor White
+Write-Host "     Double-click: $relayDir\start-all.bat" -ForegroundColor Green
+Write-Host "     Or: cd $relayDir && start-all.bat" -ForegroundColor Green
 Write-Host ""
-Write-Host "  4. 暴露到公网:" -ForegroundColor White
-Write-Host "     frpc.exe -c frpc.ini" -ForegroundColor Green
+Write-Host "  4. Verify:" -ForegroundColor White
+Write-Host "     Local:  http://127.0.0.1:3002/health" -ForegroundColor Green
+Write-Host "     Public: http://8.148.237.155:3002/health" -ForegroundColor Green
 Write-Host ""
-Write-Host "  ⚠ 注意: 每次使用前必须先启动 v2rayN，CLI 工具才能连上国外服务器" -ForegroundColor Yellow
+Write-Host "  [!] Always start v2rayN before using CLI tools" -ForegroundColor Yellow
 Write-Host ""
