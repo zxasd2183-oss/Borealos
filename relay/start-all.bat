@@ -1,7 +1,7 @@
 @echo off
 chcp 65001 >nul 2>&1
 title BorealOS 一键启动
-cd /d %~dp0
+cd /d "%~dp0"
 
 echo.
 echo  ========================================
