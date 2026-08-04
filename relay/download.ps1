@@ -93,12 +93,49 @@ if (Test-Proxy) {
 } else {
     Write-Host "  代理未运行，检查 v2rayN..." -ForegroundColor Yellow
 
-    # 检查是否已安装 v2rayN
-    $v2rayExe = Join-Path $v2rayDir "v2rayN.exe"
-    if (Test-Path $v2rayExe) {
+    # 检查是否已安装 v2rayN（当前目录 + 解压子目录 + 常见位置）
+    $v2rayExe = $null
+    $searchPaths = @(
+        (Join-Path $v2rayDir "v2rayN.exe"),
+        (Join-Path $v2rayDir "v2rayN\v2rayN.exe"),
+        (Join-Path $v2rayDir "v2rayN-windows-64\v2rayN.exe")
+    )
+    # 也搜索桌面和常见下载位置
+    $searchPaths += @(
+        (Join-Path ([Environment]::GetFolderPath('Desktop')) "v2rayN\v2rayN.exe"),
+        (Join-Path $env:USERPROFILE "v2rayN\v2rayN.exe"),
+        (Join-Path $env:USERPROFILE "Desktop\v2rayN\v2rayN.exe")
+    )
+    foreach ($p in $searchPaths) {
+        if (Test-Path $p) { $v2rayExe = $p; break }
+    }
+
+    # 用 Get-Command 做最后兜底
+    if (!$v2rayExe) {
+        try { $found = Get-Command v2rayN -ErrorAction Stop; if ($found) { $v2rayExe = $found.Source } } catch {}
+    }
+
+    if ($v2rayExe) {
+        $v2rayDir = Split-Path $v2rayExe -Parent
         Write-Host "  ✓ v2rayN 已安装: $v2rayDir" -ForegroundColor Green
         Write-Host "  请启动 v2rayN 并配置代理节点" -ForegroundColor Yellow
     } else {
+        # 询问用户是否已有 v2rayN
+        $hasV2ray = Read-Host "  未检测到 v2rayN，是否已有? 输入路径直接回车跳过下载，输入 n 下载"
+        if ($hasV2ray -and $hasV2ray -ne "n" -and $hasV2ray -ne "N") {
+            $userPath = $hasV2ray.Trim('"').Trim("'")
+            $userExe = if ($userPath -like "*.exe") { $userPath } else { Join-Path $userPath "v2rayN.exe" }
+            if (Test-Path $userExe) {
+                $v2rayExe = $userExe
+                $v2rayDir = Split-Path $userExe -Parent
+                Write-Host "  ✓ 找到 v2rayN: $v2rayDir" -ForegroundColor Green
+            } else {
+                Write-Host "  ⚠ 未在该路径找到 v2rayN.exe，跳过" -ForegroundColor Yellow
+            }
+        }
+    }
+
+    if (!$v2rayExe) {
         Write-Host "  正在下载 v2rayN..." -ForegroundColor Yellow
 
         # GitHub 加速镜像列表（国内直连 GitHub 经常超时）
