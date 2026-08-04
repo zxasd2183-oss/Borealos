@@ -1,15 +1,18 @@
 # ============================================================
-# BorealOS 中转服务器 — Windows 一键安装脚本（CLI 桥模式）
+# BorealOS 中转服务器 — Windows 一键安装脚本（CLI 桥模式 + 自动装 CLI）
 # ============================================================
 # 在 PowerShell 中运行：
 #   cd relay
 #   .\setup.ps1
+#
+# 自动完成：检查 Node.js → 装依赖 → 装 CLI 工具 → 检查 SSH → 检查配置
 # ============================================================
 
 $ErrorActionPreference = "Stop"
 
 Write-Host ""
 Write-Host "━━━ BorealOS 中转服务器安装 (CLI 桥模式) ━━━" -ForegroundColor Cyan
+Write-Host "  自动安装: 中转服务器 + Claude Code CLI + Codex CLI"
 Write-Host ""
 
 # ---- 1. 检查 Node.js ----
@@ -20,15 +23,26 @@ try {
 } catch {
     Write-Host "  ✗ Node.js 未安装！" -ForegroundColor Red
     Write-Host ""
-    Write-Host "  请先安装 Node.js:" -ForegroundColor White
-    Write-Host "    1. 访问 https://nodejs.org 下载 LTS 版本" -ForegroundColor White
-    Write-Host "    2. 或用 winget: winget install OpenJS.NodeJS.LTS" -ForegroundColor White
-    Write-Host ""
-    exit 1
+    Write-Host "  正在自动安装 Node.js LTS..." -ForegroundColor Yellow
+    try {
+        winget install OpenJS.NodeJS.LTS --accept-source-agreements --accept-package-agreements 2>&1 | Out-Null
+        $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
+        $nodeVersion = node --version 2>$null
+        if ($nodeVersion) {
+            Write-Host "  ✓ Node.js 安装成功: $nodeVersion" -ForegroundColor Green
+        } else {
+            Write-Host "  ✗ Node.js 安装失败，请手动安装: https://nodejs.org" -ForegroundColor Red
+            exit 1
+        }
+    } catch {
+        Write-Host "  ✗ 请手动安装: https://nodejs.org" -ForegroundColor Red
+        exit 1
+    }
 }
 
 # ---- 2. 安装依赖 ----
-Write-Host "[2/5] 安装依赖..." -ForegroundColor Yellow
+Write-Host ""
+Write-Host "[2/5] 安装中转服务器依赖..." -ForegroundColor Yellow
 npm install 2>$null
 if ($LASTEXITCODE -ne 0) {
     Write-Host "  npm install 失败，尝试用 --force..." -ForegroundColor Yellow
@@ -36,65 +50,96 @@ if ($LASTEXITCODE -ne 0) {
 }
 Write-Host "  ✓ 依赖安装完成" -ForegroundColor Green
 
-# ---- 3. 检测 CLI 工具 ----
-Write-Host "[3/5] 检测 CLI 工具..." -ForegroundColor Yellow
+# ---- 3. 安装 CLI 订阅工具 ----
+Write-Host ""
+Write-Host "[3/5] 安装 CLI 订阅工具..." -ForegroundColor Yellow
 
-$cliFound = @()
+$cliInstalled = @()
 
-# Claude Code CLI
-try {
-    $claudeVer = claude --version 2>$null
-    if ($claudeVer) {
-        Write-Host "  ✓ Claude Code CLI: $claudeVer" -ForegroundColor Green
-        $cliFound += "Claude Code"
-    }
-} catch {
-    Write-Host "  ✗ Claude Code CLI 未安装" -ForegroundColor DarkGray
-    Write-Host "    安装: npm install -g @anthropic-ai/claude-code" -ForegroundColor DarkGray
+function Refresh-Path {
+    $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
 }
 
-# Codex CLI
-try {
-    $codexVer = codex --version 2>$null
-    if ($codexVer) {
-        Write-Host "  ✓ Codex CLI: $codexVer" -ForegroundColor Green
-        $cliFound += "Codex"
+function Install-Cli {
+    param([string]$Name, [string]$NpmPackage, [string]$Command)
+
+    Write-Host ""
+    Write-Host "  检查 $Name..." -ForegroundColor White
+
+    # 先检测是否已安装
+    try {
+        $ver = & $Command --version 2>$null
+        if ($ver) {
+            Write-Host "  ✓ $Name 已安装: $ver" -ForegroundColor Green
+            return $true
+        }
+    } catch {}
+
+    # 未安装，自动安装
+    Write-Host "  正在安装 $Name..." -ForegroundColor Yellow
+    Write-Host "    npm install -g $NpmPackage" -ForegroundColor DarkGray
+    npm install -g $NpmPackage 2>&1 | Out-Null
+    Start-Sleep -Seconds 2
+    Refresh-Path
+
+    # 验证安装
+    try {
+        $ver = & $Command --version 2>$null
+        if ($ver) {
+            Write-Host "  ✓ $Name 安装成功: $ver" -ForegroundColor Green
+            return $true
+        } else {
+            Write-Host "  ✗ $Name 安装可能失败" -ForegroundColor Yellow
+            Write-Host "    手动安装: npm install -g $NpmPackage" -ForegroundColor DarkGray
+            return $false
+        }
+    } catch {
+        Write-Host "  ✗ $Name 安装可能失败" -ForegroundColor Yellow
+        Write-Host "    手动安装: npm install -g $NpmPackage" -ForegroundColor DarkGray
+        return $false
     }
-} catch {
-    Write-Host "  ✗ Codex CLI 未安装" -ForegroundColor DarkGray
-    Write-Host "    安装: npm install -g @openai/codex" -ForegroundColor DarkGray
 }
 
-# Gemini CLI
+# 安装 Claude Code CLI
+if (Install-Cli -Name "Claude Code CLI" -NpmPackage "@anthropic-ai/claude-code" -Command "claude") {
+    $cliInstalled += "Claude Code"
+}
+
+# 安装 Codex CLI
+if (Install-Cli -Name "Codex CLI" -NpmPackage "@openai/codex" -Command "codex") {
+    $cliInstalled += "Codex"
+}
+
+# Gemini CLI（可选）
+Write-Host ""
+Write-Host "  检查 Gemini CLI..." -ForegroundColor White
 try {
     $geminiVer = gemini --version 2>$null
     if ($geminiVer) {
-        Write-Host "  ✓ Gemini CLI: $geminiVer" -ForegroundColor Green
-        $cliFound += "Gemini"
+        Write-Host "  ✓ Gemini CLI 已安装: $geminiVer" -ForegroundColor Green
+        $cliInstalled += "Gemini"
     }
 } catch {
-    Write-Host "  ✗ Gemini CLI 未安装" -ForegroundColor DarkGray
-    Write-Host "    安装: npm install -g @google/gemini-cli" -ForegroundColor DarkGray
+    $installGemini = Read-Host "  是否安装 Gemini CLI? (y/N)"
+    if ($installGemini -eq "y" -or $installGemini -eq "Y") {
+        if (Install-Cli -Name "Gemini CLI" -NpmPackage "@google/gemini-cli" -Command "gemini") {
+            $cliInstalled += "Gemini"
+        }
+    } else {
+        Write-Host "  跳过 Gemini CLI" -ForegroundColor DarkGray
+    }
 }
 
-if ($cliFound.Count -eq 0) {
-    Write-Host ""
-    Write-Host "  ⚠ 未检测到任何 CLI 工具！" -ForegroundColor Red
-    Write-Host "  请至少安装一个 CLI 工具:" -ForegroundColor White
-    Write-Host "    Claude Code: npm install -g @anthropic-ai/claude-code" -ForegroundColor White
-    Write-Host "    Codex CLI:   npm install -g @openai/codex" -ForegroundColor White
-    Write-Host "    Gemini CLI:  npm install -g @anthropic-ai/gemini-cli" -ForegroundColor White
-    Write-Host ""
-    Write-Host "  安装后需要登录对应平台的订阅账号:" -ForegroundColor White
-    Write-Host "    Claude: claude (首次运行会引导登录)" -ForegroundColor White
-    Write-Host "    Codex:  codex (首次运行会引导登录)" -ForegroundColor White
-    Write-Host "    Gemini: gemini (首次运行会引导登录)" -ForegroundColor White
+# 汇总
+Write-Host ""
+if ($cliInstalled.Count -gt 0) {
+    Write-Host "  ✓ 已安装 CLI 工具: $($cliInstalled -join ', ')" -ForegroundColor Green
 } else {
-    Write-Host ""
-    Write-Host "  已检测到: $($cliFound -join ', ')" -ForegroundColor Green
+    Write-Host "  ⚠ 没有 CLI 工具可用，请检查 npm 全局安装权限" -ForegroundColor Red
 }
 
 # ---- 4. 检查 SSH ----
+Write-Host ""
 Write-Host "[4/5] 检查 SSH 客户端..." -ForegroundColor Yellow
 try {
     $sshVersion = ssh -V 2>&1
@@ -105,29 +150,58 @@ try {
 }
 
 # ---- 5. 检查 config.json ----
+Write-Host ""
 Write-Host "[5/5] 检查配置文件..." -ForegroundColor Yellow
 if (Test-Path "config.json") {
     Write-Host "  ✓ config.json 已存在" -ForegroundColor Green
 
     $config = Get-Content "config.json" | ConvertFrom-Json
-
-    # 检查 VPS 配置
     $vpsHost = $config.vps.host
     Write-Host "  VPS 地址: $vpsHost" -ForegroundColor White
-
-    # 提示首次 SSH
-    Write-Host ""
-    Write-Host "  ⚠ 首次使用需要手动 SSH 到 VPS 确认指纹:" -ForegroundColor Yellow
-    Write-Host "    ssh root@$vpsHost" -ForegroundColor White
-    Write-Host "    输入 yes 确认，输入密码登录后 exit" -ForegroundColor White
 } else {
     Write-Host "  ✗ config.json 不存在！" -ForegroundColor Red
     exit 1
 }
 
+# ---- CLI 登录提示 ----
+Write-Host ""
+Write-Host "━━━ CLI 登录（首次必须）━━━" -ForegroundColor Cyan
+Write-Host ""
+Write-Host "  CLI 工具已安装，但首次使用需要登录订阅账号:" -ForegroundColor Yellow
+Write-Host ""
+
+if ($cliInstalled -contains "Claude Code") {
+    Write-Host "  Claude Code (Anthropic \$20/月订阅):" -ForegroundColor White
+    Write-Host "    打开新的终端窗口运行: claude" -ForegroundColor Green
+    Write-Host "    按提示完成登录" -ForegroundColor DarkGray
+    Write-Host ""
+}
+
+if ($cliInstalled -contains "Codex") {
+    Write-Host "  Codex (OpenAI 订阅):" -ForegroundColor White
+    Write-Host "    打开新的终端窗口运行: codex" -ForegroundColor Green
+    Write-Host "    按提示完成登录" -ForegroundColor DarkGray
+    Write-Host ""
+}
+
+if ($cliInstalled -contains "Gemini") {
+    Write-Host "  Gemini (Google 订阅):" -ForegroundColor White
+    Write-Host "    打开新的终端窗口运行: gemini" -ForegroundColor Green
+    Write-Host "    按提示完成登录" -ForegroundColor DarkGray
+    Write-Host ""
+}
+
+Write-Host "  验证登录成功:"
+Write-Host "    claude -p 'Hello' --output-format stream-json" -ForegroundColor Green
+Write-Host "    codex --quiet 'Hello'" -ForegroundColor Green
+
 # ---- 完成提示 ----
 Write-Host ""
 Write-Host "━━━ 安装完成 ━━━" -ForegroundColor Cyan
+Write-Host ""
+Write-Host "  已安装组件:" -ForegroundColor White
+Write-Host "    ✓ 中转服务器依赖" -ForegroundColor Green
+Write-Host "    ✓ CLI 工具: $($cliInstalled -join ', ')" -ForegroundColor Green
 Write-Host ""
 Write-Host "  启动中转服务器:" -ForegroundColor White
 Write-Host "    npm start" -ForegroundColor Green
@@ -137,6 +211,6 @@ Write-Host "  暴露到公网（选一种）:" -ForegroundColor White
 Write-Host "    方式1 frp:    frpc.exe -c frpc.ini" -ForegroundColor Green
 Write-Host "    方式2 ngrok:  ngrok http 3002" -ForegroundColor Green
 Write-Host ""
-Write-Host "  部署到 VPS:" -ForegroundColor White
-Write-Host "    curl -X POST http://localhost:3002/api/deploy -H 'x-relay-token: borealos-relay-2024'" -ForegroundColor Green
+Write-Host "  首次 SSH 到 VPS 确认指纹:" -ForegroundColor White
+Write-Host "    ssh root@$vpsHost" -ForegroundColor Green
 Write-Host ""
