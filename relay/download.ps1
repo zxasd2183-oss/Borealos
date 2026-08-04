@@ -92,32 +92,103 @@ if (Test-Proxy) {
     } else {
         Write-Host "  正在下载 v2rayN..." -ForegroundColor Yellow
 
-        # 获取 v2rayN 最新版下载地址（GitHub API）
-        try {
-            $release = Invoke-RestMethod -Uri "https://api.github.com/repos/2dust/v2rayN/releases/latest" -UseBasicParsing -TimeoutSec 15
-            $downloadAsset = $release.assets | Where-Object { $_.name -like "*windows-64.zip" -or $_.name -like "*win-64.zip" -or $_.name -like "v2rayN-windows-64.zip" } | Select-Object -First 1
+        # GitHub 加速镜像列表（国内直连 GitHub 经常超时）
+        $mirrors = @(
+            "https://ghfast.top",
+            "https://gh-proxy.com",
+            "https://ghproxy.net",
+            "https://mirror.ghproxy.com"
+        )
 
+        $v2rayDownloaded = $false
+
+        # 先尝试通过 GitHub API 获取最新版（带超时）
+        $release = $null
+        try {
+            $release = Invoke-RestMethod -Uri "https://api.github.com/repos/2dust/v2rayN/releases/latest" -UseBasicParsing -TimeoutSec 10
+        } catch {
+            Write-Host "  GitHub API 超时，尝试镜像源..." -ForegroundColor DarkGray
+        }
+
+        if ($release) {
+            $downloadAsset = $release.assets | Where-Object { $_.name -like "*windows-64.zip" -or $_.name -like "*win-64.zip" -or $_.name -like "v2rayN-windows-64.zip" } | Select-Object -First 1
             if (!$downloadAsset) {
                 $downloadAsset = $release.assets | Select-Object -First 1
             }
 
             if ($downloadAsset) {
+                $originalUrl = $downloadAsset.browser_download_url
                 $v2rayZip = Join-Path $env:TEMP "v2rayN.zip"
-                Write-Host "  下载: $($downloadAsset.name)..." -ForegroundColor DarkGray
-                Invoke-WebRequest -Uri $downloadAsset.browser_download_url -OutFile $v2rayZip -UseBasicParsing -TimeoutSec 60
 
-                # 解压
-                New-Item -ItemType Directory -Path $v2rayDir -Force | Out-Null
-                Expand-Archive -Path $v2rayZip -DestinationPath $v2rayDir -Force
-                Remove-Item $v2rayZip -Force
+                # 依次尝试: 直连 → 各镜像
+                $urlsToTry = @($originalUrl)
+                foreach ($m in $mirrors) {
+                    $urlsToTry += "$m/$originalUrl"
+                }
 
-                Write-Host "  ✓ v2rayN 下载完成: $v2rayDir" -ForegroundColor Green
-            } else {
-                Write-Host "  ✗ 未找到 v2rayN 下载文件" -ForegroundColor Red
+                foreach ($url in $urlsToTry) {
+                    $source = if ($url -eq $originalUrl) { "GitHub 直连" } else { $url.Split('/')[2] }
+                    Write-Host "  尝试下载 ($source)..." -ForegroundColor DarkGray
+                    try {
+                        Invoke-WebRequest -Uri $url -OutFile $v2rayZip -UseBasicParsing -TimeoutSec 120
+                        $fileSize = (Get-Item $v2rayZip).Length
+                        if ($fileSize -gt 100000) {
+                            Write-Host "  ✓ 下载成功 ($source, $([math]::Round($fileSize/1MB,1)) MB)" -ForegroundColor Green
+                            $v2rayDownloaded = $true
+                            break
+                        }
+                    } catch {
+                        Write-Host "  ✗ $source 失败: $($_.Exception.Message)" -ForegroundColor DarkGray
+                        continue
+                    }
+                }
+
+                if ($v2rayDownloaded) {
+                    New-Item -ItemType Directory -Path $v2rayDir -Force | Out-Null
+                    Expand-Archive -Path $v2rayZip -DestinationPath $v2rayDir -Force
+                    Remove-Item $v2rayZip -Force
+                    Write-Host "  ✓ v2rayN 解压完成: $v2rayDir" -ForegroundColor Green
+                }
             }
-        } catch {
-            Write-Host "  ✗ 下载 v2rayN 失败: $($_.Exception.Message)" -ForegroundColor Red
-            Write-Host "  请手动下载: https://github.com/2dust/v2rayN/releases" -ForegroundColor White
+        }
+
+        # 如果 API 或下载都失败了，尝试从镜像直接下载已知版本
+        if (!$v2rayDownloaded) {
+            Write-Host "  尝试从镜像源直接下载..." -ForegroundColor Yellow
+            $directUrls = @(
+                "https://ghfast.top/https://github.com/2dust/v2rayN/releases/latest/download/v2rayN-windows-64.zip",
+                "https://gh-proxy.com/https://github.com/2dust/v2rayN/releases/latest/download/v2rayN-windows-64.zip",
+                "https://ghproxy.net/https://github.com/2dust/v2rayN/releases/latest/download/v2rayN-windows-64.zip"
+            )
+            $v2rayZip = Join-Path $env:TEMP "v2rayN.zip"
+            foreach ($url in $directUrls) {
+                $source = $url.Split('/')[2]
+                Write-Host "  尝试 ($source)..." -ForegroundColor DarkGray
+                try {
+                    Invoke-WebRequest -Uri $url -OutFile $v2rayZip -UseBasicParsing -TimeoutSec 120
+                    $fileSize = (Get-Item $v2rayZip).Length
+                    if ($fileSize -gt 100000) {
+                        Write-Host "  ✓ 下载成功 ($source, $([math]::Round($fileSize/1MB,1)) MB)" -ForegroundColor Green
+                        New-Item -ItemType Directory -Path $v2rayDir -Force | Out-Null
+                        Expand-Archive -Path $v2rayZip -DestinationPath $v2rayDir -Force
+                        Remove-Item $v2rayZip -Force
+                        Write-Host "  ✓ v2rayN 解压完成: $v2rayDir" -ForegroundColor Green
+                        $v2rayDownloaded = $true
+                        break
+                    }
+                } catch {
+                    Write-Host "  ✗ $source 失败" -ForegroundColor DarkGray
+                    continue
+                }
+            }
+        }
+
+        if (!$v2rayDownloaded) {
+            Write-Host "  ✗ 所有下载源均失败" -ForegroundColor Red
+            Write-Host "  请手动下载 v2rayN:" -ForegroundColor White
+            Write-Host "    镜像1: https://ghfast.top/https://github.com/2dust/v2rayN/releases" -ForegroundColor Cyan
+            Write-Host "    镜像2: https://gh-proxy.com/https://github.com/2dust/v2rayN/releases" -ForegroundColor Cyan
+            Write-Host "    解压到: $v2rayDir" -ForegroundColor White
         }
     }
 
