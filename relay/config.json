@@ -1,0 +1,26 @@
+{
+  "port": 3002,
+  "authToken": "borealos-relay-2024",
+  "vps": {
+    "host": "8.148.237.155",
+    "port": 22,
+    "user": "root",
+    "appDir": "/opt/borealos"
+  },
+  "gitee": {
+    "token": "96d063288e115ea8d4e4229180a75304",
+    "repo": "https://gitee.com/shashaguoji/borealos.git"
+  },
+  "cli": {
+    "claude": {
+      "path": "claude",
+      "permissionMode": "plan"
+    },
+    "codex": {
+      "path": "codex"
+    },
+    "gemini": {
+      "path": "gemini"
+    }
+  }
+}

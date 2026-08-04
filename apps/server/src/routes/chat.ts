@@ -14,6 +14,7 @@ import {
   DEFAULT_MODEL,
   chatCompletion,
   chatCompletionStream,
+  getAvailableModels,
   type AIModel,
   type ChatAPIMessage,
 } from '../ai';
@@ -60,9 +61,11 @@ function formatLongTermMemory(memories: MemorySearchResult[]): string {
 const chatRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) => {
   // GET /api/models - 获取可用模型列表（含本地 Agent CLI 模型）
   fastify.get('/api/models', async () => {
+    // 使用 getAvailableModels 获取模型列表（国外 AI 会标记可用性）
+    const cloudModels = getAvailableModels();
     // 合并云端模型和本地 CLI 模型
     const localModels = agentManager.getLocalModels();
-    const allModels = [...AVAILABLE_MODELS, ...localModels] as AIModel[];
+    const allModels = [...cloudModels, ...localModels] as AIModel[];
     return { success: true, data: allModels } as ApiResponse<AIModel[]>;
   });
 
