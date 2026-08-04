@@ -374,8 +374,8 @@ Write-Host ""
 Write-Host "  [5/7] 安装中转服务器依赖..." -ForegroundColor Yellow
 
 Push-Location $relayDir
-npm install 2>$null
-if ($LASTEXITCODE -ne 0) { npm install --force 2>$null }
+cmd /c "npm install 2>nul"
+if ($LASTEXITCODE -ne 0) { cmd /c "npm install --force 2>nul" }
 Write-Host "  ✓ 依赖安装完成" -ForegroundColor Green
 Pop-Location
 
@@ -403,7 +403,8 @@ function Install-Cli {
     } catch {}
 
     Write-Host "  正在安装 $Name..." -ForegroundColor Yellow
-    npm install -g $NpmPackage 2>&1 | Out-Null
+    # 用 cmd /c 包装避免 PowerShell 把 npm stderr 当错误
+    cmd /c "npm install -g $NpmPackage 2>nul & exit 0"
     Start-Sleep -Seconds 2
     Refresh-Path
     try {
