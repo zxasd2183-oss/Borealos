@@ -1,19 +1,15 @@
 # ============================================================
-# Aurora — Tauri 签名密钥生成脚本 (Windows)
+# Aurora - Tauri Signing Key Generator (Windows)
 # ------------------------------------------------------------
-# 生成用于自动更新签名的公钥/私钥对
+# Generates a public/private key pair for auto-update signing
 #
-# 用法: 在项目根目录运行
+# Usage:
 #   powershell -ExecutionPolicy Bypass -File scripts\generate-signing-key.ps1
 #
-# 生成后:
-#   - 公钥 → 自动写入 tauri.conf.json 的 pubkey 字段
-#   - 私钥 → 保存到 .tauri/aurora.key (不要提交到 Git!)
-#   - 私钥密码 → 保存到 .tauri/aurora.password
-#
-# 构建时需要设置环境变量:
-#   $env:TAURI_SIGNING_PRIVATE_KEY = "<私钥内容>"
-#   $env:TAURI_SIGNING_PRIVATE_KEY_PASSWORD = "<密码>"
+# After generation:
+#   - Public key  -> auto-written to tauri.conf.json pubkey field
+#   - Private key -> saved to .tauri/aurora.key (DO NOT commit to Git!)
+#   - Password    -> saved to .tauri/aurora.password
 # ============================================================
 
 $REPO_DIR = Split-Path -Parent (Split-Path -Parent $MyInvocation.MyCommand.Path)
@@ -25,51 +21,49 @@ $CONF_FILE = Join-Path $REPO_DIR "apps\desktop\src-tauri\tauri.conf.json"
 
 Write-Host ""
 Write-Host "  ========================================" -ForegroundColor Cyan
-Write-Host "    Aurora — Tauri Signing Key Generator" -ForegroundColor Cyan
+Write-Host "    Aurora - Tauri Signing Key Generator" -ForegroundColor Cyan
 Write-Host "  ========================================" -ForegroundColor Cyan
 Write-Host ""
 
-# 创建 .tauri 目录
+# Create .tauri directory
 if (-not (Test-Path $TAURI_DIR)) {
     New-Item -ItemType Directory -Path $TAURI_DIR -Force | Out-Null
 }
 
-# 检查是否已存在密钥
+# Check if key already exists
 if (Test-Path $KEY_FILE) {
-    Write-Host "  [!] 已存在签名密钥: $KEY_FILE" -ForegroundColor Yellow
-    $overwrite = Read-Host "  覆盖生成新密钥? (y/N)"
+    Write-Host "  [!] Signing key already exists: $KEY_FILE" -ForegroundColor Yellow
+    $overwrite = Read-Host "  Overwrite with new key? (y/N)"
     if ($overwrite -ne "y" -and $overwrite -ne "Y") {
-        Write-Host "  取消。" -ForegroundColor Gray
+        Write-Host "  Cancelled." -ForegroundColor Gray
         exit 0
     }
 }
 
-# 生成密码
-$password = -join ((48..57) + (65..90) + (97..122) | Get-Random -Count 24 | ForEach-Object { [char]$_ })
+# Generate random password
+$chars = [char[]](48..57) + [char[]](65..90) + [char[]](97..122)
+$password = -join ($chars | Get-Random -Count 24)
 
-Write-Host "  [1/4] 生成签名密钥对..." -ForegroundColor Cyan
+Write-Host "  [1/4] Generating signing key pair..." -ForegroundColor Cyan
 
-# 使用 tauri CLI 生成密钥
-$tauriCli = "npx"
-$tauriArgs = @("@tauri-apps/cli", "signer", "generate", "--password", $password, "-w", $KEY_FILE)
+# Use tauri CLI to generate keys
+Write-Host "  Running: npx @tauri-apps/cli signer generate" -ForegroundColor Gray
 
-Write-Host "  运行: npx @tauri-apps/cli signer generate" -ForegroundColor Gray
-
-$output = & $tauriCli @tauriArgs 2>&1
+$output = & npx "@tauri-apps/cli" "signer" "generate" "--password" $password "-w" $KEY_FILE 2>&1
 $outputStr = $output -join "`n"
 
 if ($LASTEXITCODE -ne 0) {
-    Write-Host "  [ERROR] 密钥生成失败!" -ForegroundColor Red
+    Write-Host "  [ERROR] Key generation failed!" -ForegroundColor Red
     Write-Host $outputStr
     Write-Host ""
-    Write-Host "  请确保已安装 Node.js 和 @tauri-apps/cli" -ForegroundColor Yellow
-    Write-Host "  运行: npm install -g @tauri-apps/cli" -ForegroundColor Yellow
+    Write-Host "  Make sure Node.js and @tauri-apps/cli are installed" -ForegroundColor Yellow
+    Write-Host "  Run: npm install -g @tauri-apps/cli" -ForegroundColor Yellow
     exit 1
 }
 
-Write-Host "  [OK] 密钥已生成" -ForegroundColor Green
+Write-Host "  [OK] Keys generated" -ForegroundColor Green
 
-# 提取公钥
+# Extract public key from output
 $pubkey = ""
 foreach ($line in $output) {
     if ($line -match "Public Key:\s*(\S+)") {
@@ -78,76 +72,83 @@ foreach ($line in $output) {
     }
 }
 
-# 也尝试从密钥文件读取公钥
+# Try reading public key from the key file
 if (-not $pubkey -and (Test-Path $KEY_FILE)) {
     $keyContent = Get-Content $KEY_FILE -Raw
-    if ($keyContent -match "pubkey.*?['"`"]([^'"`"]+)['"`"]") {
-        $pubkey = $Matches[1]
+    # Try parsing as JSON first
+    try {
+        $keyObj = $keyContent | ConvertFrom-Json
+        if ($keyObj.pubkey) {
+            $pubkey = $keyObj.pubkey
+        }
+    } catch {
+        # Not JSON, try regex with simple pattern
+        $m = [regex]::Match($keyContent, 'pubkey["\s:]+([A-Za-z0-9+/=]{60,})')
+        if ($m.Success) {
+            $pubkey = $m.Groups[1].Value
+        }
+    }
+}
+
+# Try extracting any long base64-like string from output
+if (-not $pubkey) {
+    $m = [regex]::Match($outputStr, '([A-Za-z0-9+/=]{80,})')
+    if ($m.Success) {
+        $pubkey = $m.Groups[1].Value
     }
 }
 
 if (-not $pubkey) {
-    # 手动从输出解析
-    $pubkeyMatch = [regex]::Match($outputStr, "([A-Za-z0-9+/=]{80,})")
-    if ($pubkeyMatch.Success) {
-        $pubkey = $pubkeyMatch.Groups[1].Value
-    }
-}
-
-if (-not $pubkey) {
-    Write-Host "  [WARNING] 无法自动提取公钥，请手动从以下输出中复制公钥:" -ForegroundColor Yellow
+    Write-Host "  [WARNING] Could not auto-extract public key. Please copy from output:" -ForegroundColor Yellow
     Write-Host $outputStr
     Write-Host ""
-    $pubkey = Read-Host "  请粘贴公钥"
+    $pubkey = Read-Host "  Paste the public key"
 }
 
-# 保存公钥
-Set-Content -Path $PUBKEY_FILE -Value $pubkey -NoNewline
-# 保存密码
-Set-Content -Path $PASS_FILE -Value $password -NoNewline
+# Save public key and password
+Set-Content -Path $PUBKEY_FILE -Value $pubkey -NoNewline -Encoding UTF8
+Set-Content -Path $PASS_FILE -Value $password -NoNewline -Encoding UTF8
 
-Write-Host "  [2/4] 公钥已保存: $PUBKEY_FILE" -ForegroundColor Green
-Write-Host "  [3/4] 私钥已保存: $KEY_FILE" -ForegroundColor Green
-Write-Host "  [4/4] 密码已保存: $PASS_FILE" -ForegroundColor Green
+Write-Host "  [2/4] Public key saved: $PUBKEY_FILE" -ForegroundColor Green
+Write-Host "  [3/4] Private key saved: $KEY_FILE" -ForegroundColor Green
+Write-Host "  [4/4] Password saved: $PASS_FILE" -ForegroundColor Green
 
-# 更新 tauri.conf.json
+# Update tauri.conf.json
 if (Test-Path $CONF_FILE) {
     Write-Host ""
-    Write-Host "  正在更新 tauri.conf.json..." -ForegroundColor Cyan
+    Write-Host "  Updating tauri.conf.json..." -ForegroundColor Cyan
 
     $conf = Get-Content $CONF_FILE -Raw | ConvertFrom-Json
     $conf.plugins.updater.pubkey = $pubkey
     $conf | ConvertTo-Json -Depth 10 | Set-Content $CONF_FILE -Encoding UTF8
 
-    Write-Host "  [OK] tauri.conf.json 已更新 (pubkey 已填入)" -ForegroundColor Green
+    Write-Host "  [OK] tauri.conf.json updated (pubkey filled in)" -ForegroundColor Green
 }
 
-# 确保 .gitignore 包含 .tauri 目录
+# Ensure .gitignore contains .tauri directory
 $gitignore = Join-Path $REPO_DIR ".gitignore"
 if (Test-Path $gitignore) {
     $content = Get-Content $gitignore -Raw
     if ($content -notmatch "\.tauri/") {
         Add-Content -Path $gitignore -Value "`n# Tauri signing keys`n.tauri/`n"
-        Write-Host "  [OK] 已将 .tauri/ 添加到 .gitignore" -ForegroundColor Green
+        Write-Host "  [OK] Added .tauri/ to .gitignore" -ForegroundColor Green
     }
 }
 
 Write-Host ""
 Write-Host "  ========================================" -ForegroundColor Cyan
-Write-Host "    签名密钥生成完成!" -ForegroundColor Green
+Write-Host "    Signing key generation complete!" -ForegroundColor Green
 Write-Host "  ========================================" -ForegroundColor Cyan
 Write-Host ""
-Write-Host "  公钥 (pubkey):" -ForegroundColor White
+Write-Host "  Public key (pubkey):" -ForegroundColor White
 Write-Host "    $pubkey" -ForegroundColor Gray
 Write-Host ""
-Write-Host "  私钥文件: $KEY_FILE" -ForegroundColor White
-Write-Host "  密码文件: $PASS_FILE" -ForegroundColor White
+Write-Host "  Private key file: $KEY_FILE" -ForegroundColor White
+Write-Host "  Password file:    $PASS_FILE" -ForegroundColor White
 Write-Host ""
-Write-Host "  构建时请设置环境变量:" -ForegroundColor Yellow
-Write-Host "    `$env:TAURI_SIGNING_PRIVATE_KEY = `"$password`"" -ForegroundColor Yellow
-Write-Host "    `$env:TAURI_SIGNING_PRIVATE_KEY_PASSWORD = `"$password`"" -ForegroundColor Yellow
+Write-Host "  Set these env vars before building:" -ForegroundColor Yellow
+Write-Host "    `$env:TAURI_SIGNING_PRIVATE_KEY = Get-Content `"$KEY_FILE`" -Raw" -ForegroundColor Yellow
+Write-Host "    `$env:TAURI_SIGNING_PRIVATE_KEY_PASSWORD = Get-Content `"$PASS_FILE`" -Raw" -ForegroundColor Yellow
 Write-Host ""
-Write-Host "  或在 PowerShell Profile 中添加以上命令。" -ForegroundColor Gray
-Write-Host ""
-Write-Host "  重要: .tauri/ 目录包含私钥，不要提交到 Git!" -ForegroundColor Red
+Write-Host "  IMPORTANT: .tauri/ contains private keys - DO NOT commit to Git!" -ForegroundColor Red
 Write-Host ""
