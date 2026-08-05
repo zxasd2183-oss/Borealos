@@ -18,6 +18,7 @@ import SplashScreen from './components/SplashScreen';
 import WorkPanel from './components/WorkPanel';
 import ImageGenPanel from './components/ImageGenPanel';
 import FreeCanvas from './components/FreeCanvas';
+import CodeEditor from './components/CodeEditor';
 import DesktopTitlebar from './components/DesktopTitlebar';
 import UpdateNotification from './components/UpdateNotification';
 import DynamicIslandComponent, { DynamicIsland } from './components/DynamicIsland';
@@ -666,14 +667,7 @@ const App: React.FC = () => {
           )}
           {activeView === 'code' && (
             <div key="code" className="aurora-view-wrapper aurora-view-wrapper--code">
-              <header className="aurora-view-header">
-                <h1>代码编辑器</h1>
-                <p>Monaco 编辑器 · 终端 · 调试</p>
-              </header>
-              <div className="aurora-placeholder">
-                <CodeIcon size={64} />
-                <p>代码编辑器即将上线</p>
-              </div>
+              <CodeEditor />
             </div>
           )}
         </main>
