@@ -27,10 +27,13 @@ set "V2RAY_EXE="
 set "V2RAY_FOUND=0"
 
 REM 搜索可能的位置（按优先级）
-REM 1) relay 目录下的 v2rayN
+REM 1) relay 目录下的 v2rayN（含解压子目录）
 for %%P in (
     "%RELAY_DIR%v2rayN\v2rayN.exe"
     "%RELAY_DIR%..\v2rayN\v2rayN.exe"
+    "%RELAY_DIR%..\v2rayN\v2rayN-windows-64\v2rayN.exe"
+    "%RELAY_DIR%..\v2rayN\v2rayN-windows-32\v2rayN.exe"
+    "%RELAY_DIR%..\v2rayN\v2rayN-linux-64\v2rayN.exe"
 ) do (
     if !V2RAY_FOUND!==0 if exist "%%~P" (
         set "V2RAY_EXE=%%~P"
