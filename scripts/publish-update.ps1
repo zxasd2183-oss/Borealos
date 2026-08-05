@@ -123,14 +123,52 @@ if (-not (Test-Path $KEY_FILE)) {
     exit 1
 }
 
-$privateKey = Get-Content $KEY_FILE -Raw
-$password = Get-Content $PASS_FILE -Raw
+if (-not (Test-Path $PASS_FILE)) {
+    Write-Host "  [ERROR] Password file not found: $PASS_FILE" -ForegroundColor Red
+    Write-Host "  Run first: powershell -File scripts\generate-signing-key.ps1" -ForegroundColor Yellow
+    exit 1
+}
+
+# Read key and password - TRIM trailing whitespace/newlines!
+$privateKey = (Get-Content $KEY_FILE -Raw).Trim()
+$password = (Get-Content $PASS_FILE -Raw).Trim()
+
+# Check if the key is base64-encoded (double-encoded)
+# A proper minisign key starts with "untrusted comment:"
+# If it doesn't, it might be base64-encoded and needs decoding
+if (-not $privateKey.StartsWith("untrusted comment:")) {
+    Write-Host "  Key appears to be base64-encoded, decoding..." -ForegroundColor Gray
+    try {
+        $decodedBytes = [System.Convert]::FromBase64String($privateKey)
+        $decodedKey = [System.Text.Encoding]::UTF8.GetString($decodedBytes).Trim()
+        if ($decodedKey.StartsWith("untrusted comment:")) {
+            $privateKey = $decodedKey
+            Write-Host "  [OK] Key decoded from base64 to minisign format" -ForegroundColor Green
+        } else {
+            Write-Host "  [WARNING] Decoded key doesn't start with 'untrusted comment:'" -ForegroundColor Yellow
+            Write-Host "  Using decoded content anyway..." -ForegroundColor Gray
+            $privateKey = $decodedKey
+        }
+    } catch {
+        Write-Host "  [WARNING] Key is not base64 and not minisign format" -ForegroundColor Yellow
+        Write-Host "  First 40 chars: $($privateKey.Substring(0, [Math]::Min(40, $privateKey.Length)))..." -ForegroundColor DarkGray
+    }
+}
+
+# Verify key looks valid
+if ($privateKey.Length -lt 100) {
+    Write-Host "  [ERROR] Private key too short ($($privateKey.Length) chars) - may be invalid" -ForegroundColor Red
+    exit 1
+}
 
 # Set environment variables for Tauri signing
 $env:TAURI_SIGNING_PRIVATE_KEY = $privateKey
 $env:TAURI_SIGNING_PRIVATE_KEY_PASSWORD = $password
 
 Write-Host "  [OK] Signing keys loaded" -ForegroundColor Green
+Write-Host "    Key length:   $($privateKey.Length) chars" -ForegroundColor DarkGray
+Write-Host "    Key starts:   $($privateKey.Substring(0, [Math]::Min(50, $privateKey.Length)))..." -ForegroundColor DarkGray
+Write-Host "    Password len: $($password.Length) chars" -ForegroundColor DarkGray
 
 # ============================================================
 # STEP 2: Update version numbers (on the FRESHLY pulled code)
