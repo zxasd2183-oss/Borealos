@@ -61,12 +61,18 @@ if ($Version) {
     $conf | ConvertTo-Json -Depth 10 | Set-Content $CONF_FILE -Encoding UTF8
     Write-Host "  [OK] Version: $oldVersion -> $Version" -ForegroundColor Green
 
-    # Update Cargo.toml
+    # Update Cargo.toml - only replace the first occurrence in [package] section
     $cargoFile = Join-Path $REPO_DIR "apps\desktop\src-tauri\Cargo.toml"
     if (Test-Path $cargoFile) {
-        $cargo = Get-Content $cargoFile -Raw
-        $cargo = $cargo -replace 'version = ".*"', "version = `"$Version`"" -m 1
-        Set-Content -Path $cargoFile -Value $cargo
+        $cargoLines = Get-Content $cargoFile
+        $replaced = $false
+        for ($i = 0; $i -lt $cargoLines.Count; $i++) {
+            if (-not $replaced -and $cargoLines[$i] -match '^version = "') {
+                $cargoLines[$i] = "version = `"$Version`""
+                $replaced = $true
+            }
+        }
+        Set-Content -Path $cargoFile -Value $cargoLines
         Write-Host "  [OK] Cargo.toml version updated" -ForegroundColor Green
     }
 
