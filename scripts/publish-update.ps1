@@ -218,6 +218,35 @@ if ($installExit -ne 0) {
 }
 Write-Host "  [OK] Dependencies installed" -ForegroundColor Green
 
+# Load Visual Studio C++ build environment (required for Rust on Windows)
+Write-Host "  Loading MSVC build environment..." -ForegroundColor Gray
+$vcvarsPaths = @(
+    "C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\VC\Auxiliary\Build\vcvars64.bat",
+    "C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Auxiliary\Build\vcvars64.bat",
+    "C:\Program Files\Microsoft Visual Studio\2022\Professional\VC\Auxiliary\Build\vcvars64.bat",
+    "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\vcvars64.bat"
+)
+$vcvarsLoaded = $false
+foreach ($vcvars in $vcvarsPaths) {
+    if (Test-Path $vcvars) {
+        Write-Host "  Found: $vcvars" -ForegroundColor Gray
+        # Run vcvars64.bat and import the environment into current PowerShell session
+        $envOutput = cmd /c "`"$vcvars`" && set" 2>&1
+        foreach ($line in $envOutput) {
+            if ($line -match '^([^=]+)=(.*)') {
+                [Environment]::SetEnvironmentVariable($matches[1], $matches[2], 'Process')
+            }
+        }
+        $vcvarsLoaded = $true
+        Write-Host "  [OK] MSVC environment loaded" -ForegroundColor Green
+        break
+    }
+}
+if (-not $vcvarsLoaded) {
+    Write-Host "  [WARNING] vcvars64.bat not found - Rust build may fail" -ForegroundColor Yellow
+    Write-Host "  Install Visual Studio Build Tools with C++ workload" -ForegroundColor Gray
+}
+
 # Build with Tauri CLI
 $tauriDir = Join-Path $REPO_DIR "apps\desktop\src-tauri"
 Push-Location $tauriDir
