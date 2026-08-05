@@ -251,6 +251,10 @@ if (-not $vcvarsLoaded) {
 $tauriDir = Join-Path $REPO_DIR "apps\desktop\src-tauri"
 Push-Location $tauriDir
 
+# Enable cargo progress bar
+$env:CARGO_TERM_PROGRESS_WHEN = "always"
+$env:CARGO_TERM_COLOR = "always"
+
 Write-Host ""
 Write-Host "  Running: npx @tauri-apps/cli build" -ForegroundColor Gray
 Write-Host "  (Tauri will run 'pnpm vite build' via beforeBuildCommand)" -ForegroundColor Gray
