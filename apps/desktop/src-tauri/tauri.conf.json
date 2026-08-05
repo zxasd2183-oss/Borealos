@@ -25,7 +25,7 @@
         "resizable": false,
         "fullscreen": false,
         "center": true,
-        "hidden": false,
+        "visible": true,
         "alwaysOnTop": true
       },
       {
@@ -40,7 +40,6 @@
         "resizable": true,
         "fullscreen": false,
         "center": true,
-        "hidden": true,
         "visible": false
       }
     ],
