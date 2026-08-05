@@ -101,8 +101,8 @@ Write-Host "  (this may take several minutes...)" -ForegroundColor Gray
 $tauriDir = Join-Path $REPO_DIR "apps\desktop\src-tauri"
 Push-Location $tauriDir
 
-# Build
-& cargo tauri build 2>&1 | ForEach-Object { Write-Host "  $_" -ForegroundColor Gray }
+# Build - use npm-installed tauri CLI (not cargo tauri)
+& npx "@tauri-apps/cli" "build" 2>&1 | ForEach-Object { Write-Host "  $_" -ForegroundColor Gray }
 $buildExit = $LASTEXITCODE
 
 Pop-Location
