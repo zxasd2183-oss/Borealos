@@ -54,3 +54,9 @@ apps/gateway/target/
 # Turborepo cache
 .turbo/
 
+# Tauri signing keys (DO NOT COMMIT!)
+.tauri/
+
+# Update server data (installers + manifests)
+scripts/updates/releases/
+

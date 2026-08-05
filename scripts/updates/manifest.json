@@ -1,0 +1,23 @@
+{
+  "version": "0.2.0",
+  "notes": "Aurora v0.2.0 初始版本",
+  "pub_date": "2026-01-01T00:00:00.000Z",
+  "platforms": {
+    "windows-x86_64": {
+      "signature": "",
+      "url": ""
+    },
+    "darwin-x86_64": {
+      "signature": "",
+      "url": ""
+    },
+    "darwin-aarch64": {
+      "signature": "",
+      "url": ""
+    },
+    "linux-x86_64": {
+      "signature": "",
+      "url": ""
+    }
+  }
+}

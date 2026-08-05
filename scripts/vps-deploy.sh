@@ -114,14 +114,48 @@ systemctl restart borealos-server
 sleep 2
 systemctl restart borealos-tunnel
 
+# ===== 5. 启动更新服务器 =====
+info "创建 Aurora 更新服务器 systemd 服务..."
+
+cat > /etc/systemd/system/aurora-update-server.service << EOF
+[Unit]
+Description=Aurora Update Server
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=$INSTALL_DIR/scripts
+ExecStart=$(which node) $INSTALL_DIR/scripts/update-server.js
+Restart=always
+RestartSec=5
+Environment=PORT=3005
+Environment=NODE_ENV=production
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+# 创建更新服务器数据目录
+mkdir -p $INSTALL_DIR/scripts/updates/releases
+
+systemctl daemon-reload
+systemctl enable aurora-update-server
+systemctl restart aurora-update-server
+
+ok "更新服务器已启动"
+
 ok "服务已启动"
 echo ""
-echo "  后端服务:  systemctl status borealos-server"
-echo "  Tunnel:    systemctl status borealos-tunnel"
+echo "  后端服务:      systemctl status borealos-server"
+echo "  Tunnel:        systemctl status borealos-tunnel"
+echo "  更新服务器:    systemctl status aurora-update-server"
 echo ""
-echo "  API 地址:  https://api.borealos.dev"
-echo "  Web IDE:   https://ide.borealos.dev"
+echo "  API 地址:      https://api.borealos.dev"
+echo "  Web IDE:       https://ide.borealos.dev"
+echo "  更新检查:      http://localhost:3005/api/update/check/windows/x86_64/0.2.0"
+echo "  更新管理:      http://localhost:3005/admin"
 echo ""
 echo "  日志:"
 echo "    journalctl -u borealos-server -f"
 echo "    journalctl -u borealos-tunnel -f"
+echo "    journalctl -u aurora-update-server -f"

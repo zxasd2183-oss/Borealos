@@ -61,8 +61,8 @@
     "updater": {
       "active": true,
       "endpoints": [
-        "http://localhost:3001/api/update/check/{{target}}/{{arch}}/{{current_version}}",
-        "https://aurora-update-server.example.com/api/update/check/{{target}}/{{arch}}/{{current_version}}"
+        "http://127.0.0.1:3005/api/update/check/{{target}}/{{arch}}/{{current_version}}",
+        "http://8.148.237.155:3005/api/update/check/{{target}}/{{arch}}/{{current_version}}"
       ],
       "pubkey": "",
       "windows": {
