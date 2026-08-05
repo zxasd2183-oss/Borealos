@@ -98,6 +98,13 @@ if (-not $Notes) {
 Write-Host "  [3/6] Building Tauri installer..." -ForegroundColor Cyan
 Write-Host "  (this may take several minutes...)" -ForegroundColor Gray
 
+# Install web dependencies first
+$webDir = Join-Path $REPO_DIR "apps\web"
+Write-Host "  Installing web dependencies..." -ForegroundColor Gray
+Push-Location $webDir
+& npm install 2>&1 | ForEach-Object { Write-Host "  $_" -ForegroundColor Gray }
+Pop-Location
+
 $tauriDir = Join-Path $REPO_DIR "apps\desktop\src-tauri"
 Push-Location $tauriDir
 
