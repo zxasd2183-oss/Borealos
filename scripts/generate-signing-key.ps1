@@ -70,30 +70,10 @@ if ($LASTEXITCODE -ne 0) {
 
 Write-Host "  [OK] Keys generated" -ForegroundColor Green
 
-# Verify and fix private key file format
-# Some Tauri CLI versions write the key as base64 instead of raw minisign format
-if (Test-Path $KEY_FILE) {
-    $rawKeyContent = (Get-Content $KEY_FILE -Raw).Trim()
-    if (-not $rawKeyContent.StartsWith("untrusted comment:")) {
-        Write-Host "  Key file is not in minisign format, attempting to decode from base64..." -ForegroundColor Gray
-        try {
-            $decodedBytes = [System.Convert]::FromBase64String($rawKeyContent)
-            $decodedKey = [System.Text.Encoding]::UTF8.GetString($decodedBytes).Trim()
-            if ($decodedKey.StartsWith("untrusted comment:")) {
-                # Overwrite the key file with the correct format
-                Write-Utf8NoBom -Path $KEY_FILE -Content $decodedKey
-                Write-Host "  [OK] Key file fixed: decoded from base64 to minisign format" -ForegroundColor Green
-            } else {
-                Write-Host "  [WARNING] Decoded key still not in minisign format" -ForegroundColor Yellow
-            }
-        } catch {
-            Write-Host "  [WARNING] Could not decode key from base64: $_" -ForegroundColor Yellow
-            Write-Host "  Key format may need manual fixing" -ForegroundColor Gray
-        }
-    } else {
-        Write-Host "  [OK] Key file is in correct minisign format" -ForegroundColor Green
-    }
-}
+# NOTE: Do NOT modify the key file format!
+# Tauri CLI writes the key in its expected format (base64-encoded).
+# The publish script uses the file PATH (not content) for TAURI_SIGNING_PRIVATE_KEY,
+# so the file must remain exactly as Tauri CLI wrote it.
 
 # Extract public key - try multiple methods
 $pubkey = ""
