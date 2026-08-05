@@ -95,8 +95,10 @@ if (Test-Path $KEY_FILE) {
     }
 }
 
-# Extract public key from output
+# Extract public key - try multiple methods
 $pubkey = ""
+
+# Method 1: Parse CLI output for "Public Key:" line
 foreach ($line in $output) {
     if ($line -match "Public Key:\s*(\S+)") {
         $pubkey = $Matches[1]
@@ -104,25 +106,28 @@ foreach ($line in $output) {
     }
 }
 
-# Try reading public key from the key file
+# Method 2: Read from the .pub file that Tauri CLI creates alongside the private key
+# Tauri CLI v2 saves the public key to <keyfile>.pub
+$PUBKEY_FROM_FILE = "$KEY_FILE.pub"
+if (-not $pubkey -and (Test-Path $PUBKEY_FROM_FILE)) {
+    $pubkey = (Get-Content $PUBKEY_FROM_FILE -Raw).Trim()
+    Write-Host "  [OK] Public key read from: $PUBKEY_FROM_FILE" -ForegroundColor Green
+}
+
+# Method 3: Try reading from the private key file as JSON
 if (-not $pubkey -and (Test-Path $KEY_FILE)) {
     $keyContent = Get-Content $KEY_FILE -Raw
-    # Try parsing as JSON first
     try {
         $keyObj = $keyContent | ConvertFrom-Json
         if ($keyObj.pubkey) {
             $pubkey = $keyObj.pubkey
         }
     } catch {
-        # Not JSON, try regex with simple pattern
-        $m = [regex]::Match($keyContent, 'pubkey["\s:]+([A-Za-z0-9+/=]{60,})')
-        if ($m.Success) {
-            $pubkey = $m.Groups[1].Value
-        }
+        # Not JSON
     }
 }
 
-# Try extracting any long base64-like string from output
+# Method 4: Try extracting any long base64-like string from output
 if (-not $pubkey) {
     $m = [regex]::Match($outputStr, '([A-Za-z0-9+/=]{80,})')
     if ($m.Success) {
