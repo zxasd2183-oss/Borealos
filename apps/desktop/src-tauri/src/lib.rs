@@ -20,7 +20,7 @@ use std::time::Duration;
 use tauri::{
     menu::{Menu, MenuItem, PredefinedMenuItem},
     tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
-    Emitter, Listener, Manager, WindowEvent,
+    Emitter, Manager, WindowEvent,
 };
 use tauri_plugin_global_shortcut::{GlobalShortcutExt, ShortcutState};
 
@@ -117,19 +117,20 @@ async fn check_for_updates(app: tauri::AppHandle) -> Result<String, String> {
     use tauri_plugin_updater::UpdaterExt;
 
     let updater = app.updater().map_err(|e| e.to_string())?;
+    let current_version = app.package_info().version.to_string();
 
     match updater.check().await {
         Ok(Some(update)) => Ok(serde_json::json!({
             "available": true,
             "version": update.version,
-            "current_version": update.current_version,
+            "current_version": current_version,
             "date": update.date.map(|d| d.to_string()),
             "body": update.body,
         })
         .to_string()),
         Ok(None) => Ok(serde_json::json!({
             "available": false,
-            "current_version": updater.current_version(),
+            "current_version": current_version,
         })
         .to_string()),
         Err(e) => Err(format!("检查更新失败: {}", e)),
