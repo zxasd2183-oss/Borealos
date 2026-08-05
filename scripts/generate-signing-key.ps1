@@ -19,6 +19,13 @@ $PASS_FILE = Join-Path $TAURI_DIR "aurora.password"
 $PUBKEY_FILE = Join-Path $TAURI_DIR "aurora.pubkey"
 $CONF_FILE = Join-Path $REPO_DIR "apps\desktop\src-tauri\tauri.conf.json"
 
+# Helper: Write UTF-8 WITHOUT BOM (Windows PowerShell 5.1 adds BOM by default)
+function Write-Utf8NoBom {
+    param([string]$Path, [string]$Content)
+    $utf8NoBom = New-Object System.Text.UTF8Encoding $false
+    [System.IO.File]::WriteAllText($Path, $Content, $utf8NoBom)
+}
+
 Write-Host ""
 Write-Host "  ========================================" -ForegroundColor Cyan
 Write-Host "    Aurora - Tauri Signing Key Generator" -ForegroundColor Cyan
@@ -105,9 +112,9 @@ if (-not $pubkey) {
     $pubkey = Read-Host "  Paste the public key"
 }
 
-# Save public key and password
-Set-Content -Path $PUBKEY_FILE -Value $pubkey -NoNewline -Encoding UTF8
-Set-Content -Path $PASS_FILE -Value $password -NoNewline -Encoding UTF8
+# Save public key and password (UTF-8 without BOM)
+Write-Utf8NoBom -Path $PUBKEY_FILE -Content $pubkey
+Write-Utf8NoBom -Path $PASS_FILE -Content $password
 
 Write-Host "  [2/4] Public key saved: $PUBKEY_FILE" -ForegroundColor Green
 Write-Host "  [3/4] Private key saved: $KEY_FILE" -ForegroundColor Green
@@ -120,7 +127,8 @@ if (Test-Path $CONF_FILE) {
 
     $conf = Get-Content $CONF_FILE -Raw | ConvertFrom-Json
     $conf.plugins.updater.pubkey = $pubkey
-    $conf | ConvertTo-Json -Depth 10 | Set-Content $CONF_FILE -Encoding UTF8
+    $confJson = $conf | ConvertTo-Json -Depth 10
+    Write-Utf8NoBom -Path $CONF_FILE -Content $confJson
 
     Write-Host "  [OK] tauri.conf.json updated (pubkey filled in)" -ForegroundColor Green
 }
