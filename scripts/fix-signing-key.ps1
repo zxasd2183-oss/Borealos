@@ -36,11 +36,29 @@ $rawContent = (Get-Content $KEY_FILE -Raw).Trim()
 Write-Host "  Current key length: $($rawContent.Length) chars" -ForegroundColor Gray
 Write-Host "  First 50 chars: $($rawContent.Substring(0, [Math]::Min(50, $rawContent.Length)))..." -ForegroundColor DarkGray
 
+# Function: Normalize line endings to \n (Unix style)
+# Tauri's minisign signer expects \n line endings, not \r\n
+function Normalize-LineEndings {
+    param([string]$Text)
+    # Replace \r\n with \n, then replace any remaining \r with \n
+    $Text = $Text -replace "`r`n", "`n"
+    $Text = $Text -replace "`r", "`n"
+    return $Text
+}
+
 # Check if already in correct format
 if ($rawContent.StartsWith("untrusted comment:")) {
     Write-Host ""
     Write-Host "  [OK] Key is already in correct minisign format!" -ForegroundColor Green
-    Write-Host "  No fix needed." -ForegroundColor Gray
+
+    # Still normalize line endings to be safe
+    $normalized = Normalize-LineEndings $rawContent
+    if ($normalized -ne $rawContent) {
+        Write-Host "  Normalizing line endings (\\r\\n -> \\n)..." -ForegroundColor Gray
+        Write-Utf8NoBom -Path $KEY_FILE -Content $normalized
+        Write-Host "  [OK] Line endings normalized" -ForegroundColor Green
+    }
+    Write-Host "  No other fix needed." -ForegroundColor Gray
 } else {
     Write-Host ""
     Write-Host "  Key is NOT in minisign format. Attempting base64 decode..." -ForegroundColor Yellow
@@ -48,6 +66,9 @@ if ($rawContent.StartsWith("untrusted comment:")) {
     try {
         $decodedBytes = [System.Convert]::FromBase64String($rawContent)
         $decodedKey = [System.Text.Encoding]::UTF8.GetString($decodedBytes).Trim()
+        # Normalize line endings: \r\n -> \n
+        $decodedKey = $decodedKey -replace "`r`n", "`n"
+        $decodedKey = $decodedKey -replace "`r", "`n"
 
         if ($decodedKey.StartsWith("untrusted comment:")) {
             # Backup original

@@ -155,6 +155,11 @@ if (-not $privateKey.StartsWith("untrusted comment:")) {
     }
 }
 
+# CRITICAL: Normalize line endings to \n (Unix style)
+# Tauri's minisign signer fails silently if the key has \r\n line endings
+$privateKey = $privateKey -replace "`r`n", "`n"
+$privateKey = $privateKey -replace "`r", "`n"
+
 # Verify key looks valid
 if ($privateKey.Length -lt 100) {
     Write-Host "  [ERROR] Private key too short ($($privateKey.Length) chars) - may be invalid" -ForegroundColor Red
@@ -169,6 +174,7 @@ Write-Host "  [OK] Signing keys loaded" -ForegroundColor Green
 Write-Host "    Key length:   $($privateKey.Length) chars" -ForegroundColor DarkGray
 Write-Host "    Key starts:   $($privateKey.Substring(0, [Math]::Min(50, $privateKey.Length)))..." -ForegroundColor DarkGray
 Write-Host "    Password len: $($password.Length) chars" -ForegroundColor DarkGray
+Write-Host "    Key lines:    $(($privateKey -split "`n").Count) lines" -ForegroundColor DarkGray
 
 # ============================================================
 # STEP 2: Update version numbers (on the FRESHLY pulled code)
