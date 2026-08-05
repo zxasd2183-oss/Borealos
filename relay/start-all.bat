@@ -27,17 +27,33 @@ set "V2RAY_EXE="
 set "V2RAY_FOUND=0"
 
 REM 搜索可能的位置（按优先级）
-REM 1) relay 目录下的 v2rayN（含解压子目录）
+REM 1) relay 目录及上级目录下的 v2rayN（含各种解压子目录命名）
 for %%P in (
     "%RELAY_DIR%v2rayN\v2rayN.exe"
     "%RELAY_DIR%..\v2rayN\v2rayN.exe"
     "%RELAY_DIR%..\v2rayN\v2rayN-windows-64\v2rayN.exe"
     "%RELAY_DIR%..\v2rayN\v2rayN-windows-32\v2rayN.exe"
     "%RELAY_DIR%..\v2rayN\v2rayN-linux-64\v2rayN.exe"
+    "%RELAY_DIR%..\v2rayN\*\v2rayN.exe"
+    "D:\Ai Server\v2rayN\v2rayN.exe"
+    "D:\Ai Server\v2rayN\v2rayN-windows-64\v2rayN.exe"
+    "D:\Ai Server\v2rayN\*\v2rayN.exe"
+    "C:\Ai Server\v2rayN\v2rayN.exe"
+    "C:\Ai Server\v2rayN\v2rayN-windows-64\v2rayN.exe"
 ) do (
     if !V2RAY_FOUND!==0 if exist "%%~P" (
         set "V2RAY_EXE=%%~P"
         set "V2RAY_FOUND=1"
+    )
+)
+
+REM 1b) 通配符递归搜索 D:\Ai Server\v2rayN 下所有子目录
+if !V2RAY_FOUND!==0 (
+    for /r "D:\Ai Server\v2rayN" %%F in (v2rayN.exe) do (
+        if !V2RAY_FOUND!==0 if exist "%%F" (
+            set "V2RAY_EXE=%%F"
+            set "V2RAY_FOUND=1"
+        )
     )
 )
 
