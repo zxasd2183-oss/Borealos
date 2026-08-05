@@ -1,23 +1,23 @@
 {
-  "version": "0.2.0",
-  "notes": "Aurora v0.2.0 初始版本",
-  "pub_date": "2026-01-01T00:00:00.000Z",
-  "platforms": {
-    "windows-x86_64": {
-      "signature": "",
-      "url": ""
-    },
-    "darwin-x86_64": {
-      "signature": "",
-      "url": ""
-    },
-    "darwin-aarch64": {
-      "signature": "",
-      "url": ""
-    },
-    "linux-x86_64": {
-      "signature": "",
-      "url": ""
-    }
-  }
+    "platforms":  {
+                      "darwin-aarch64":  {
+                                             "signature":  "",
+                                             "url":  ""
+                                         },
+                      "linux-x86_64":  {
+                                           "signature":  "",
+                                           "url":  ""
+                                       },
+                      "windows-x86_64":  {
+                                             "url":  "http://8.148.237.155:3005/download/windows-x86_64/Aurora_0.3.0_x64-setup.exe",
+                                             "signature":  ""
+                                         },
+                      "darwin-x86_64":  {
+                                            "signature":  "",
+                                            "url":  ""
+                                        }
+                  },
+    "pub_date":  "2026-08-05T07:50:41.1401158Z",
+    "version":  "0.3.0",
+    "notes":  "first auto-update version"
 }
