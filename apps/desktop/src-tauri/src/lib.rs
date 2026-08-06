@@ -5,23 +5,27 @@
 //   1. 启动 → 显示小窗登录窗口（label="login"，420×600）
 //   2. 登录成功 → 前端 emit "login-success" 事件
 //   3. Rust 收到事件 → 显示大窗主窗口（label="main"，1280×800）→ 关闭登录窗口
-//   4. 主窗口关闭 → 最小化到系统托盘
+//   4. 主窗口关闭 → 最小化到系统托盘（桌面端）
 //   5. 登录窗口关闭 → 退出应用
 //
 // 功能：
-//   - 系统托盘（显示窗口、检查更新、退出）
-//   - 全局快捷键（Ctrl+Shift+A 唤醒窗口）
-//   - 自动更新（检查 + 下载安装）
+//   - 系统托盘（显示窗口、检查更新、退出）— 仅桌面端
+//   - 全局快捷键（Ctrl+Shift+A 唤醒窗口）— 仅桌面端
+//   - 自动更新（检查 + 下载安装）— 仅桌面端
 //   - 原生通知
 // ============================================================
 
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
+use tauri::{Emitter, Manager, WindowEvent};
+
+// ---- 桌面端独有导入（Android 不可用）----
+#[cfg(not(target_os = "android"))]
 use tauri::{
     menu::{Menu, MenuItem, PredefinedMenuItem},
     tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
-    Emitter, Manager, WindowEvent,
 };
+#[cfg(not(target_os = "android"))]
 use tauri_plugin_global_shortcut::{GlobalShortcutExt, ShortcutState};
 
 /// 应用信息
@@ -48,6 +52,8 @@ fn detect_platform() -> String {
     return "windows".to_string();
     #[cfg(target_os = "linux")]
     return "linux".to_string();
+    #[cfg(target_os = "android")]
+    return "android".to_string();
     #[allow(unreachable_code)]
     "unknown".to_string()
 }
@@ -59,7 +65,7 @@ fn app_info() -> AppInfo {
         name: "Aurora".to_string(),
         version: env!("CARGO_PKG_VERSION").to_string(),
         platform: detect_platform(),
-        is_desktop: true,
+        is_desktop: cfg!(not(target_os = "android")),
     }
 }
 
@@ -69,6 +75,7 @@ fn show_window(app: tauri::AppHandle) {
     if let Some(window) = app.get_webview_window("main") {
         let _ = window.show();
         let _ = window.set_focus();
+        #[cfg(not(target_os = "android"))]
         let _ = window.unminimize();
     }
 }
@@ -82,7 +89,6 @@ fn hide_window(app: tauri::AppHandle) {
 }
 
 /// 自定义命令：发送系统原生通知（灵动岛后台通知）
-/// 当主窗口不在前台时，通过 OS 原生通知中心推送灵动岛消息
 #[tauri::command]
 async fn send_native_notification(
     app: tauri::AppHandle,
@@ -111,53 +117,70 @@ async fn is_main_window_active(app: tauri::AppHandle) -> Result<bool, String> {
     }
 }
 
-/// 自定义命令：检查更新
+/// 自定义命令：检查更新（仅桌面端可用）
 #[tauri::command]
 async fn check_for_updates(app: tauri::AppHandle) -> Result<String, String> {
-    use tauri_plugin_updater::UpdaterExt;
+    #[cfg(target_os = "android")]
+    {
+        let _ = app;
+        return Err("Android 平台不支持自动更新".to_string());
+    }
 
-    let updater = app.updater().map_err(|e| e.to_string())?;
-    let current_version = app.package_info().version.to_string();
+    #[cfg(not(target_os = "android"))]
+    {
+        use tauri_plugin_updater::UpdaterExt;
 
-    match updater.check().await {
-        Ok(Some(update)) => Ok(serde_json::json!({
-            "available": true,
-            "version": update.version,
-            "current_version": current_version,
-            "date": update.date.map(|d| d.to_string()),
-            "body": update.body,
-        })
-        .to_string()),
-        Ok(None) => Ok(serde_json::json!({
-            "available": false,
-            "current_version": current_version,
-        })
-        .to_string()),
-        Err(e) => Err(format!("检查更新失败: {}", e)),
+        let updater = app.updater().map_err(|e| e.to_string())?;
+        let current_version = app.package_info().version.to_string();
+
+        match updater.check().await {
+            Ok(Some(update)) => Ok(serde_json::json!({
+                "available": true,
+                "version": update.version,
+                "current_version": current_version,
+                "date": update.date.map(|d| d.to_string()),
+                "body": update.body,
+            })
+            .to_string()),
+            Ok(None) => Ok(serde_json::json!({
+                "available": false,
+                "current_version": current_version,
+            })
+            .to_string()),
+            Err(e) => Err(format!("检查更新失败: {}", e)),
+        }
     }
 }
 
-/// 自定义命令：下载并安装更新
+/// 自定义命令：下载并安装更新（仅桌面端可用）
 #[tauri::command]
 async fn install_update(app: tauri::AppHandle) -> Result<(), String> {
-    use tauri_plugin_updater::UpdaterExt;
-
-    let updater = app.updater().map_err(|e| e.to_string())?;
-
-    if let Some(update) = updater.check().await.map_err(|e| e.to_string())? {
-        update
-            .download_and_install(|_chunk_length, _content_length| {}, || {})
-            .await
-            .map_err(|e| e.to_string())?;
-
-        app.restart();
+    #[cfg(target_os = "android")]
+    {
+        let _ = app;
+        return Err("Android 平台不支持自动更新".to_string());
     }
 
-    Ok(())
+    #[cfg(not(target_os = "android"))]
+    {
+        use tauri_plugin_updater::UpdaterExt;
+
+        let updater = app.updater().map_err(|e| e.to_string())?;
+
+        if let Some(update) = updater.check().await.map_err(|e| e.to_string())? {
+            update
+                .download_and_install(|_chunk_length, _content_length| {}, || {})
+                .await
+                .map_err(|e| e.to_string())?;
+
+            app.restart();
+        }
+
+        Ok(())
+    }
 }
 
 /// 自定义命令：从登录窗口切换到主窗口
-/// 前端登录成功后调用此命令，传入用户数据
 #[tauri::command]
 async fn transition_to_main(
     app: tauri::AppHandle,
@@ -165,16 +188,14 @@ async fn transition_to_main(
 ) -> Result<(), String> {
     // 1. 将用户数据传递给主窗口
     if let Some(main_window) = app.get_webview_window("main") {
-        // 向主窗口发送用户数据
         let _ = main_window.emit("login-success", &payload);
-
-        // 2. 显示主窗口
         let _ = main_window.show();
         let _ = main_window.set_focus();
+        #[cfg(not(target_os = "android"))]
         let _ = main_window.center();
     }
 
-    // 3. 短暂延迟后关闭登录窗口（让过渡动画完成）
+    // 2. 短暂延迟后关闭登录窗口
     std::thread::sleep(Duration::from_millis(300));
 
     if let Some(login_window) = app.get_webview_window("login") {
@@ -186,51 +207,64 @@ async fn transition_to_main(
 
 /// 应用入口
 pub fn run() {
-    let shortcut_str = if cfg!(target_os = "macos") {
-        "Cmd+Shift+A"
-    } else {
-        "Ctrl+Shift+A"
-    };
+    let mut builder = tauri::Builder::default();
 
-    tauri::Builder::default()
-        // ---- 注册插件 ----
+    // ---- 注册通用插件 ----
+    builder = builder
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_dialog::init())
-        .plugin(tauri_plugin_notification::init())
-        .plugin(tauri_plugin_window_state::Builder::default().build())
-        .plugin(tauri_plugin_updater::Builder::new().build())
-        .plugin(
-            tauri_plugin_global_shortcut::Builder::new()
-                .with_handler(move |app, _shortcut, event| {
-                    if event.state == ShortcutState::Pressed {
-                        if let Some(window) = app.get_webview_window("main") {
-                            let visible = window.is_visible().unwrap_or(false);
-                            let minimized = window.is_minimized().unwrap_or(false);
-                            if visible && !minimized {
-                                let _ = window.hide();
-                            } else {
-                                let _ = window.show();
-                                let _ = window.set_focus();
-                                let _ = window.unminimize();
+        .plugin(tauri_plugin_notification::init());
+
+    // ---- 注册桌面端独有插件 ----
+    #[cfg(not(target_os = "android"))]
+    {
+        builder = builder
+            .plugin(tauri_plugin_window_state::Builder::default().build())
+            .plugin(tauri_plugin_updater::Builder::new().build())
+            .plugin(
+                tauri_plugin_global_shortcut::Builder::new()
+                    .with_handler(move |app, _shortcut, event| {
+                        if event.state == ShortcutState::Pressed {
+                            if let Some(window) = app.get_webview_window("main") {
+                                let visible = window.is_visible().unwrap_or(false);
+                                let minimized = window.is_minimized().unwrap_or(false);
+                                if visible && !minimized {
+                                    let _ = window.hide();
+                                } else {
+                                    let _ = window.show();
+                                    let _ = window.set_focus();
+                                    let _ = window.unminimize();
+                                }
                             }
                         }
-                    }
-                })
-                .build(),
-        )
-        // ---- 注册命令 ----
-        .invoke_handler(tauri::generate_handler![
-            app_info,
-            show_window,
-            hide_window,
-            send_native_notification,
-            is_main_window_active,
-            check_for_updates,
-            install_update,
-            transition_to_main,
-        ])
-        .setup(move |app| {
+                    })
+                    .build(),
+            );
+    }
+
+    // ---- 注册命令 ----
+    builder = builder.invoke_handler(tauri::generate_handler![
+        app_info,
+        show_window,
+        hide_window,
+        send_native_notification,
+        is_main_window_active,
+        check_for_updates,
+        install_update,
+        transition_to_main,
+    ]);
+
+    // ---- Setup：桌面端注册托盘和快捷键 ----
+    #[cfg(not(target_os = "android"))]
+    {
+        let shortcut_str = if cfg!(target_os = "macos") {
+            "Cmd+Shift+A"
+        } else {
+            "Ctrl+Shift+A"
+        };
+
+        builder = builder.setup(move |app| {
             // -------- 注册全局快捷键 --------
             if let Err(e) = app.global_shortcut().register(shortcut_str) {
                 eprintln!("[Aurora] 注册全局快捷键失败: {:?}", e);
@@ -306,48 +340,55 @@ pub fn run() {
             tray_builder.build(app)?;
 
             Ok(())
-        })
-        // ---- 窗口事件处理 ----
-        .on_window_event(|window, event| {
-            if let WindowEvent::CloseRequested { api, .. } = event {
-                let label = window.label();
+        });
+    }
 
-                if label == "login" {
-                    // 登录窗口关闭 = 用户取消登录 → 退出应用
-                    // 不拦截，允许关闭
-                    let app = window.app_handle();
-                    app.exit(0);
-                } else if label == "main" {
-                    // 主窗口关闭 → 最小化到托盘
+    // ---- Android Setup：空操作 ----
+    #[cfg(target_os = "android")]
+    {
+        builder = builder.setup(|_app| Ok(()));
+    }
+
+    // ---- 窗口事件处理 ----
+    builder = builder.on_window_event(|window, event| {
+        if let WindowEvent::CloseRequested { api, .. } = event {
+            let label = window.label();
+
+            if label == "login" {
+                let app = window.app_handle();
+                app.exit(0);
+            } else if label == "main" {
+                // 桌面端：主窗口关闭 → 最小化到托盘
+                // Android：直接关闭
+                #[cfg(not(target_os = "android"))]
+                {
                     let _ = window.hide();
                     api.prevent_close();
 
-                    // 发送原生通知
-                    #[cfg(target_os = "macos")]
-                    {
-                        use tauri_plugin_notification::NotificationExt;
-                        let _ = window
-                            .app_handle()
-                            .notification()
-                            .builder()
-                            .title("Aurora")
-                            .body("Aurora 已最小化到后台，点击托盘图标或按 Cmd+Shift+A 唤醒")
-                            .show();
-                    }
-                    #[cfg(not(target_os = "macos"))]
-                    {
-                        use tauri_plugin_notification::NotificationExt;
-                        let _ = window
-                            .app_handle()
-                            .notification()
-                            .builder()
-                            .title("Aurora")
-                            .body("Aurora 已最小化到后台，点击托盘图标或按 Ctrl+Shift+A 唤醒")
-                            .show();
-                    }
+                    use tauri_plugin_notification::NotificationExt;
+                    let shortcut_hint = if cfg!(target_os = "macos") {
+                        "Cmd+Shift+A"
+                    } else {
+                        "Ctrl+Shift+A"
+                    };
+                    let _ = window
+                        .app_handle()
+                        .notification()
+                        .builder()
+                        .title("Aurora")
+                        .body(format!("Aurora 已最小化到后台，点击托盘图标或按 {} 唤醒", shortcut_hint))
+                        .show();
+                }
+
+                #[cfg(target_os = "android")]
+                {
+                    let _ = api;
                 }
             }
-        })
+        }
+    });
+
+    builder
         .run(tauri::generate_context!())
-        .expect("运行 Aurora 桌面端时出错");
+        .expect("运行 Aurora 时出错");
 }
