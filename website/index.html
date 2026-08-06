@@ -418,6 +418,19 @@ section {
   color: var(--muted);
   margin-top: 12px;
 }
+.download-alt {
+  text-align: center;
+  margin-top: 32px;
+  font-size: 14px;
+  color: var(--muted);
+}
+.download-alt a {
+  color: var(--accent);
+  text-decoration: none;
+  font-weight: 500;
+  transition: color 0.2s;
+}
+.download-alt a:hover { color: var(--accent3); }
 
 /* ===== Hero Screenshot ===== */
 .hero-screenshot {
@@ -922,11 +935,11 @@ footer {
           <svg viewBox="0 0 24 24" fill="none" stroke="#00d4ff" stroke-width="1.5"><path d="M3 5l8-1v8H3V5z"/><path d="M12 4l9-1v10h-9V4z"/><path d="M3 12h8v7l-8-1v-6z"/><path d="M12 12h9v8l-9-1v-7z"/></svg>
         </div>
         <h3>Windows</h3>
-        <p class="ver">Aurora v0.3.0</p>
+        <p class="ver">Aurora v0.4.0</p>
         <div class="arch">
           <span>x64</span>
         </div>
-        <a href="https://files.borealos.dev/Aurora_0.3.0_x64-setup.exe" class="download-btn" target="_blank">
+        <a href="https://files.borealos.dev/Aurora_0.4.0_x64-setup.exe" class="download-btn" target="_blank">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
           下载 EXE
         </a>
@@ -938,12 +951,12 @@ footer {
           <svg viewBox="0 0 24 24" fill="none" stroke="#a855f7" stroke-width="1.5"><path d="M12 2c-1 0-2 .5-3 1-1-1-2-1-3-1-2 0-4 2-4 5 0 3 2 7 4 7 1 0 2-.5 3-1 1 .5 2 1 3 1s2-.5 3-1c1 .5 2 1 3 1 2 0 4-4 4-7 0-3-2-5-4-5-1 0-2 0-3 1-1-.5-2-1-3-1z"/><path d="M12 2c0 2-1 3-2 4"/></svg>
         </div>
         <h3>macOS</h3>
-        <p class="ver">Aurora v0.3.0</p>
+        <p class="ver">Aurora v0.4.0</p>
         <div class="arch">
           <span>Apple Silicon</span>
           <span>Intel</span>
         </div>
-        <a href="https://files.borealos.dev/Aurora_0.3.0_universal.dmg" class="download-btn" target="_blank">
+        <a href="https://files.borealos.dev/Aurora_0.4.0_universal.dmg" class="download-btn" target="_blank">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
           下载 DMG
         </a>
@@ -955,20 +968,24 @@ footer {
           <svg viewBox="0 0 24 24" fill="none" stroke="#64D2FF" stroke-width="1.5"><path d="M5 9v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V9"/><path d="M5 9a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2"/><line x1="7" y1="13" x2="7" y2="15"/><line x1="17" y1="13" x2="17" y2="15"/><path d="M8 7l-2-3"/><path d="M16 7l2-3"/><circle cx="9" cy="11" r="0.5" fill="#64D2FF"/><circle cx="15" cy="11" r="0.5" fill="#64D2FF"/></svg>
         </div>
         <h3>Android</h3>
-        <p class="ver">Aurora v0.3.0</p>
+        <p class="ver">Aurora v0.4.0</p>
         <div class="arch">
           <span>arm64</span>
           <span>armv7</span>
           <span>x86</span>
           <span>x64</span>
         </div>
-        <a href="https://files.borealos.dev/Aurora_0.3.0_universal.apk" class="download-btn" target="_blank">
+        <a href="https://files.borealos.dev/Aurora_0.4.0_universal.apk" class="download-btn" target="_blank">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
           下载 APK
         </a>
         <p class="size">50 MB · 通用 APK</p>
       </div>
     </div>
+    <p class="download-alt">
+      国内下载请使用上方链接（Cloudflare CDN 加速）·
+      <a href="https://github.com/zxasd2183-oss/Borealos/releases/tag/v0.4.0" target="_blank">GitHub Release 备用下载 →</a>
+    </p>
   </div>
 </section>
 
@@ -978,7 +995,7 @@ footer {
     <h2>开始你的极光之旅</h2>
     <p>免费下载，即刻体验 AI 驱动的下一代工作站。</p>
     <div class="cta-buttons">
-      <a href="https://files.borealos.dev/Aurora_0.3.0_x64-setup.exe" class="btn-primary" target="_blank">
+      <a href="https://files.borealos.dev/Aurora_0.4.0_x64-setup.exe" class="btn-primary" target="_blank">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
         下载 Aurora
       </a>
