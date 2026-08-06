@@ -21,7 +21,7 @@
         "resizable": true,
         "fullscreen": false,
         "center": true,
-        "hidden": false
+        "visible": true
       }
     ],
     "security": {
@@ -30,7 +30,7 @@
   },
   "bundle": {
     "active": true,
-    "targets": ["apk"],
+    "targets": [],
     "icon": ["icons/icon.png"],
     "publisher": "Aurora",
     "category": "Productivity",
