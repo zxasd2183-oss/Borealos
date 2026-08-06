@@ -24,10 +24,15 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Setup Pages
         uses: actions/configure-pages@v5
+
+      - name: Clean website directory
+        run: |
+          rm -rf website/.wrangler
+          rm -f website/cdn-index.html
 
       - name: Upload website artifact
         uses: actions/upload-pages-artifact@v3

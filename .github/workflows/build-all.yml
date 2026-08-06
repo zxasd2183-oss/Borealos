@@ -72,7 +72,6 @@ jobs:
           path: |
             apps/desktop/src-tauri/target/universal-apple-darwin/release/bundle/dmg/*.dmg
             apps/desktop/src-tauri/target/universal-apple-darwin/release/bundle/dmg/*.sig
-            apps/desktop/src-tauri/target/universal-apple-darwin/release/bundle/macos/*.app
 
   build-android:
     runs-on: ubuntu-latest
@@ -118,3 +117,45 @@ jobs:
         with:
           name: aurora-android-apk
           path: apps/desktop/src-tauri/gen/android/app/build/outputs/apk/**/*.apk
+
+  # ===== 发布 Release =====
+  release:
+    needs: [build-windows, build-macos, build-android]
+    runs-on: ubuntu-latest
+    if: github.ref_type == 'tag' || github.event_name == 'workflow_dispatch'
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: List artifacts
+        run: find artifacts -type f | head -20
+
+      - name: Create or Update Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name || 'latest' }}
+          name: Aurora ${{ github.ref_name || 'Latest' }}
+          body: |
+            ## Aurora ${{ github.ref_name || 'Latest' }} — 全平台构建
+
+            ### 下载
+            | 平台 | 文件 |
+            |------|------|
+            | Windows | `Aurora_*_x64-setup.exe` |
+            | macOS (Universal) | `Aurora_*_universal.dmg` |
+            | Android | `Aurora_*_universal.apk` |
+
+            ### 国内下载
+            若 GitHub 下载慢，请使用国内镜像：https://files.borealos.dev/
+          files: |
+            artifacts/aurora-windows-exe/*
+            artifacts/aurora-macos-dmg/*
+            artifacts/aurora-android-apk/*
+          draft: false
+          prerelease: false
