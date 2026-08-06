@@ -19,6 +19,7 @@ import WorkPanel from './components/WorkPanel';
 import ImageGenPanel from './components/ImageGenPanel';
 import FreeCanvas from './components/FreeCanvas';
 import CodeEditor from './components/CodeEditor';
+import SSHPanel from './components/SSHPanel';
 import DesktopTitlebar from './components/DesktopTitlebar';
 import UpdateNotification from './components/UpdateNotification';
 import DynamicIslandComponent, { DynamicIsland } from './components/DynamicIsland';
@@ -29,12 +30,13 @@ import {
   ImageIcon,
   CanvasIcon,
   CodeIcon,
+  ServerIcon,
   SettingsIcon,
   AuroraLogo,
 } from './components/Icons';
 
 /** 视图类型 */
-type ViewType = 'chat' | 'work' | 'image' | 'canvas' | 'code';
+type ViewType = 'chat' | 'work' | 'image' | 'canvas' | 'code' | 'ssh';
 
 /** 聊天消息 */
 export interface ChatMessage {
@@ -65,6 +67,7 @@ const NAV_ITEMS: { type: ViewType; label: string; icon: typeof AiIcon }[] = [
   { type: 'image', label: '图片生成', icon: ImageIcon },
   { type: 'canvas', label: '自由画布', icon: CanvasIcon },
   { type: 'code', label: '代码', icon: CodeIcon },
+  { type: 'ssh', label: 'SSH', icon: ServerIcon },
 ];
 
 /* ============================================================
@@ -668,6 +671,11 @@ const App: React.FC = () => {
           {activeView === 'code' && (
             <div key="code" className="aurora-view-wrapper aurora-view-wrapper--code">
               <CodeEditor />
+            </div>
+          )}
+          {activeView === 'ssh' && (
+            <div key="ssh" className="aurora-view-wrapper aurora-view-wrapper--ssh">
+              <SSHPanel />
             </div>
           )}
         </main>

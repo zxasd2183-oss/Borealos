@@ -64,7 +64,20 @@
     "publisher": "Aurora",
     "category": "Productivity",
     "shortDescription": "Aurora AI Desktop",
-    "longDescription": "Aurora is an AI-powered desktop development environment with Dynamic Island, code editing, terminal, and intelligent assistant."
+    "longDescription": "Aurora is an AI-powered desktop development environment with Dynamic Island, code editing, terminal, and intelligent assistant.",
+    "windows": {
+      "nsis": {
+        "installerIcon": "icons/icon.ico",
+        "headerImage": "icons/installer-header.bmp",
+        "sidebarImage": "icons/installer-sidebar.bmp",
+        "installMode": "currentUser",
+        "languages": ["SimpChinese", "English"],
+        "displayLanguageSelector": true
+      },
+      "webviewInstallMode": {
+        "type": "downloadBootstrapper"
+      }
+    }
   },
   "plugins": {
     "updater": {

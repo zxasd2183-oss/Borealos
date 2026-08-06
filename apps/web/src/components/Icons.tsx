@@ -400,6 +400,17 @@ export const CodeIcon: FC<IconProps> = (p) => (
   </Svg>
 );
 
+export const ServerIcon: FC<IconProps> = (p) => (
+  <Svg {...p}>
+    <rect x="3" y="4" width="18" height="6" rx="1.5" fill="currentColor" fillOpacity="0.1" />
+    <rect x="3" y="14" width="18" height="6" rx="1.5" fill="currentColor" fillOpacity="0.1" />
+    <circle cx="7" cy="7" r="0.8" fill="currentColor" />
+    <circle cx="7" cy="17" r="0.8" fill="currentColor" />
+    <line x1="11" y1="7" x2="17" y2="7" opacity="0.5" />
+    <line x1="11" y1="17" x2="17" y2="17" opacity="0.5" />
+  </Svg>
+);
+
 export const BrowserIcon: FC<IconProps> = (p) => (
   <Svg {...p}>
     <rect x="2" y="3" width="20" height="18" rx="2" />

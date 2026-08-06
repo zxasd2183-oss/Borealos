@@ -19,6 +19,10 @@ use serde::{Deserialize, Serialize};
 use std::time::Duration;
 use tauri::{Emitter, Manager, WindowEvent};
 
+// ---- SSH 模块 ----
+#[cfg(not(target_os = "android"))]
+mod ssh;
+
 // ---- 桌面端独有导入（Android 不可用）----
 #[cfg(not(target_os = "android"))]
 use tauri::{
@@ -242,6 +246,7 @@ pub fn run() {
                     })
                     .build(),
             );
+        // 注意：SSH 管理器在 setup 闭包中初始化（需要 app 上下文）
     }
 
     // ---- 注册命令 ----
@@ -254,6 +259,25 @@ pub fn run() {
         check_for_updates,
         install_update,
         transition_to_main,
+        // ---- SSH 命令（仅桌面端）----
+        #[cfg(not(target_os = "android"))]
+        ssh::ssh_list_hosts,
+        #[cfg(not(target_os = "android"))]
+        ssh::ssh_save_host,
+        #[cfg(not(target_os = "android"))]
+        ssh::ssh_delete_host,
+        #[cfg(not(target_os = "android"))]
+        ssh::ssh_test_connection,
+        #[cfg(not(target_os = "android"))]
+        ssh::ssh_connect,
+        #[cfg(not(target_os = "android"))]
+        ssh::ssh_disconnect,
+        #[cfg(not(target_os = "android"))]
+        ssh::ssh_exec,
+        #[cfg(not(target_os = "android"))]
+        ssh::ssh_system_info,
+        #[cfg(not(target_os = "android"))]
+        ssh::ssh_all_status,
     ]);
 
     // ---- Setup：桌面端注册托盘和快捷键 ----
@@ -266,6 +290,10 @@ pub fn run() {
         };
 
         builder = builder.setup(move |app| {
+            // -------- 初始化 SSH 管理器 --------
+            let ssh_manager = ssh::SshManager::new(app);
+            app.manage(ssh_manager);
+
             // -------- 注册全局快捷键 --------
             if let Err(e) = app.global_shortcut().register(shortcut_str) {
                 eprintln!("[Aurora] 注册全局快捷键失败: {:?}", e);

@@ -1,0 +1,595 @@
+/* ============================================================
+ * Aurora SSH 控制面板 — 远程设备监控
+ * ============================================================ */
+
+.ssh-panel {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+  color: var(--aurora-text, #e0e0e8);
+}
+
+/* ===== 顶部工具栏 ===== */
+.ssh-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 20px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  background: rgba(0, 0, 0, 0.2);
+  flex-shrink: 0;
+}
+
+.ssh-toolbar__left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.ssh-toolbar__title {
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.ssh-toolbar__count {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.4);
+  padding: 2px 8px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.ssh-toolbar__actions {
+  display: flex;
+  gap: 8px;
+}
+
+.ssh-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  border: none;
+  transition: all 0.2s;
+}
+
+.ssh-btn--primary {
+  background: linear-gradient(135deg, #00d4ff, #007AFF);
+  color: #fff;
+}
+
+.ssh-btn--primary:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 16px rgba(0, 122, 255, 0.3);
+}
+
+.ssh-btn--ghost {
+  background: rgba(255, 255, 255, 0.06);
+  color: rgba(255, 255, 255, 0.8);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.ssh-btn--ghost:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.ssh-btn--danger {
+  background: rgba(255, 69, 58, 0.15);
+  color: #ff453a;
+  border: 1px solid rgba(255, 69, 58, 0.2);
+}
+
+/* ===== 主内容区 ===== */
+.ssh-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 20px;
+}
+
+/* ===== 空状态 ===== */
+.ssh-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  text-align: center;
+  color: rgba(255, 255, 255, 0.3);
+}
+
+.ssh-empty__icon {
+  width: 64px;
+  height: 64px;
+  margin-bottom: 16px;
+  opacity: 0.3;
+}
+
+.ssh-empty__title {
+  font-size: 18px;
+  font-weight: 600;
+  margin-bottom: 8px;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.ssh-empty__desc {
+  font-size: 14px;
+  max-width: 400px;
+  line-height: 1.6;
+}
+
+/* ===== 设备卡片网格 ===== */
+.ssh-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
+  gap: 16px;
+}
+
+/* ===== 设备卡片 ===== */
+.ssh-card {
+  background: rgba(20, 20, 40, 0.6);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 16px;
+  overflow: hidden;
+  transition: all 0.3s;
+}
+
+.ssh-card:hover {
+  border-color: rgba(0, 212, 255, 0.2);
+  box-shadow: 0 8px 32px rgba(0, 212, 255, 0.06);
+}
+
+.ssh-card--connected {
+  border-color: rgba(48, 209, 88, 0.2);
+}
+
+/* 卡片头部 */
+.ssh-card__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.ssh-card__info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.ssh-card__avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  flex-shrink: 0;
+}
+
+.ssh-card__name {
+  font-size: 15px;
+  font-weight: 600;
+  margin-bottom: 2px;
+}
+
+.ssh-card__host {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.4);
+  font-family: 'SF Mono', 'Fira Code', monospace;
+}
+
+.ssh-card__status {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  padding: 4px 10px;
+  border-radius: 20px;
+}
+
+.ssh-status--online {
+  color: #30d158;
+  background: rgba(48, 209, 88, 0.1);
+}
+
+.ssh-status--offline {
+  color: rgba(255, 255, 255, 0.3);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.ssh-status--connecting {
+  color: #ffd60a;
+  background: rgba(255, 214, 10, 0.1);
+}
+
+.ssh-status__dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+}
+
+.ssh-status--online .ssh-status__dot {
+  background: #30d158;
+  animation: ssh-pulse 2s ease-in-out infinite;
+}
+
+.ssh-status--offline .ssh-status__dot {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+.ssh-status--connecting .ssh-status__dot {
+  background: #ffd60a;
+  animation: ssh-pulse 1s ease-in-out infinite;
+}
+
+@keyframes ssh-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+/* 卡片系统信息 */
+.ssh-card__body {
+  padding: 16px 20px;
+}
+
+.ssh-sys-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+  font-size: 13px;
+}
+
+.ssh-sys-row__label {
+  color: rgba(255, 255, 255, 0.4);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.ssh-sys-row__value {
+  color: rgba(255, 255, 255, 0.8);
+  font-family: 'SF Mono', 'Fira Code', monospace;
+  font-size: 12px;
+}
+
+/* 进度条 */
+.ssh-bar {
+  margin: 10px 0;
+}
+
+.ssh-bar__header {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 4px;
+  font-size: 12px;
+}
+
+.ssh-bar__label {
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.ssh-bar__value {
+  color: rgba(255, 255, 255, 0.8);
+  font-family: 'SF Mono', 'Fira Code', monospace;
+}
+
+.ssh-bar__track {
+  height: 6px;
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.ssh-bar__fill {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 0.5s ease;
+}
+
+.ssh-bar__fill--cpu { background: linear-gradient(90deg, #30d158, #ffd60a, #ff453a); }
+.ssh-bar__fill--mem { background: linear-gradient(90deg, #0a84ff, #5e5ce6); }
+.ssh-bar__fill--disk { background: linear-gradient(90deg, #bf5af2, #ff375f); }
+.ssh-bar__fill--swap { background: linear-gradient(90deg, #64d2ff, #30d158); }
+
+/* 卡片底部操作 */
+.ssh-card__footer {
+  display: flex;
+  gap: 8px;
+  padding: 12px 20px;
+  border-top: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.ssh-card__btn {
+  flex: 1;
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.04);
+  color: rgba(255, 255, 255, 0.7);
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+}
+
+.ssh-card__btn:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.ssh-card__btn--connect {
+  background: rgba(48, 209, 88, 0.1);
+  color: #30d158;
+  border-color: rgba(48, 209, 88, 0.2);
+}
+
+.ssh-card__btn--disconnect {
+  background: rgba(255, 69, 58, 0.1);
+  color: #ff453a;
+  border-color: rgba(255, 69, 58, 0.2);
+}
+
+/* ===== 添加/编辑主机表单 ===== */
+.ssh-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(8px);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ssh-modal {
+  background: rgba(20, 20, 40, 0.95);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 20px;
+  width: 90%;
+  max-width: 480px;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.5);
+}
+
+.ssh-modal__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px 24px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.ssh-modal__title {
+  font-size: 17px;
+  font-weight: 700;
+}
+
+.ssh-modal__close {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.06);
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(255, 255, 255, 0.5);
+  transition: all 0.2s;
+}
+
+.ssh-modal__close:hover {
+  background: rgba(255, 69, 58, 0.15);
+  color: #ff453a;
+}
+
+.ssh-modal__body {
+  padding: 20px 24px;
+}
+
+.ssh-form-group {
+  margin-bottom: 16px;
+}
+
+.ssh-form-label {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.5);
+  margin-bottom: 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.ssh-form-input,
+.ssh-form-select {
+  width: 100%;
+  padding: 10px 14px;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 14px;
+  transition: border-color 0.2s;
+  outline: none;
+}
+
+.ssh-form-input:focus,
+.ssh-form-select:focus {
+  border-color: rgba(0, 212, 255, 0.3);
+}
+
+.ssh-form-input::placeholder {
+  color: rgba(255, 255, 255, 0.2);
+}
+
+.ssh-form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.ssh-auth-tabs {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+
+.ssh-auth-tab {
+  flex: 1;
+  padding: 8px;
+  text-align: center;
+  border-radius: 8px;
+  font-size: 13px;
+  cursor: pointer;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  color: rgba(255, 255, 255, 0.5);
+  transition: all 0.2s;
+}
+
+.ssh-auth-tab--active {
+  background: rgba(0, 212, 255, 0.1);
+  border-color: rgba(0, 212, 255, 0.3);
+  color: #00d4ff;
+}
+
+.ssh-modal__footer {
+  display: flex;
+  gap: 10px;
+  padding: 16px 24px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  justify-content: flex-end;
+}
+
+/* ===== 终端弹窗 ===== */
+.ssh-terminal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(8px);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ssh-terminal {
+  background: rgba(10, 10, 20, 0.95);
+  border: 1px solid rgba(0, 212, 255, 0.15);
+  border-radius: 16px;
+  width: 90%;
+  max-width: 720px;
+  height: 70vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.ssh-terminal__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 20px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.ssh-terminal__title {
+  font-size: 14px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.ssh-terminal__body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px;
+  font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
+  font-size: 13px;
+  line-height: 1.6;
+  color: #30d158;
+}
+
+.ssh-terminal__line {
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+.ssh-terminal__input-row {
+  display: flex;
+  padding: 12px 16px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  gap: 8px;
+}
+
+.ssh-terminal__input {
+  flex: 1;
+  padding: 8px 12px;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  color: #30d158;
+  font-family: 'SF Mono', 'Fira Code', monospace;
+  font-size: 13px;
+  outline: none;
+}
+
+.ssh-terminal__input:focus {
+  border-color: rgba(48, 209, 88, 0.3);
+}
+
+/* ===== 加载状态 ===== */
+.ssh-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px;
+  color: rgba(255, 255, 255, 0.3);
+}
+
+.ssh-loading__spinner {
+  width: 24px;
+  height: 24px;
+  border: 2px solid rgba(255, 255, 255, 0.1);
+  border-top-color: #00d4ff;
+  border-radius: 50%;
+  animation: ssh-spin 0.8s linear infinite;
+  margin-right: 10px;
+}
+
+@keyframes ssh-spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ===== 响应式 ===== */
+@media (max-width: 768px) {
+  .ssh-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .ssh-form-row {
+    grid-template-columns: 1fr;
+  }
+}
