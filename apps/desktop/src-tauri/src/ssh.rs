@@ -84,9 +84,9 @@ impl russh::client::Handler for SimpleHandler {
     async fn check_server_key(
         &mut self,
         _server_public_key: &russh_keys::key::PublicKey,
-    ) -> Result<(russh_keys::key::PublicKey, bool), Self::Error> {
+    ) -> Result<bool, Self::Error> {
         // 接受所有密钥（后续可加 known_hosts 验证）
-        Ok((_server_public_key.clone(), true))
+        Ok(true)
     }
 }
 
@@ -319,7 +319,7 @@ pub async fn ssh_exec(app: AppHandle, host_id: String, command: String) -> Resul
         .map_err(|e| format!("打开通道失败: {}", e))?;
 
     channel
-        .exec(true, &command)
+        .exec(true, command.as_bytes())
         .await
         .map_err(|e| format!("执行命令失败: {}", e))?;
 
