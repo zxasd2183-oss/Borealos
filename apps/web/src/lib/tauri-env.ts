@@ -75,6 +75,18 @@ async function getEvent() {
   return _eventModule;
 }
 
+// ---- 通用 invoke 封装 ----
+
+/**
+ * 调用 Tauri 后端命令。
+ * 在非 Tauri 环境下会抛出错误，调用方需 try/catch 处理。
+ */
+export async function invoke<T = unknown>(cmd: string, args?: Record<string, unknown>): Promise<T> {
+  const core = await getCore();
+  if (!core) throw new Error('不在 Tauri 环境中，无法调用后端命令');
+  return await core.invoke<T>(cmd, args);
+}
+
 // ---- 窗口控制 ----
 
 /** 获取当前窗口实例 */
