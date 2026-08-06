@@ -206,6 +206,7 @@ async fn transition_to_main(
 }
 
 /// 应用入口
+#[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let mut builder = tauri::Builder::default();
 
