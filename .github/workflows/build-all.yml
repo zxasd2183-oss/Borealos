@@ -90,11 +90,10 @@ jobs:
           java-version: 17
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
-        with:
-          packages: |
-            platforms;android-34
-            build-tools;34.0.0
-            ndk;26.3.11579264
+      - name: Install Android SDK packages
+        run: |
+          yes | sdkmanager --licenses
+          sdkmanager "platforms;android-34" "build-tools;34.0.0" "ndk;26.3.11579264"
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
         with:
