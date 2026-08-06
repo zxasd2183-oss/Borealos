@@ -70,6 +70,7 @@
         "installerIcon": "icons/icon.ico",
         "headerImage": "icons/installer-header.bmp",
         "sidebarImage": "icons/installer-sidebar.bmp",
+        "installerHooks": "nsis/installer-hooks.nsh",
         "installMode": "currentUser",
         "languages": ["SimpChinese", "English"],
         "displayLanguageSelector": true

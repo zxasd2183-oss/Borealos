@@ -60,3 +60,8 @@ apps/gateway/target/
 # Update server data (installers + manifests)
 scripts/updates/releases/
 
+__pycache__/
+*.pyc
+installer-preview.html
+installer-animated-preview.html
+website/.wrangler/

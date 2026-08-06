@@ -1,0 +1,46 @@
+# ============================================================
+# Aurora Digital Human Engine — Python Dependencies
+# ============================================================
+# 推理服务核心
+fastapi==0.115.6
+uvicorn[standard]==0.34.0
+pydantic==2.10.4
+
+# 音频处理
+numpy>=1.26.0
+scipy>=1.13.0
+librosa>=0.10.2.post1
+soundfile>=0.12.1
+
+# 图像/视频处理
+opencv-python-headless>=4.10.0.84
+Pillow>=11.0.0
+imageio>=2.36.0
+imageio-ffmpeg>=0.5.1
+
+# TTS — 使用 edge-tts (本地化，不依赖云 API key)
+edge-tts>=6.1.12
+
+# 模型推理 (按需安装，不是全部必须)
+# torch 和 torchvision 需要根据 CUDA 版本单独安装
+# pip install torch torchvision --index-url https://download.pytorch.org/whl/cu121
+torch>=2.2.0
+torchvision>=0.17.0
+transformers>=4.44.2
+diffusers>=0.30.3
+accelerate>=0.34.2
+safetensors>=0.4.5
+
+# 面部检测/对齐
+mediapipe>=0.10.18
+face-alignment>=1.4.1
+
+# 音频特征提取
+whisper>=1.1.10
+# 或使用 faster-whisper (更省显存)
+# faster-whisper>=1.0.3
+
+# 工具
+psutil>=6.1.1
+requests>=2.32.3
+tqdm>=4.67.1

@@ -33,10 +33,12 @@ import {
   ServerIcon,
   SettingsIcon,
   AuroraLogo,
+  VideoIcon,
 } from './components/Icons';
+import DigitalHumanPanel from './components/DigitalHumanPanel';
 
 /** 视图类型 */
-type ViewType = 'chat' | 'work' | 'image' | 'canvas' | 'code' | 'ssh';
+type ViewType = 'chat' | 'work' | 'image' | 'canvas' | 'code' | 'ssh' | 'digital-human';
 
 /** 聊天消息 */
 export interface ChatMessage {
@@ -68,6 +70,7 @@ const NAV_ITEMS: { type: ViewType; label: string; icon: typeof AiIcon }[] = [
   { type: 'canvas', label: '自由画布', icon: CanvasIcon },
   { type: 'code', label: '代码', icon: CodeIcon },
   { type: 'ssh', label: 'SSH', icon: ServerIcon },
+  { type: 'digital-human', label: '数字人', icon: VideoIcon },
 ];
 
 /* ============================================================
@@ -676,6 +679,11 @@ const App: React.FC = () => {
           {activeView === 'ssh' && (
             <div key="ssh" className="aurora-view-wrapper aurora-view-wrapper--ssh">
               <SSHPanel />
+            </div>
+          )}
+          {activeView === 'digital-human' && (
+            <div key="digital-human" className="aurora-view-wrapper aurora-view-wrapper--digital-human">
+              <DigitalHumanPanel />
             </div>
           )}
         </main>

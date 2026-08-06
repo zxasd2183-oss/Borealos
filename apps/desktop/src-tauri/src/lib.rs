@@ -23,6 +23,10 @@ use tauri::{Emitter, Manager, WindowEvent};
 #[cfg(not(target_os = "android"))]
 mod ssh;
 
+// ---- 数字人引擎桥接模块 ----
+#[cfg(not(target_os = "android"))]
+mod digital_human;
+
 // ---- 桌面端独有导入（Android 不可用）----
 #[cfg(not(target_os = "android"))]
 use tauri_plugin_global_shortcut::{GlobalShortcutExt, ShortcutState};
@@ -381,6 +385,40 @@ pub fn run() {
         ssh::ssh_system_info,
         #[cfg(not(target_os = "android"))]
         ssh::ssh_all_status,
+        // ---- 数字人引擎命令（仅桌面端）----
+        #[cfg(not(target_os = "android"))]
+        digital_human::dh_system_info,
+        #[cfg(not(target_os = "android"))]
+        digital_human::dh_list_models,
+        #[cfg(not(target_os = "android"))]
+        digital_human::dh_generate,
+        #[cfg(not(target_os = "android"))]
+        digital_human::dh_download_model,
+        #[cfg(not(target_os = "android"))]
+        digital_human::dh_tts,
+        #[cfg(not(target_os = "android"))]
+        digital_human::dh_health_check,
+        #[cfg(not(target_os = "android"))]
+        digital_human::dh_start_engine,
+        #[cfg(not(target_os = "android"))]
+        digital_human::dh_stop_engine,
+        // ---- 自研编排管线命令（仅桌面端）----
+        #[cfg(not(target_os = "android"))]
+        digital_human::dh_pipeline_run,
+        #[cfg(not(target_os = "android"))]
+        digital_human::dh_pipeline_cancel,
+        #[cfg(not(target_os = "android"))]
+        digital_human::dh_list_cloud_providers,
+        #[cfg(not(target_os = "android"))]
+        digital_human::dh_configure_cloud_provider,
+        #[cfg(not(target_os = "android"))]
+        digital_human::dh_list_cloud_models,
+        #[cfg(not(target_os = "android"))]
+        digital_human::dh_estimate_cost,
+        #[cfg(not(target_os = "android"))]
+        digital_human::dh_list_script_styles,
+        #[cfg(not(target_os = "android"))]
+        digital_human::dh_optimize_script,
     ]);
 
     // ---- Setup：桌面端注册托盘和快捷键 ----
@@ -396,6 +434,11 @@ pub fn run() {
             // -------- 初始化 SSH 管理器（容错）--------
             let ssh_manager = ssh::SshManager::new(app);
             app.manage(ssh_manager);
+
+            // -------- 初始化数字人引擎服务（容错）--------
+            app.manage(std::sync::Mutex::new(
+                digital_human::DigitalHumanService::new(),
+            ));
 
             // -------- 注册全局快捷键（容错）--------
             if let Err(e) = app.global_shortcut().register(shortcut_str) {

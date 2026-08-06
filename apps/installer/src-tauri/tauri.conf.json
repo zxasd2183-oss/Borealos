@@ -1,0 +1,63 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "AuroraSetup",
+  "version": "0.3.0",
+  "identifier": "dev.aurora.installer",
+  "build": {
+    "beforeDevCommand": "npx vite --port 1421 --host",
+    "devUrl": "http://localhost:1421",
+    "beforeBuildCommand": "cd ../ && npx vite build",
+    "frontendDist": "../dist"
+  },
+  "app": {
+    "windows": [
+      {
+        "label": "main",
+        "title": "Aurora Setup",
+        "width": 560,
+        "height": 400,
+        "minWidth": 560,
+        "minHeight": 400,
+        "maxWidth": 560,
+        "maxHeight": 400,
+        "decorations": false,
+        "transparent": false,
+        "resizable": false,
+        "fullscreen": false,
+        "center": true,
+        "visible": true,
+        "alwaysOnTop": true,
+        "skipTaskbar": false
+      }
+    ],
+    "security": {
+      "csp": null
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": ["nsis"],
+    "icon": [
+      "icons/icon.png",
+      "icons/icon.ico",
+      "icons/icon.icns"
+    ],
+    "publisher": "Aurora",
+    "category": "Utility",
+    "shortDescription": "Aurora Setup",
+    "longDescription": "Aurora 自定义动画安装器，替换 NSIS 默认安装界面，提供品牌化的安装体验。",
+    "windows": {
+      "nsis": {
+        "installerIcon": "icons/icon.ico",
+        "headerImage": "icons/installer-header.bmp",
+        "sidebarImage": "icons/installer-sidebar.bmp",
+        "installMode": "currentUser",
+        "languages": ["SimpChinese", "English"],
+        "displayLanguageSelector": true
+      },
+      "webviewInstallMode": {
+        "type": "offlineInstaller"
+      }
+    }
+  }
+}

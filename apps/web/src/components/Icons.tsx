@@ -485,5 +485,12 @@ export const SparkleIcon: FC<IconProps> = (p) => (
   </Svg>
 );
 
+export const UploadIcon: FC<IconProps> = (p) => (
+  <Svg {...p}>
+    <path d="M12 4v10M12 4l-4 4M12 4l4 4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" fill="none" />
+    <path d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2" stroke="currentColor" strokeWidth="2" strokeLinecap="round" fill="none" />
+  </Svg>
+);
+
 /** 兼容旧引用 */
 export const BorealOsLogo = AuroraLogo;

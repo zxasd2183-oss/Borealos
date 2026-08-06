@@ -1,0 +1,14 @@
+/*
+  Cache-Control: no-cache, no-store, must-revalidate
+
+/*.exe
+  Cache-Control: public, max-age=31536000, immutable
+  Content-Disposition: attachment
+
+/*.dmg
+  Cache-Control: public, max-age=31536000, immutable
+  Content-Disposition: attachment
+
+/*.apk
+  Cache-Control: public, max-age=31536000, immutable
+  Content-Disposition: attachment
