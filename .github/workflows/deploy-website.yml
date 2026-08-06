@@ -28,4 +28,4 @@ jobs:
         with:
           apiToken: ${{ secrets.CF_API_TOKEN }}
           accountId: ${{ secrets.CF_ACCOUNT_ID }}
-          command: pages deploy ./website --project-name=${{ secrets.CF_PAGES_PROJECT || 'borealos' }}
+          command: pages deploy ./website --project-name=${{ secrets.CF_PAGES_PROJECT || 'borealos' }} --branch=main --commit-dirty=true
