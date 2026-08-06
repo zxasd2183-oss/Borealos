@@ -15,8 +15,8 @@ jobs:
         uses: actions/setup-node@v5
         with:
           node-version: 22
-      - name: Enable pnpm (corepack)
-        run: corepack enable
+      - name: Install pnpm
+        run: npm install -g pnpm@11
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
       - name: Rust cache
@@ -47,8 +47,8 @@ jobs:
         uses: actions/setup-node@v5
         with:
           node-version: 22
-      - name: Enable pnpm (corepack)
-        run: corepack enable
+      - name: Install pnpm
+        run: npm install -g pnpm@11
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
         with:
@@ -82,8 +82,8 @@ jobs:
         uses: actions/setup-node@v5
         with:
           node-version: 22
-      - name: Enable pnpm (corepack)
-        run: corepack enable
+      - name: Install pnpm
+        run: npm install -g pnpm@11
       - name: Setup Java
         uses: actions/setup-java@v5
         with:
