@@ -25,11 +25,6 @@ mod ssh;
 
 // ---- 桌面端独有导入（Android 不可用）----
 #[cfg(not(target_os = "android"))]
-use tauri::{
-    menu::{Menu, MenuItem, PredefinedMenuItem},
-    tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
-};
-#[cfg(not(target_os = "android"))]
 use tauri_plugin_global_shortcut::{GlobalShortcutExt, ShortcutState};
 
 /// 应用信息
@@ -184,6 +179,83 @@ async fn install_update(app: tauri::AppHandle) -> Result<(), String> {
     }
 }
 
+/// 构建系统托盘（桌面端专用，失败不阻止启动）
+#[cfg(not(target_os = "android"))]
+fn build_tray(app: &tauri::App) -> Result<(), Box<dyn std::error::Error>> {
+    use tauri::{
+        menu::{Menu, MenuItem, PredefinedMenuItem},
+        tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
+    };
+
+    let show_item = MenuItem::with_id(app, "show", "显示 Aurora", true, None::<&str>)?;
+    let update_item = MenuItem::with_id(app, "check_update", "检查更新…", true, None::<&str>)?;
+    let separator = PredefinedMenuItem::separator(app)?;
+    let quit_item = MenuItem::with_id(app, "quit", "退出 Aurora", true, None::<&str>)?;
+    let menu = Menu::with_items(app, &[&show_item, &update_item, &separator, &quit_item])?;
+
+    let mut tray_builder = TrayIconBuilder::new()
+        .tooltip("Aurora — 极光智能")
+        .menu(&menu)
+        .show_menu_on_left_click(false)
+        .on_menu_event(|app, event| match event.id.as_ref() {
+            "show" => {
+                if let Some(window) = app.get_webview_window("main") {
+                    let _ = window.show();
+                    let _ = window.set_focus();
+                    let _ = window.unminimize();
+                }
+            }
+            "check_update" => {
+                if let Some(window) = app.get_webview_window("main") {
+                    let _ = window.emit("check-update", ());
+                    let _ = window.show();
+                    let _ = window.set_focus();
+                }
+            }
+            "quit" => {
+                app.exit(0);
+            }
+            _ => {}
+        })
+        .on_tray_icon_event(|tray, event| {
+            if let TrayIconEvent::Click {
+                button: MouseButton::Left,
+                button_state: MouseButtonState::Up,
+                ..
+            } = event
+            {
+                let app = tray.app_handle();
+                if let Some(window) = app.get_webview_window("main") {
+                    if window.is_visible().unwrap_or(false) {
+                        let _ = window.hide();
+                    } else {
+                        let _ = window.show();
+                        let _ = window.set_focus();
+                    }
+                }
+            }
+            if let TrayIconEvent::DoubleClick {
+                button: MouseButton::Left,
+                ..
+            } = event
+            {
+                let app = tray.app_handle();
+                if let Some(window) = app.get_webview_window("main") {
+                    let _ = window.show();
+                    let _ = window.set_focus();
+                    let _ = window.unminimize();
+                }
+            }
+        });
+
+    if let Some(icon) = app.default_window_icon() {
+        tray_builder = tray_builder.icon(icon.clone());
+    }
+
+    tray_builder.build(app)?;
+    Ok(())
+}
+
 /// 自定义命令：从登录窗口切换到主窗口
 #[tauri::command]
 async fn transition_to_main(
@@ -212,6 +284,37 @@ async fn transition_to_main(
 /// 应用入口
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    // ---- 安装 panic hook：崩溃时弹出错误对话框 ----
+    #[cfg(not(target_os = "android"))]
+    {
+        std::panic::set_hook(Box::new(|info| {
+            let msg = format!("Aurora 启动失败\n\n错误信息: {}\n\n请截图反馈给开发者。", info);
+            eprintln!("{}", msg);
+            #[cfg(target_os = "windows")]
+            {
+                use std::ffi::CString;
+                let title = CString::new("Aurora 错误").unwrap();
+                let body = CString::new(msg).unwrap();
+                unsafe {
+                    extern "system" {
+                        fn MessageBoxA(
+                            hwnd: *mut std::ffi::c_void,
+                            text: *const i8,
+                            caption: *const i8,
+                            utype: u32,
+                        ) -> i32;
+                    }
+                    MessageBoxA(
+                        std::ptr::null_mut(),
+                        body.as_ptr(),
+                        title.as_ptr(),
+                        0x10, // MB_ICONERROR
+                    );
+                }
+            }
+        }));
+    }
+
     let mut builder = tauri::Builder::default();
 
     // ---- 注册通用插件 ----
@@ -290,83 +393,22 @@ pub fn run() {
         };
 
         builder = builder.setup(move |app| {
-            // -------- 初始化 SSH 管理器 --------
+            // -------- 初始化 SSH 管理器（容错）--------
             let ssh_manager = ssh::SshManager::new(app);
             app.manage(ssh_manager);
 
-            // -------- 注册全局快捷键 --------
+            // -------- 注册全局快捷键（容错）--------
             if let Err(e) = app.global_shortcut().register(shortcut_str) {
                 eprintln!("[Aurora] 注册全局快捷键失败: {:?}", e);
             }
 
-            // -------- 构建系统托盘 --------
-            let show_item = MenuItem::with_id(app, "show", "显示 Aurora", true, None::<&str>)?;
-            let update_item =
-                MenuItem::with_id(app, "check_update", "检查更新…", true, None::<&str>)?;
-            let separator = PredefinedMenuItem::separator(app)?;
-            let quit_item = MenuItem::with_id(app, "quit", "退出 Aurora", true, None::<&str>)?;
-            let menu = Menu::with_items(app, &[&show_item, &update_item, &separator, &quit_item])?;
-
-            let mut tray_builder = TrayIconBuilder::new()
-                .tooltip("Aurora — 极光智能")
-                .menu(&menu)
-                .show_menu_on_left_click(false)
-                .on_menu_event(|app, event| match event.id.as_ref() {
-                    "show" => {
-                        if let Some(window) = app.get_webview_window("main") {
-                            let _ = window.show();
-                            let _ = window.set_focus();
-                            let _ = window.unminimize();
-                        }
-                    }
-                    "check_update" => {
-                        if let Some(window) = app.get_webview_window("main") {
-                            let _ = window.emit("check-update", ());
-                            let _ = window.show();
-                            let _ = window.set_focus();
-                        }
-                    }
-                    "quit" => {
-                        app.exit(0);
-                    }
-                    _ => {}
-                })
-                .on_tray_icon_event(|tray, event| {
-                    if let TrayIconEvent::Click {
-                        button: MouseButton::Left,
-                        button_state: MouseButtonState::Up,
-                        ..
-                    } = event
-                    {
-                        let app = tray.app_handle();
-                        if let Some(window) = app.get_webview_window("main") {
-                            if window.is_visible().unwrap_or(false) {
-                                let _ = window.hide();
-                            } else {
-                                let _ = window.show();
-                                let _ = window.set_focus();
-                            }
-                        }
-                    }
-                    if let TrayIconEvent::DoubleClick {
-                        button: MouseButton::Left,
-                        ..
-                    } = event
-                    {
-                        let app = tray.app_handle();
-                        if let Some(window) = app.get_webview_window("main") {
-                            let _ = window.show();
-                            let _ = window.set_focus();
-                            let _ = window.unminimize();
-                        }
-                    }
-                });
-
-            if let Some(icon) = app.default_window_icon() {
-                tray_builder = tray_builder.icon(icon.clone());
+            // -------- 构建系统托盘（容错：失败不影响启动）--------
+            match build_tray(app) {
+                Ok(()) => {}
+                Err(e) => {
+                    eprintln!("[Aurora] 托盘创建失败（不影响启动）: {:?}", e);
+                }
             }
-
-            tray_builder.build(app)?;
 
             Ok(())
         });
