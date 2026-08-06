@@ -76,7 +76,7 @@
         "displayLanguageSelector": true
       },
       "webviewInstallMode": {
-        "type": "offlineInstaller"
+        "type": "downloadBootstrapper"
       }
     }
   },
