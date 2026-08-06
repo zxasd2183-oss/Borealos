@@ -159,3 +159,15 @@ jobs:
             artifacts/aurora-android-apk/*
           draft: false
           prerelease: false
+
+      - name: Upload to Cloudflare R2 (国内镜像)
+        if: ${{ vars.ENABLE_R2 == 'true' }}
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
+          R2_BUCKET: ${{ secrets.R2_BUCKET }}
+        run: |
+          npx wrangler@latest r2 object put "$R2_BUCKET/$(ls artifacts/aurora-windows-exe/*.exe | xargs basename)" --file="$(ls artifacts/aurora-windows-exe/*.exe | head -1)" || echo "R2 upload skipped (EXE)"
+          npx wrangler@latest r2 object put "$R2_BUCKET/$(ls artifacts/aurora-macos-dmg/*.dmg | xargs basename)" --file="$(ls artifacts/aurora-macos-dmg/*.dmg | head -1)" || echo "R2 upload skipped (DMG)"
+          npx wrangler@latest r2 object put "$R2_BUCKET/$(ls artifacts/aurora-android-apk/*.apk | xargs basename)" --file="$(ls artifacts/aurora-android-apk/*.apk | head -1)" || echo "R2 upload skipped (APK)"
+          echo "R2 upload complete → https://files.borealos.dev/"
