@@ -1,33 +1,28 @@
 /* ============================================================
- * BorealOS 桌面端样式
- * 包含自定义标题栏、窗口控制按钮、加载界面与 Web 前端嵌入区
- * 暗色主题与 Web 端保持一致
+ * Aurora 桌面端样式
+ * 暗色主题 · 自定义标题栏 · 灵动岛 · 侧边栏 · 登录窗口
  * ============================================================ */
 
 :root {
-  /* 背景色 */
-  --bg-primary: #1a1b1e;
-  --bg-secondary: #1e1f22;
+  --bg-primary: #0f1014;
+  --bg-secondary: #1a1b1e;
   --bg-tertiary: #2b2d31;
   --bg-hover: #35373b;
   --bg-active: #2d4f73;
 
-  /* 边框色 */
   --border-color: #2b2d31;
 
-  /* 文字色 */
   --text-primary: #d4d4d4;
   --text-secondary: #9d9d9d;
   --text-bright: #ffffff;
 
-  /* 强调色 */
   --accent: #4c9afe;
+  --accent-gradient: linear-gradient(135deg, #4c9afe, #a855f7, #ec4899);
 
-  /* 标题栏 */
   --titlebar-height: 36px;
   --window-control-width: 46px;
+  --sidebar-width: 52px;
 
-  /* 字体 */
   --font-ui: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC',
     'Microsoft YaHei', sans-serif;
 }
@@ -53,12 +48,141 @@ body {
   background-color: var(--bg-primary);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  /* 桌面端禁止文本选中，避免拖拽标题栏时选中文字 */
   user-select: none;
 }
 
 /* ============================================================
- * 应用容器
+ * 登录窗口
+ * ============================================================ */
+.login-app {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100vw;
+  height: 100vh;
+  background-color: var(--bg-primary);
+  position: relative;
+  overflow: hidden;
+}
+
+.login-bg-gradient {
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: radial-gradient(circle at 30% 20%, rgba(76, 154, 254, 0.15), transparent 40%),
+              radial-gradient(circle at 70% 80%, rgba(168, 85, 247, 0.12), transparent 40%),
+              radial-gradient(circle at 50% 50%, rgba(236, 72, 153, 0.08), transparent 50%);
+  animation: login-gradient-shift 8s ease-in-out infinite alternate;
+}
+
+@keyframes login-gradient-shift {
+  0% { transform: rotate(0deg) scale(1); }
+  100% { transform: rotate(15deg) scale(1.1); }
+}
+
+.login-content {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  width: 320px;
+}
+
+.login-logo {
+  margin-bottom: 8px;
+  filter: drop-shadow(0 4px 20px rgba(76, 154, 254, 0.4));
+}
+
+.login-title {
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--text-bright);
+  letter-spacing: 1px;
+  margin-top: 4px;
+}
+
+.login-subtitle {
+  font-size: 13px;
+  color: var(--text-secondary);
+  margin-bottom: 32px;
+}
+
+.login-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+}
+
+.login-input {
+  width: 100%;
+  height: 42px;
+  padding: 0 16px;
+  font-size: 14px;
+  color: var(--text-primary);
+  background-color: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  font-family: var(--font-ui);
+}
+
+.login-input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(76, 154, 254, 0.15);
+}
+
+.login-input::placeholder {
+  color: var(--text-secondary);
+}
+
+.login-error {
+  font-size: 12px;
+  color: #ef4444;
+  text-align: center;
+}
+
+.login-button {
+  width: 100%;
+  height: 42px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-bright);
+  background: var(--accent-gradient);
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: opacity 0.2s, transform 0.1s;
+  font-family: var(--font-ui);
+}
+
+.login-button:hover:not(:disabled) {
+  opacity: 0.9;
+}
+
+.login-button:active:not(:disabled) {
+  transform: scale(0.98);
+}
+
+.login-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.login-hint {
+  font-size: 11px;
+  color: var(--text-secondary);
+  margin-top: 16px;
+  text-align: center;
+}
+
+/* ============================================================
+ * 主窗口布局
  * ============================================================ */
 .desktop-app {
   display: flex;
@@ -70,7 +194,6 @@ body {
 
 /* ============================================================
  * 自定义标题栏
- * data-tauri-drag-region 标记的元素可作为窗口拖拽区域
  * ============================================================ */
 .titlebar {
   display: flex;
@@ -81,7 +204,6 @@ body {
   padding: 0 8px;
   background-color: var(--bg-secondary);
   border-bottom: 1px solid var(--border-color);
-  /* 标题栏不显示文字选中 */
   user-select: none;
   -webkit-app-region: drag;
 }
@@ -111,7 +233,44 @@ body {
 }
 
 /* ============================================================
- * macOS 红绿灯按钮（左侧）
+ * 灵动岛
+ * ============================================================ */
+.dynamic-island {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 28px;
+  padding: 0 12px;
+  background-color: #000;
+  border-radius: 14px;
+  cursor: pointer;
+  transition: width 0.3s ease, padding 0.3s ease;
+  min-width: 28px;
+  -webkit-app-region: no-drag;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.dynamic-island__dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 6px rgba(76, 154, 254, 0.6);
+  flex-shrink: 0;
+}
+
+.dynamic-island__text {
+  font-size: 12px;
+  color: var(--text-primary);
+}
+
+.dynamic-island--expanded {
+  padding: 0 16px;
+}
+
+/* ============================================================
+ * macOS 红绿灯按钮
  * ============================================================ */
 .traffic-lights {
   display: flex;
@@ -127,7 +286,6 @@ body {
   border: none;
   padding: 0;
   cursor: pointer;
-  /* 红绿灯按钮需要可点击，覆盖标题栏的拖拽区域 */
   -webkit-app-region: no-drag;
 }
 
@@ -146,18 +304,8 @@ body {
   border: 1px solid #1aab29;
 }
 
-/* 未悬停时图标隐藏，悬停时显示符号 */
-.traffic-light::before {
-  content: '';
-  opacity: 0;
-}
-
-.traffic-lights:hover .traffic-light::before {
-  opacity: 0.85;
-}
-
 /* ============================================================
- * Windows / Linux 窗口控制按钮（右侧）
+ * Windows / Linux 窗口控制按钮
  * ============================================================ */
 .window-controls {
   display: flex;
@@ -198,54 +346,266 @@ body {
 }
 
 /* ============================================================
- * 主内容区（Web 前端嵌入）
+ * 主窗口主体
  * ============================================================ */
-.desktop-content {
-  position: relative;
+.main-body {
+  display: flex;
   flex: 1 1 auto;
   min-height: 0;
-  background-color: var(--bg-primary);
-}
-
-.web-frame {
-  width: 100%;
-  height: 100%;
-  border: none;
-  display: block;
-  background-color: var(--bg-primary);
 }
 
 /* ============================================================
- * 加载界面（Web 前端 iframe 加载完成前显示）
+ * 侧边栏
  * ============================================================ */
-.loading-screen {
-  position: absolute;
-  inset: 0;
+.sidebar {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  width: var(--sidebar-width);
+  min-width: var(--sidebar-width);
+  padding: 12px 0;
+  background-color: var(--bg-secondary);
+  border-right: 1px solid var(--border-color);
+}
+
+.sidebar-item {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border: none;
+  border-radius: 8px;
+  background-color: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: background-color 0.15s, color 0.15s;
+}
+
+.sidebar-item:hover {
+  background-color: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.sidebar-item--active {
+  background-color: var(--bg-active);
+  color: var(--text-bright);
+}
+
+/* ============================================================
+ * 内容区
+ * ============================================================ */
+.content-area {
+  flex: 1 1 auto;
+  min-width: 0;
+  background-color: var(--bg-primary);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ============================================================
+ * 聊天视图
+ * ============================================================ */
+.chat-view {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+}
+
+.chat-messages {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.chat-msg {
+  display: flex;
+  gap: 10px;
+  max-width: 80%;
+}
+
+.chat-msg--user {
+  align-self: flex-end;
+  flex-direction: row-reverse;
+}
+
+.chat-msg__avatar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  flex-shrink: 0;
+  color: var(--text-bright);
+}
+
+.chat-msg--assistant .chat-msg__avatar {
+  background: var(--accent-gradient);
+}
+
+.chat-msg--user .chat-msg__avatar {
+  background-color: var(--bg-tertiary);
+}
+
+.chat-msg__content {
+  padding: 10px 14px;
+  font-size: 13px;
+  line-height: 1.5;
+  border-radius: 12px;
+  color: var(--text-primary);
+}
+
+.chat-msg--assistant .chat-msg__content {
+  background-color: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+}
+
+.chat-msg--user .chat-msg__content {
+  background-color: var(--bg-active);
+  color: var(--text-bright);
+}
+
+.chat-input-bar {
+  display: flex;
+  gap: 8px;
+  padding: 12px 16px;
+  border-top: 1px solid var(--border-color);
+  background-color: var(--bg-secondary);
+}
+
+.chat-input {
+  flex: 1 1 auto;
+  height: 38px;
+  padding: 0 14px;
+  font-size: 13px;
+  color: var(--text-primary);
+  background-color: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  outline: none;
+  font-family: var(--font-ui);
+}
+
+.chat-input:focus {
+  border-color: var(--accent);
+}
+
+.chat-send {
+  height: 38px;
+  padding: 0 20px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-bright);
+  background: var(--accent-gradient);
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: opacity 0.2s;
+  font-family: var(--font-ui);
+}
+
+.chat-send:hover {
+  opacity: 0.9;
+}
+
+/* ============================================================
+ * 占位视图
+ * ============================================================ */
+.placeholder-view {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 16px;
-  background-color: var(--bg-primary);
-  z-index: 10;
-}
-
-.loading-screen__spinner {
-  width: 36px;
-  height: 36px;
-  border: 3px solid var(--bg-tertiary);
-  border-top-color: var(--accent);
-  border-radius: 50%;
-  animation: borealos-spin 0.9s linear infinite;
-}
-
-.loading-screen__text {
+  width: 100%;
+  height: 100%;
+  gap: 12px;
   color: var(--text-secondary);
-  font-size: 13px;
 }
 
-@keyframes borealos-spin {
-  to {
-    transform: rotate(360deg);
-  }
+.placeholder-icon {
+  color: var(--text-secondary);
+  opacity: 0.5;
+}
+
+.placeholder-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.placeholder-desc {
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.placeholder-hint {
+  font-size: 12px;
+  color: var(--text-secondary);
+  opacity: 0.6;
+  margin-top: 8px;
+}
+
+/* ============================================================
+ * 设置视图
+ * ============================================================ */
+.settings-view {
+  padding: 24px 32px;
+  overflow-y: auto;
+  width: 100%;
+  height: 100%;
+}
+
+.settings-title {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--text-bright);
+  margin-bottom: 24px;
+}
+
+.settings-section {
+  margin-bottom: 32px;
+}
+
+.settings-section-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin-bottom: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.settings-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.settings-label {
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.settings-value {
+  font-size: 13px;
+  color: var(--text-primary);
+  font-weight: 500;
+}
+
+.settings-about {
+  font-size: 13px;
+  color: var(--text-secondary);
+  line-height: 1.6;
+  margin-top: 8px;
 }
