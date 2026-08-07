@@ -16,8 +16,12 @@
 // ============================================================
 
 use serde::{Deserialize, Serialize};
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::Duration;
 use tauri::{Emitter, Manager, WindowEvent};
+
+/// 全局标志：登录成功后正在切换到主窗口，此时关闭登录窗口不应退出应用
+static IS_TRANSITIONING: AtomicBool = AtomicBool::new(false);
 
 // ---- SSH 模块 ----
 #[cfg(not(target_os = "android"))]
@@ -218,6 +222,9 @@ async fn transition_to_main(
     app: tauri::AppHandle,
     payload: LoginPayload,
 ) -> Result<(), String> {
+    // 设置标志位：告诉窗口事件处理器这是登录切换，不要退出应用
+    IS_TRANSITIONING.store(true, Ordering::SeqCst);
+
     // 1. 将用户数据传递给主窗口
     if let Some(main_window) = app.get_webview_window("main") {
         let _ = main_window.emit("login-success", &payload);
@@ -233,6 +240,9 @@ async fn transition_to_main(
     if let Some(login_window) = app.get_webview_window("login") {
         let _ = login_window.close();
     }
+
+    // 3. 重置标志位
+    IS_TRANSITIONING.store(false, Ordering::SeqCst);
 
     Ok(())
 }
@@ -390,6 +400,11 @@ pub fn run() {
             let label = window.label();
 
             if label == "login" {
+                // 如果是登录成功后的切换流程，不退出应用
+                if IS_TRANSITIONING.load(Ordering::SeqCst) {
+                    return;
+                }
+                // 用户手动关闭登录窗口 → 退出应用
                 let app = window.app_handle();
                 app.exit(0);
             } else if label == "main" {
