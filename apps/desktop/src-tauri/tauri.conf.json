@@ -54,7 +54,8 @@
       "appimage",
       "nsis",
       "app",
-      "dmg"
+      "dmg",
+      "pkg"
     ],
     "icon": [
       "icons/icon.png",
