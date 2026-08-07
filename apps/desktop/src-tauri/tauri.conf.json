@@ -49,10 +49,7 @@
   },
   "bundle": {
     "active": true,
-    "targets": [
-      "nsis",
-      "pkg"
-    ],
+    "targets": "all",
     "icon": [
       "icons/icon.png",
       "icons/icon.ico",
