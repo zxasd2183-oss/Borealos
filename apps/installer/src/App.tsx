@@ -48,14 +48,18 @@ export default function App() {
   const [error, setError] = useState<string | null>(null);
   const [launchOnFinish, setLaunchOnFinish] = useState<boolean>(true);
   const [transition, setTransition] = useState<string>('page-enter');
+  const [platform, setPlatform] = useState<string>('');
 
-  // ---- 初始化：读取默认安装目录与体积 ----
+  // ---- 初始化：读取默认安装目录、体积、平台 ----
   useEffect(() => {
     invoke<string>('get_default_install_dir')
       .then(setInstallDir)
       .catch(() => {});
     invoke<number>('get_install_size')
       .then(setInstallSize)
+      .catch(() => {});
+    invoke<string>('get_platform')
+      .then(setPlatform)
       .catch(() => {});
   }, []);
 
@@ -219,6 +223,7 @@ export default function App() {
               onBrowse={handleBrowse}
               installSize={installSize}
               error={error}
+              platform={platform}
             />
           )}
 
@@ -314,8 +319,12 @@ function DirectoryPage(props: {
   onBrowse: () => void;
   installSize: number;
   error: string | null;
+  platform: string;
 }) {
-  const { installDir, setInstallDir, onBrowse, installSize, error } = props;
+  const { installDir, setInstallDir, onBrowse, installSize, error, platform } = props;
+  const isMac = platform === 'macos';
+  const placeholder = isMac ? '/Applications' : 'C:\\Users\\...\\AppData\\Local\\Aurora';
+  const permHint = isMac ? '安装到 /Applications（推荐）' : '用户级安装 · 无需管理员权限';
   return (
     <div className="page-inner">
       <h2 className="page-title">选择安装位置</h2>
@@ -329,7 +338,7 @@ function DirectoryPage(props: {
           value={installDir}
           spellCheck={false}
           onChange={(e) => setInstallDir(e.target.value)}
-          placeholder="C:\Users\...\AppData\Local\Aurora"
+          placeholder={placeholder}
         />
         <button className="btn btn-ghost browse-btn" onClick={onBrowse}>
           浏览…
@@ -338,7 +347,7 @@ function DirectoryPage(props: {
 
       <div className="install-meta">
         <span>所需空间：约 {formatSize(installSize)}</span>
-        <span>用户级安装 · 无需管理员权限</span>
+        <span>{permHint}</span>
       </div>
 
       {error && <div className="error-box">{error}</div>}

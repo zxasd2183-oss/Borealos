@@ -1,25 +1,26 @@
 // ============================================================
-// Aurora 自定义动画安装器 - Tauri 库代码
+// Aurora 自定义动画安装器 - Tauri 库代码 (跨平台)
 // ------------------------------------------------------------
-// 替换 NSIS 默认安装界面，提供品牌化安装体验。
+// 架构：
+//   安装器自身是一个原生 .app / .exe
+//   内部 Contents/Resources/payload/ (macOS) 或同目录 payload/ (Windows)
+//   包含真正的 Aurora 主程序
+//   用户双击安装器 → 自定义动画 UI → 复制 payload 到目标目录
 //
-// 命令：
-//   1. get_default_install_dir()  返回 %LOCALAPPDATA%\Aurora
-//   2. get_install_size()         返回约 85 MB
-//   3. start_install(target_dir) 异步安装，通过事件 install-progress 上报进度
-//      - 创建目录 / 复制 Aurora.exe / 复制资源
-//      - 创建快捷方式（桌面 + 开始菜单）
-//      - 写入注册表卸载信息 / 注册卸载程序
-//   4. launch_aurora(target_dir) 启动 Aurora
-//   5. uninstall_aurora()         卸载逻辑
+// macOS 流程：
+//   1. 安装器 .app 启动 → 显示自定义动画界面
+//   2. 用户点击安装 → 从 Contents/Resources/payload/Aurora.app 复制到 /Applications
+//   3. 完成后可启动 Aurora
+//
+// Windows 流程：
+//   1. 安装器 .exe 启动 → 显示自定义动画界面
+//   2. 用户点击安装 → 复制 Aurora.exe + resources 到安装目录
+//   3. 创建桌面/开始菜单快捷方式，写入注册表卸载信息
 //
 // 事件：
 //   app.emit("install-progress", { percent: f64, message: String })
 //   app.emit("install-complete",  { success: bool, message: String })
 //   app.emit("install-error",     { success: bool, message: String })
-//
-// 卸载入口：当安装器以 `--uninstall` 启动时，执行静默卸载后退出。
-// 卸载程序被注册为 install_dir/uninstall.exe（安装器自身的副本）。
 // ============================================================
 
 use serde::{Deserialize, Serialize};
@@ -65,7 +66,10 @@ struct UninstallRequest {
 // 平台与路径辅助
 // ============================================================
 
-/// 默认安装目录：Windows → %LOCALAPPDATA%\Aurora，macOS → /Applications，其他 → $HOME/.aurora
+/// 默认安装目录：
+///   Windows → %LOCALAPPDATA%\Aurora
+///   macOS   → /Applications
+///   Linux   → $HOME/.aurora
 fn default_install_dir() -> String {
     #[cfg(target_os = "windows")]
     {
@@ -99,20 +103,40 @@ fn default_install_dir() -> String {
     "Aurora".to_string()
 }
 
-/// 安装器自身所在目录（用于查找待安装的 Aurora.exe / resources 负载）
+/// 安装器自身所在目录 —— 用于查找 payload 负载
+///
+/// macOS: .app/Contents/Resources/payload/
+/// Windows: exe 同目录 payload/
 fn payload_dir() -> PathBuf {
+    #[cfg(target_os = "macos")]
+    {
+        // macOS: payload 在 .app/Contents/Resources/payload/
+        if let Ok(exe) = std::env::current_exe() {
+            // exe 路径: AuroraSetup.app/Contents/MacOS/AuroraSetup
+            // 需要回溯到: AuroraSetup.app/Contents/Resources/payload/
+            if let Some(contents_dir) = exe.parent().and_then(|macos_dir| macos_dir.parent()) {
+                let payload = contents_dir.join("Resources").join("payload");
+                if payload.is_dir() {
+                    return payload;
+                }
+            }
+        }
+    }
+
+    // Windows / Linux / fallback: exe 同目录 payload/
     std::env::current_exe()
         .ok()
         .and_then(|p| p.parent().map(|x| x.to_path_buf()))
-        .unwrap_or_else(|| PathBuf::from("."))
+        .map(|d| d.join("payload"))
+        .unwrap_or_else(|| PathBuf::from("payload"))
 }
 
-/// 主程序名称（按平台）：Windows → Aurora.exe，macOS → Aurora.app，其他 → Aurora
-fn aurora_exe_name() -> &'static str {
-    if cfg!(target_os = "windows") {
-        "Aurora.exe"
-    } else if cfg!(target_os = "macos") {
+/// 主程序名称（按平台）
+fn aurora_app_name() -> &'static str {
+    if cfg!(target_os = "macos") {
         "Aurora.app"
+    } else if cfg!(target_os = "windows") {
+        "Aurora.exe"
     } else {
         "Aurora"
     }
@@ -146,7 +170,7 @@ fn start_menu_dir() -> Result<PathBuf, String> {
 // 文件操作辅助
 // ============================================================
 
-/// 递归复制目录
+/// 递归复制目录（保留权限）
 fn copy_dir_recursive(src: &Path, dst: &Path) -> Result<(), String> {
     std::fs::create_dir_all(dst).map_err(|e| format!("创建目录失败 {}: {}", dst.display(), e))?;
     for entry in std::fs::read_dir(src).map_err(|e| format!("读取目录失败 {}: {}", src.display(), e))? {
@@ -158,44 +182,153 @@ fn copy_dir_recursive(src: &Path, dst: &Path) -> Result<(), String> {
         } else {
             std::fs::copy(&path, &dst_path)
                 .map_err(|e| format!("复制文件失败 {}: {}", path.display(), e))?;
+            // macOS: 保留可执行权限
+            #[cfg(target_os = "macos")]
+            {
+                if let Ok(meta) = std::fs::metadata(&path) {
+                    use std::os::unix::fs::PermissionsExt;
+                    let perms = meta.permissions();
+                    let _ = std::fs::set_permissions(&dst_path, perms);
+                }
+            }
         }
     }
     Ok(())
 }
 
-/// 复制（或创建占位）Aurora 主程序
-/// 真实安装器会将 Aurora.exe 放置在安装器同目录，此处优先复制；找不到则生成占位文件以便流程跑通
-fn copy_payload_exe(target: &Path) -> Result<(), String> {
-    let exe_name = aurora_exe_name();
-    let src = payload_dir().join(exe_name);
-    let dst = target.join(exe_name);
-    if src.exists() && std::fs::canonicalize(&src).ok() != std::fs::canonicalize(&dst).ok() {
-        std::fs::copy(&src, &dst).map_err(|e| format!("复制 Aurora 主程序失败: {}", e))?;
-    } else {
-        // 占位文件：开发/演示场景下主程序不存在时使用
-        let placeholder = b"#!/usr/bin/env sh\n# Aurora placeholder executable\n# 在正式发布包中应被真实 Aurora 程序替换。\necho Aurora 0.4.0\n";
-        std::fs::write(&dst, placeholder).map_err(|e| format!("创建占位主程序失败: {}", e))?;
+// ============================================================
+// macOS 原生安装逻辑
+// ============================================================
+
+#[cfg(target_os = "macos")]
+fn install_on_macos(app: &tauri::AppHandle, target_dir: &str) -> Result<(), String> {
+    let target = PathBuf::from(target_dir);
+
+    // 1. 查找 payload 中的 Aurora.app
+    emit_progress(app, 5.0, "正在定位安装包…");
+    let payload_app = payload_dir().join("Aurora.app");
+    if !payload_app.is_dir() {
+        return Err(format!(
+            "未找到 Aurora.app 安装包\n查找路径: {}\n请确保安装器完整性。",
+            payload_app.display()
+        ));
     }
+
+    // 2. 如果目标已存在旧版本，先删除
+    let dst_app = target.join("Aurora.app");
+    if dst_app.exists() {
+        emit_progress(app, 15.0, "正在移除旧版本…");
+        std::fs::remove_dir_all(&dst_app)
+            .map_err(|e| format!("移除旧版本失败: {}", e))?;
+    }
+
+    // 3. 确保目标目录存在
+    emit_progress(app, 25.0, "正在准备安装目录…");
+    std::fs::create_dir_all(&target)
+        .map_err(|e| format!("创建安装目录失败: {}", e))?;
+
+    // 4. 复制 Aurora.app 到目标目录
+    emit_progress(app, 40.0, "正在复制 Aurora.app …");
+    copy_dir_recursive(&payload_app, &dst_app)?;
+
+    // 5. 修复权限（确保可执行）
+    emit_progress(app, 80.0, "正在设置权限…");
+    {
+        use std::os::unix::fs::PermissionsExt;
+        let main_exe = dst_app.join("Contents").join("MacOS").join("Aurora");
+        if main_exe.exists() {
+            let _ = std::fs::set_permissions(&main_exe, std::fs::Permissions::from_mode(0o755));
+        }
+        // 也修复所有 MacOS 下的可执行文件
+        if let Ok(macOS_dir) = std::fs::read_dir(dst_app.join("Contents").join("MacOS")) {
+            for entry in macOS_dir.flatten() {
+                let _ = std::fs::set_permissions(entry.path(), std::fs::Permissions::from_mode(0o755));
+            }
+        }
+    }
+
+    // 6. 移除 quarantine 属性（消除 "无法验证开发者" 提示）
+    emit_progress(app, 90.0, "正在完成安装…");
+    let _ = std::process::Command::new("xattr")
+        .args(["-cr", &dst_app.to_string_lossy()])
+        .output();
+
+    // 7. 写入安装记录（供卸载使用）
+    let receipt = target.join("Aurora.app").join("Contents").join("Resources").join(".aurora-install-info");
+    let _ = std::fs::write(&receipt, format!(
+        "installed_by=AuroraSetup\ninstall_date={}\nversion=0.4.0\n",
+        chrono::Utc::now().format("%Y-%m-%d")
+    ));
+
+    emit_progress(app, 100.0, "安装完成");
     Ok(())
 }
 
-/// 复制资源目录；不存在则写入一个版本文件占位
-fn copy_resources(target: &Path) -> Result<(), String> {
-    let src_resources = payload_dir().join("resources");
-    let dst_resources = target.join("resources");
-    if src_resources.is_dir() {
-        copy_dir_recursive(&src_resources, &dst_resources)?;
-    } else {
-        std::fs::create_dir_all(&dst_resources)
-            .map_err(|e| format!("创建资源目录失败: {}", e))?;
-        std::fs::write(dst_resources.join("version.txt"), "Aurora 0.4.0\n")
-            .map_err(|e| format!("写入版本文件失败: {}", e))?;
-    }
-    Ok(())
+#[cfg(not(target_os = "macos"))]
+fn install_on_macos(_app: &tauri::AppHandle, _target_dir: &str) -> Result<(), String> {
+    Err("当前平台不支持 macOS 安装".to_string())
 }
 
 // ============================================================
-// 快捷方式创建（PowerShell WScript.Shell，规范允许的两种方式之一）
+// Windows 安装逻辑
+// ============================================================
+
+#[cfg(target_os = "windows")]
+fn install_on_windows(app: &tauri::AppHandle, target_dir: &str) -> Result<(), String> {
+    let target = PathBuf::from(target_dir);
+
+    emit_progress(app, 5.0, "正在准备安装…");
+    emit_progress(app, 15.0, "正在创建安装目录…");
+    std::fs::create_dir_all(&target).map_err(|e| format!("创建目录失败: {}", e))?;
+
+    // 复制 Aurora.exe
+    emit_progress(app, 30.0, "正在复制 Aurora 主程序…");
+    let payload_exe = payload_dir().join("Aurora.exe");
+    let dst_exe = target.join("Aurora.exe");
+    if payload_exe.exists() {
+        std::fs::copy(&payload_exe, &dst_exe)
+            .map_err(|e| format!("复制 Aurora 主程序失败: {}", e))?;
+    } else {
+        return Err(format!("未找到 Aurora.exe\n查找路径: {}", payload_exe.display()));
+    }
+
+    // 复制资源
+    emit_progress(app, 60.0, "正在复制资源文件…");
+    let payload_resources = payload_dir().join("resources");
+    if payload_resources.is_dir() {
+        copy_dir_recursive(&payload_resources, &target.join("resources"))?;
+    }
+
+    // 创建快捷方式
+    let exe = target.join("Aurora.exe");
+    emit_progress(app, 75.0, "正在创建桌面快捷方式…");
+    if let Ok(desktop) = desktop_dir() {
+        create_shortcut_ps(&exe, &desktop.join("Aurora.lnk"), "Aurora", Some(&exe))?;
+    }
+
+    emit_progress(app, 85.0, "正在创建开始菜单快捷方式…");
+    if let Ok(programs) = start_menu_dir() {
+        create_shortcut_ps(&exe, &programs.join("Aurora.lnk"), "Aurora", Some(&exe))?;
+    }
+
+    // 写入注册表
+    emit_progress(app, 92.0, "正在写入注册表卸载信息…");
+    write_uninstall_registry(&target)?;
+
+    emit_progress(app, 97.0, "正在注册卸载程序…");
+    register_uninstaller(&target)?;
+
+    emit_progress(app, 100.0, "安装完成");
+    Ok(())
+}
+
+#[cfg(not(target_os = "windows"))]
+fn install_on_windows(_app: &tauri::AppHandle, _target_dir: &str) -> Result<(), String> {
+    Err("当前平台不支持 Windows 安装".to_string())
+}
+
+// ============================================================
+// 快捷方式创建 (Windows only)
 // ============================================================
 
 #[cfg(target_os = "windows")]
@@ -261,14 +394,8 @@ fn create_shortcut_ps(
     Ok(())
 }
 
-#[cfg(not(target_os = "windows"))]
-fn create_shortcut_ps(_target: &Path, _shortcut: &Path, _description: &str, _icon: Option<&Path>) -> Result<(), String> {
-    // 非 Windows 平台不支持 .lnk 快捷方式
-    Ok(())
-}
-
 // ============================================================
-// 注册表操作（winreg crate）
+// 注册表操作 (Windows only)
 // ============================================================
 
 #[cfg(target_os = "windows")]
@@ -282,51 +409,27 @@ fn write_uninstall_registry(install_dir: &Path) -> Result<(), String> {
         .create_subkey(key_path)
         .map_err(|e| format!("打开注册表失败: {}", e))?;
 
-    let exe = install_dir.join(aurora_exe_name());
+    let exe = install_dir.join("Aurora.exe");
     let uninstaller = install_dir.join("uninstall.exe");
     let install_loc = install_dir.to_string_lossy().to_string();
     let exe_loc = exe.to_string_lossy().to_string();
     let uninstaller_loc = uninstaller.to_string_lossy().to_string();
 
+    aurora_key.set_value("DisplayName", &"Aurora").map_err(|e| e.to_string())?;
+    aurora_key.set_value("DisplayVersion", &"0.4.0").map_err(|e| e.to_string())?;
+    aurora_key.set_value("Publisher", &"Aurora").map_err(|e| e.to_string())?;
+    aurora_key.set_value("DisplayIcon", &exe_loc).map_err(|e| e.to_string())?;
+    aurora_key.set_value("InstallLocation", &install_loc).map_err(|e| e.to_string())?;
+    aurora_key.set_value("URLInfoAbout", &"https://aurora.dev").map_err(|e| e.to_string())?;
     aurora_key
-        .set_value("DisplayName", &"Aurora")
+        .set_value("UninstallString", &format!("\"{}\" --uninstall", uninstaller_loc))
         .map_err(|e| e.to_string())?;
     aurora_key
-        .set_value("DisplayVersion", &"0.4.0")
+        .set_value("QuietUninstallString", &format!("\"{}\" --uninstall --quiet", uninstaller_loc))
         .map_err(|e| e.to_string())?;
-    aurora_key
-        .set_value("Publisher", &"Aurora")
-        .map_err(|e| e.to_string())?;
-    aurora_key
-        .set_value("DisplayIcon", &exe_loc)
-        .map_err(|e| e.to_string())?;
-    aurora_key
-        .set_value("InstallLocation", &install_loc)
-        .map_err(|e| e.to_string())?;
-    aurora_key
-        .set_value("URLInfoAbout", &"https://aurora.dev")
-        .map_err(|e| e.to_string())?;
-    aurora_key
-        .set_value(
-            "UninstallString",
-            &format!("\"{}\" --uninstall", uninstaller_loc),
-        )
-        .map_err(|e| e.to_string())?;
-    aurora_key
-        .set_value(
-            "QuietUninstallString",
-            &format!("\"{}\" --uninstall --quiet", uninstaller_loc),
-        )
-        .map_err(|e| e.to_string())?;
-    aurora_key
-        .set_value("NoModify", &1u32)
-        .map_err(|e| e.to_string())?;
-    aurora_key
-        .set_value("NoRepair", &1u32)
-        .map_err(|e| e.to_string())?;
-    aurora_key
-        .set_value("EstimatedSize", &85_000u32) // KB ≈ 85MB
-        .map_err(|e| e.to_string())?;
+    aurora_key.set_value("NoModify", &1u32).map_err(|e| e.to_string())?;
+    aurora_key.set_value("NoRepair", &1u32).map_err(|e| e.to_string())?;
+    aurora_key.set_value("EstimatedSize", &85_000u32).map_err(|e| e.to_string())?;
 
     Ok(())
 }
@@ -345,7 +448,6 @@ fn remove_uninstall_registry() -> Result<(), String> {
     let parent_path = "Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall";
     match hkcu.open_subkey_with_flags(parent_path, KEY_ALL_ACCESS) {
         Ok(parent) => {
-            // 递归删除 Aurora 卸载子键
             let _ = parent.delete_subkey_all("Aurora");
             Ok(())
         }
@@ -377,30 +479,32 @@ fn read_install_dir_from_registry() -> Option<String> {
 
 #[cfg(not(target_os = "windows"))]
 fn read_install_dir_from_registry() -> Option<String> {
+    // macOS: 检查 /Applications/Aurora.app 是否存在
+    #[cfg(target_os = "macos")]
+    {
+        let app_path = "/Applications/Aurora.app";
+        if PathBuf::from(app_path).is_dir() {
+            return Some("/Applications".to_string());
+        }
+    }
     None
 }
 
-// ============================================================
-// 卸载程序注册：将安装器自身复制为 install_dir/uninstall.exe
-// ============================================================
-
+#[cfg(target_os = "windows")]
 fn register_uninstaller(install_dir: &Path) -> Result<(), String> {
-    #[cfg(target_os = "windows")]
-    {
-        let dst = install_dir.join("uninstall.exe");
-        if let Ok(installer_exe) = std::env::current_exe() {
-            // 避免把自身复制到自身
-            if std::fs::canonicalize(&dst).ok() == std::fs::canonicalize(&installer_exe).ok() {
-                return Ok(());
-            }
-            std::fs::copy(&installer_exe, &dst)
-                .map_err(|e| format!("注册卸载程序失败: {}", e))?;
+    let dst = install_dir.join("uninstall.exe");
+    if let Ok(installer_exe) = std::env::current_exe() {
+        if std::fs::canonicalize(&dst).ok() == std::fs::canonicalize(&installer_exe).ok() {
+            return Ok(());
         }
+        std::fs::copy(&installer_exe, &dst)
+            .map_err(|e| format!("注册卸载程序失败: {}", e))?;
     }
-    #[cfg(not(target_os = "windows"))]
-    {
-        let _ = install_dir;
-    }
+    Ok(())
+}
+
+#[cfg(not(target_os = "windows"))]
+fn register_uninstaller(_install_dir: &Path) -> Result<(), String> {
     Ok(())
 }
 
@@ -419,62 +523,36 @@ fn emit_progress(app: &tauri::AppHandle, percent: f64, message: &str) {
 }
 
 // ============================================================
-// 核心安装流程
+// 核心安装流程（跨平台调度）
 // ============================================================
 
 fn run_installation(app: &tauri::AppHandle, target_dir: &str) -> Result<(), String> {
-    let target = PathBuf::from(target_dir);
-
-    emit_progress(app, 5.0, "正在准备安装…");
-
-    emit_progress(app, 15.0, "正在创建安装目录…");
-    std::fs::create_dir_all(&target).map_err(|e| format!("创建目录失败: {}", e))?;
-
-    emit_progress(app, 30.0, "正在复制 Aurora 主程序…");
-    copy_payload_exe(&target)?;
-
-    emit_progress(app, 60.0, "正在复制资源文件…");
-    copy_resources(&target)?;
+    #[cfg(target_os = "macos")]
+    {
+        return install_on_macos(app, target_dir);
+    }
 
     #[cfg(target_os = "windows")]
     {
-        let exe = target.join(aurora_exe_name());
-
-        emit_progress(app, 75.0, "正在创建桌面快捷方式…");
-        let desktop = desktop_dir()?;
-        create_shortcut_ps(&exe, &desktop.join("Aurora.lnk"), "Aurora", Some(&exe))?;
-
-        emit_progress(app, 85.0, "正在创建开始菜单快捷方式…");
-        let programs = start_menu_dir()?;
-        create_shortcut_ps(&exe, &programs.join("Aurora.lnk"), "Aurora", Some(&exe))?;
+        return install_on_windows(app, target_dir);
     }
 
-    #[cfg(not(target_os = "windows"))]
+    #[cfg(not(any(target_os = "macos", target_os = "windows")))]
     {
-        emit_progress(app, 85.0, "正在创建启动入口…");
+        let _ = app;
+        return Err("当前平台不支持安装".to_string());
     }
-
-    emit_progress(app, 92.0, "正在写入注册表卸载信息…");
-    write_uninstall_registry(&target)?;
-
-    emit_progress(app, 97.0, "正在注册卸载程序…");
-    register_uninstaller(&target)?;
-
-    emit_progress(app, 100.0, "安装完成");
-    Ok(())
 }
 
-/// 静默卸载：删除快捷方式、清理注册表、删除安装目录
+/// 静默卸载
 fn perform_uninstall(install_dir_str: &str) -> Result<(), String> {
     let dir = PathBuf::from(install_dir_str);
 
     #[cfg(target_os = "windows")]
     {
-        // 删除桌面快捷方式
         if let Ok(desktop) = desktop_dir() {
             let _ = std::fs::remove_file(desktop.join("Aurora.lnk"));
         }
-        // 删除开始菜单快捷方式及文件夹
         if let Ok(appdata) = std::env::var("APPDATA") {
             let programs = PathBuf::from(appdata)
                 .join("Microsoft")
@@ -485,13 +563,25 @@ fn perform_uninstall(install_dir_str: &str) -> Result<(), String> {
             let _ = std::fs::remove_file(programs.join("Aurora.lnk"));
             let _ = std::fs::remove_dir(&programs);
         }
-        // 清理注册表
         let _ = remove_uninstall_registry();
     }
 
-    // 删除安装目录
-    if dir.exists() {
-        std::fs::remove_dir_all(&dir).map_err(|e| format!("删除安装目录失败: {}", e))?;
+    #[cfg(target_os = "macos")]
+    {
+        let app_path = dir.join("Aurora.app");
+        if app_path.is_dir() {
+            std::fs::remove_dir_all(&app_path)
+                .map_err(|e| format!("删除 Aurora.app 失败: {}", e))?;
+        }
+    }
+
+    // Windows: 删除整个安装目录
+    #[cfg(target_os = "windows")]
+    {
+        if dir.exists() {
+            std::fs::remove_dir_all(&dir)
+                .map_err(|e| format!("删除安装目录失败: {}", e))?;
+        }
     }
 
     Ok(())
@@ -510,11 +600,33 @@ fn get_default_install_dir() -> String {
 /// 返回安装体积（字节）
 #[tauri::command]
 fn get_install_size() -> u64 {
-    // 约 85 MB
+    // 尝试计算 payload 实际大小
+    let payload = payload_dir();
+    if payload.is_dir() {
+        if let Ok(size) = dir_size(&payload) {
+            return size;
+        }
+    }
+    // 默认约 85 MB
     85 * 1024 * 1024
 }
 
-/// 启动安装（异步）：在工作线程中执行并通过事件上报进度
+/// 递归计算目录大小
+fn dir_size(path: &Path) -> Result<u64, String> {
+    let mut total = 0u64;
+    for entry in std::fs::read_dir(path).map_err(|e| e.to_string())? {
+        let entry = entry.map_err(|e| e.to_string())?;
+        let p = entry.path();
+        if p.is_dir() {
+            total += dir_size(&p)?;
+        } else {
+            total += entry.metadata().map_err(|e| e.to_string())?.len();
+        }
+    }
+    Ok(total)
+}
+
+/// 启动安装（异步）
 #[tauri::command]
 async fn start_install(
     app: tauri::AppHandle,
@@ -562,6 +674,9 @@ async fn launch_aurora(target_dir: String) -> Result<(), String> {
     #[cfg(target_os = "macos")]
     {
         let app_path = PathBuf::from(&target_dir).join("Aurora.app");
+        if !app_path.is_dir() {
+            return Err(format!("未找到 Aurora.app: {}", app_path.display()));
+        }
         std::process::Command::new("open")
             .arg(&app_path)
             .spawn()
@@ -569,18 +684,27 @@ async fn launch_aurora(target_dir: String) -> Result<(), String> {
         return Ok(());
     }
 
-    #[cfg(not(target_os = "macos"))]
+    #[cfg(target_os = "windows")]
     {
-        let exe = PathBuf::from(&target_dir).join(aurora_exe_name());
+        let exe = PathBuf::from(&target_dir).join("Aurora.exe");
+        if !exe.exists() {
+            return Err(format!("未找到 Aurora.exe: {}", exe.display()));
+        }
         std::process::Command::new(&exe)
             .current_dir(&target_dir)
             .spawn()
             .map_err(|e| format!("启动 Aurora 失败: {}", e))?;
-        Ok(())
+        return Ok(());
+    }
+
+    #[cfg(not(any(target_os = "macos", target_os = "windows")))]
+    {
+        let _ = target_dir;
+        Err("当前平台不支持启动".to_string())
     }
 }
 
-/// 卸载 Aurora（前端调用）：使用已记录的安装目录
+/// 卸载 Aurora
 #[tauri::command]
 async fn uninstall_aurora(state: tauri::State<'_, InstallerState>) -> Result<(), String> {
     let dir = state.install_dir.lock().map_err(|e| e.to_string())?.clone();
@@ -590,13 +714,13 @@ async fn uninstall_aurora(state: tauri::State<'_, InstallerState>) -> Result<(),
     perform_uninstall(&dir)
 }
 
-/// 供前端按指定目录卸载
+/// 按指定目录卸载
 #[tauri::command]
 async fn uninstall_aurora_at(request: UninstallRequest) -> Result<(), String> {
     perform_uninstall(&request.install_dir)
 }
 
-/// 读取已安装信息（用于前端判断是否已安装）
+/// 读取已安装信息
 #[tauri::command]
 fn get_uninstall_info() -> UninstallInfo {
     let installed_dir = read_install_dir_from_registry();
@@ -613,8 +737,19 @@ fn quit_installer(app: tauri::AppHandle) {
     app.exit(0);
 }
 
+/// 返回当前平台名称（前端展示用）
+#[tauri::command]
+fn get_platform() -> String {
+    #[cfg(target_os = "macos")]
+    return "macos".to_string();
+    #[cfg(target_os = "windows")]
+    return "windows".to_string();
+    #[cfg(not(any(target_os = "macos", target_os = "windows")))]
+    return "linux".to_string();
+}
+
 // ============================================================
-// Windows 原生消息对话框（winapi）
+// 原生消息对话框
 // ============================================================
 
 #[cfg(target_os = "windows")]
@@ -644,12 +779,6 @@ fn show_message_box(title: &str, msg: &str, _is_error: bool) {
     eprintln!("[{}] {}", title, msg);
 }
 
-/// 便捷别名：错误对话框
-#[allow(dead_code)]
-fn show_critical_error(title: &str, msg: &str) {
-    show_message_box(title, msg, true);
-}
-
 // ============================================================
 // 应用入口
 // ============================================================
@@ -671,17 +800,14 @@ pub fn run() {
         return;
     }
 
-    // ---- 安装 panic hook：崩溃时弹出原生错误对话框 ----
+    // ---- panic hook ----
     #[cfg(not(target_os = "android"))]
     {
         std::panic::set_hook(Box::new(|info| {
-            let msg = format!(
-                "Aurora 安装器发生错误\n\n{}\n\n请截图反馈给开发者。",
-                info
-            );
+            let msg = format!("Aurora 安装器发生错误\n\n{}\n\n请截图反馈给开发者。", info);
             eprintln!("{}", msg);
             #[cfg(target_os = "windows")]
-            show_critical_error("Aurora 安装器错误", &msg);
+            show_message_box("Aurora 安装器错误", &msg, true);
         }));
     }
 
@@ -701,9 +827,9 @@ pub fn run() {
             uninstall_aurora_at,
             get_uninstall_info,
             quit_installer,
+            get_platform,
         ])
         .on_window_event(|window, event| {
-            // 关闭主窗口即退出安装器
             if let tauri::WindowEvent::CloseRequested { .. } = event {
                 window.app_handle().exit(0);
             }

@@ -6,7 +6,7 @@
   "build": {
     "beforeDevCommand": "npx vite --port 1421 --host",
     "devUrl": "http://localhost:1421",
-    "beforeBuildCommand": "cd ../ && npx vite build",
+    "beforeBuildCommand": "npx vite build",
     "frontendDist": "../dist"
   },
   "app": {
@@ -58,7 +58,8 @@
       }
     },
     "macOS": {
-      "minimumSystemVersion": "10.15"
+      "minimumSystemVersion": "10.15",
+      "frameworks": []
     }
   }
 }
