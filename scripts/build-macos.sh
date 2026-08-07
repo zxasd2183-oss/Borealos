@@ -8,7 +8,7 @@
 #   3. 用 productbuild + Distribution.xml 生成带自定义向导的 .pkg
 #      → 双击 .pkg 弹出 macOS 标准安装向导
 #      → 自定义欢迎页、许可协议、自述文件、背景图、安装后脚本
-#   4. 额外生成 .dmg（备用分发格式）
+#   4. 把 .pkg 复制到桌面
 # ============================================================
 set -e
 
@@ -185,27 +185,20 @@ if [ ! -f "$FINAL_PKG" ]; then
 fi
 echo "  .pkg 安装包生成完成 ✓"
 
-# 7d. 额外生成 .dmg（备用分发格式）
-echo "  [7c] 生成 .dmg (备用)..."
-DMG_OUTPUT="$OUTPUT_DIR/Aurora-${APP_VERSION}-universal.dmg"
-DMG_STAGING="$OUTPUT_DIR/dmg-staging"
-rm -rf "$DMG_STAGING"
-mkdir -p "$DMG_STAGING"
-cp -R "$AURORA_APP" "$DMG_STAGING/"
-ln -s /Applications "$DMG_STAGING/Applications"
-
-hdiutil create \
-    -volname "Aurora" \
-    -srcfolder "$DMG_STAGING" \
-    -ov \
-    -format UDZO \
-    "$DMG_OUTPUT" 2>/dev/null
-
-rm -rf "$DMG_STAGING"
-
 # 清理临时文件
 rm -f "$COMPONENT_PKG" "$OUTPUT_DIR/Aurora.pkg" "$TEMP_XML"
 rm -rf "$RESOURCES_DIR"
+
+# ---- 把 .pkg 复制到桌面 ----
+echo "  正在复制到桌面..."
+DESKTOP_DIR="$HOME/Desktop"
+if [ ! -d "$DESKTOP_DIR" ]; then
+    DESKTOP_DIR="$(dirname "$HOME")/Desktop"
+fi
+DESKTOP_PKG="$DESKTOP_DIR/Aurora-${APP_VERSION}.pkg"
+cp "$FINAL_PKG" "$DESKTOP_PKG"
+echo "  已复制到桌面 ✓"
+echo "  $DESKTOP_PKG"
 
 # ---- 完成 ----
 echo ""
@@ -213,20 +206,14 @@ echo "========================================"
 echo "  构建完成!"
 echo "========================================"
 echo ""
-echo "📦 PKG 安装包 (双击安装，标准向导):"
-echo "  $FINAL_PKG"
+echo "📦 安装包已在桌面:"
+echo "  $DESKTOP_PKG"
 echo "    → 双击弹出 macOS 安装向导"
 echo "    → 自定义欢迎页 / 许可协议 / 背景图"
 echo "    → 自动安装到 /Applications"
-echo "    → 安装后自动修复权限和 quarantine"
 echo ""
-if [ -f "$DMG_OUTPUT" ]; then
-    echo "📦 DMG (备用，拖拽安装):"
-    echo "  $DMG_OUTPUT"
-    echo ""
-fi
-echo "正在打开输出文件夹..."
-open "$OUTPUT_DIR"
+echo "正在打开桌面..."
+open "$DESKTOP_DIR"
 echo ""
 echo "按回车键退出"
 read
