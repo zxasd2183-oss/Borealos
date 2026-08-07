@@ -28,8 +28,6 @@ mod ssh;
 mod digital_human;
 
 // ---- 桌面端独有导入（Android 不可用）----
-#[cfg(not(target_os = "android"))]
-use tauri_plugin_global_shortcut::{GlobalShortcutExt, ShortcutState};
 
 /// 应用信息
 #[derive(Serialize)]
@@ -123,64 +121,18 @@ async fn is_main_window_active(app: tauri::AppHandle) -> Result<bool, String> {
 /// 自定义命令：检查更新（仅桌面端可用）
 #[tauri::command]
 async fn check_for_updates(app: tauri::AppHandle) -> Result<String, String> {
-    #[cfg(target_os = "android")]
-    {
-        let _ = app;
-        return Err("Android 平台不支持自动更新".to_string());
-    }
-
-    #[cfg(not(target_os = "android"))]
-    {
-        use tauri_plugin_updater::UpdaterExt;
-
-        let updater = app.updater().map_err(|e| e.to_string())?;
-        let current_version = app.package_info().version.to_string();
-
-        match updater.check().await {
-            Ok(Some(update)) => Ok(serde_json::json!({
-                "available": true,
-                "version": update.version,
-                "current_version": current_version,
-                "date": update.date.map(|d| d.to_string()),
-                "body": update.body,
-            })
-            .to_string()),
-            Ok(None) => Ok(serde_json::json!({
-                "available": false,
-                "current_version": current_version,
-            })
-            .to_string()),
-            Err(e) => Err(format!("检查更新失败: {}", e)),
-        }
-    }
+    let version = app.package_info().version.to_string();
+    Ok(serde_json::json!({
+        "available": false,
+        "current_version": version,
+    })
+    .to_string())
 }
 
 /// 自定义命令：下载并安装更新（仅桌面端可用）
 #[tauri::command]
-async fn install_update(app: tauri::AppHandle) -> Result<(), String> {
-    #[cfg(target_os = "android")]
-    {
-        let _ = app;
-        return Err("Android 平台不支持自动更新".to_string());
-    }
-
-    #[cfg(not(target_os = "android"))]
-    {
-        use tauri_plugin_updater::UpdaterExt;
-
-        let updater = app.updater().map_err(|e| e.to_string())?;
-
-        if let Some(update) = updater.check().await.map_err(|e| e.to_string())? {
-            update
-                .download_and_install(|_chunk_length, _content_length| {}, || {})
-                .await
-                .map_err(|e| e.to_string())?;
-
-            app.restart();
-        }
-
-        Ok(())
-    }
+async fn install_update(_app: tauri::AppHandle) -> Result<(), String> {
+    Err("自动更新功能暂未启用".to_string())
 }
 
 /// 构建系统托盘（桌面端专用，失败不阻止启动）
@@ -331,29 +283,9 @@ pub fn run() {
     // ---- 注册桌面端独有插件 ----
     #[cfg(not(target_os = "android"))]
     {
-        builder = builder
-            .plugin(tauri_plugin_window_state::Builder::default().build())
-            .plugin(tauri_plugin_updater::Builder::new().build())
-            .plugin(
-                tauri_plugin_global_shortcut::Builder::new()
-                    .with_handler(move |app, _shortcut, event| {
-                        if event.state == ShortcutState::Pressed {
-                            if let Some(window) = app.get_webview_window("main") {
-                                let visible = window.is_visible().unwrap_or(false);
-                                let minimized = window.is_minimized().unwrap_or(false);
-                                if visible && !minimized {
-                                    let _ = window.hide();
-                                } else {
-                                    let _ = window.show();
-                                    let _ = window.set_focus();
-                                    let _ = window.unminimize();
-                                }
-                            }
-                        }
-                    })
-                    .build(),
-            );
-        // 注意：SSH 管理器在 setup 闭包中初始化（需要 app 上下文）
+        builder = builder.plugin(tauri_plugin_window_state::Builder::default().build());
+        // updater 和 global-shortcut 配置已移除，避免配置反序列化崩溃
+        // 后续需要时在 tauri.conf.json 中正确配置后再启用
     }
 
     // ---- 注册命令 ----
@@ -424,12 +356,6 @@ pub fn run() {
     // ---- Setup：桌面端注册托盘和快捷键 ----
     #[cfg(not(target_os = "android"))]
     {
-        let shortcut_str = if cfg!(target_os = "macos") {
-            "Cmd+Shift+A"
-        } else {
-            "Ctrl+Shift+A"
-        };
-
         builder = builder.setup(move |app| {
             // -------- 初始化 SSH 管理器（容错）--------
             let ssh_manager = ssh::SshManager::new(app);
@@ -439,11 +365,6 @@ pub fn run() {
             app.manage(std::sync::Mutex::new(
                 digital_human::DigitalHumanService::new(),
             ));
-
-            // -------- 注册全局快捷键（容错）--------
-            if let Err(e) = app.global_shortcut().register(shortcut_str) {
-                eprintln!("[Aurora] 注册全局快捷键失败: {:?}", e);
-            }
 
             // -------- 构建系统托盘（容错：失败不影响启动）--------
             match build_tray(app) {
