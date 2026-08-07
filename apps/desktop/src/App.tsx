@@ -11,6 +11,10 @@ import {
   onWindowResized,
   type Platform,
 } from './window-controls';
+import TerminalView from './components/TerminalView';
+import EditorView from './components/EditorView';
+import WorkView from './components/WorkView';
+import ImageView from './components/ImageView';
 
 // ============================================================
 // 主题管理 Hook
@@ -452,10 +456,10 @@ function MainWindow() {
 
         <main className={`content-area ${contentEntering ? 'content-area--entering' : ''}`}>
           {activeTab === 'chat' && <ChatView />}
-          {activeTab === 'work' && <PlaceholderView title="Work 模式" desc="AI 驱动的项目工作空间" />}
-          {activeTab === 'editor' && <PlaceholderView title="代码编辑器" desc="基于 Monaco 的智能编辑器" />}
-          {activeTab === 'terminal' && <PlaceholderView title="终端" desc="嵌入式终端，支持多标签" />}
-          {activeTab === 'image' && <PlaceholderView title="图片生成" desc="AI 图片创作工作台" />}
+          {activeTab === 'work' && <WorkView />}
+          {activeTab === 'editor' && <EditorView />}
+          {activeTab === 'terminal' && <TerminalView />}
+          {activeTab === 'image' && <ImageView />}
           {activeTab === 'settings' && <SettingsView />}
         </main>
       </div>

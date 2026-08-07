@@ -133,6 +133,152 @@ async fn check_for_updates(app: tauri::AppHandle) -> Result<String, String> {
     .to_string())
 }
 
+// ---- 文件操作命令 ----
+
+/// 列出目录内容
+#[tauri::command]
+async fn list_directory(path: String) -> Result<Vec<serde_json::Value>, String> {
+    let mut entries = Vec::new();
+    let dir = std::fs::read_dir(&path).map_err(|e| e.to_string())?;
+    for entry in dir {
+        let entry = entry.map_err(|e| e.to_string())?;
+        let metadata = entry.metadata().map_err(|e| e.to_string())?;
+        let name = entry.file_name().to_string_lossy().to_string();
+        // 跳过隐藏文件
+        if name.starts_with('.') {
+            continue;
+        }
+        entries.push(serde_json::json!({
+            "name": name,
+            "path": entry.path().to_string_lossy().to_string(),
+            "is_dir": metadata.is_dir(),
+            "is_file": metadata.is_file(),
+            "size": metadata.len(),
+        }));
+    }
+    // 目录在前，文件在后
+    entries.sort_by(|a, b| {
+        let a_dir = a["is_dir"].as_bool().unwrap_or(false);
+        let b_dir = b["is_dir"].as_bool().unwrap_or(false);
+        match (a_dir, b_dir) {
+            (true, false) => std::cmp::Ordering::Less,
+            (false, true) => std::cmp::Ordering::Greater,
+            _ => {
+                let a_name = a["name"].as_str().unwrap_or("");
+                let b_name = b["name"].as_str().unwrap_or("");
+                a_name.to_lowercase().cmp(&b_name.to_lowercase())
+            }
+        }
+    });
+    Ok(entries)
+}
+
+/// 读取文件内容
+#[tauri::command]
+async fn read_file_content(path: String) -> Result<String, String> {
+    std::fs::read_to_string(&path).map_err(|e| e.to_string())
+}
+
+/// 写入文件内容
+#[tauri::command]
+async fn write_file_content(path: String, content: String) -> Result<(), String> {
+    std::fs::write(&path, content).map_err(|e| e.to_string())
+}
+
+/// 创建目录
+#[tauri::command]
+async fn create_directory(path: String) -> Result<(), String> {
+    std::fs::create_dir_all(&path).map_err(|e| e.to_string())
+}
+
+/// 删除文件或目录
+#[tauri::command]
+async fn delete_path(path: String) -> Result<(), String> {
+    let metadata = std::fs::metadata(&path).map_err(|e| e.to_string())?;
+    if metadata.is_dir() {
+        std::fs::remove_dir_all(&path).map_err(|e| e.to_string())
+    } else {
+        std::fs::remove_file(&path).map_err(|e| e.to_string())
+    }
+}
+
+/// 重命名/移动文件
+#[tauri::command]
+async fn rename_path(from: String, to: String) -> Result<(), String> {
+    std::fs::rename(&from, &to).map_err(|e| e.to_string())
+}
+
+/// 执行终端命令
+#[tauri::command]
+async fn execute_command(command: String, cwd: Option<String>) -> Result<String, String> {
+    use std::process::Command;
+
+    #[cfg(target_os = "windows")]
+    let (program, args) = ("cmd", vec!["/C", &command]);
+    #[cfg(not(target_os = "windows"))]
+    let (program, args) = ("sh", vec!["-c", &command]);
+
+    let mut cmd = Command::new(program);
+    cmd.args(&args);
+
+    if let Some(dir) = &cwd {
+        cmd.current_dir(dir);
+    }
+
+    let output = cmd.output().map_err(|e| e.to_string())?;
+    let stdout = String::from_utf8_lossy(&output.stdout).to_string();
+    let stderr = String::from_utf8_lossy(&output.stderr).to_string();
+    let exit_code = output.status.code().unwrap_or(-1);
+
+    let result = if stdout.is_empty() && !stderr.is_empty() {
+        stderr
+    } else if stdout.is_empty() && stderr.is_empty() {
+        String::new()
+    } else if stderr.is_empty() {
+        stdout
+    } else {
+        format!("{}\n{}", stdout, stderr)
+    };
+
+    if exit_code != 0 && result.is_empty() {
+        Err(format!("进程退出码: {}", exit_code))
+    } else {
+        Ok(result)
+    }
+}
+
+/// 获取用户主目录
+#[tauri::command]
+async fn get_home_dir() -> Result<String, String> {
+    #[cfg(not(target_os = "android"))]
+    {
+        dirs::home_dir()
+            .map(|p| p.to_string_lossy().to_string())
+            .ok_or_else(|| "无法获取主目录".to_string())
+    }
+    #[cfg(target_os = "android")]
+    {
+        Ok("/sdcard".to_string())
+    }
+}
+
+/// 获取目录信息（磁盘空间等）
+#[tauri::command]
+async fn get_dir_info(path: String) -> Result<serde_json::Value, String> {
+    let metadata = std::fs::metadata(&path).map_err(|e| e.to_string())?;
+    Ok(serde_json::json!({
+        "path": path,
+        "is_dir": metadata.is_dir(),
+        "is_file": metadata.is_file(),
+        "size": metadata.len(),
+        "modified": metadata.modified()
+            .ok()
+            .and_then(|t| t.duration_since(std::time::UNIX_EPOCH).ok())
+            .map(|d| d.as_secs())
+            .unwrap_or(0),
+    }))
+}
+
 /// 自定义命令：下载并安装更新（仅桌面端可用）
 #[tauri::command]
 async fn install_update(_app: tauri::AppHandle) -> Result<(), String> {
@@ -316,6 +462,16 @@ pub fn run() {
         check_for_updates,
         install_update,
         transition_to_main,
+        // ---- 文件操作 ----
+        list_directory,
+        read_file_content,
+        write_file_content,
+        create_directory,
+        delete_path,
+        rename_path,
+        execute_command,
+        get_home_dir,
+        get_dir_info,
         // ---- SSH 命令（仅桌面端）----
         #[cfg(not(target_os = "android"))]
         ssh::ssh_list_hosts,
