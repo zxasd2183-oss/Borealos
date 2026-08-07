@@ -44,8 +44,8 @@ body {
 /* 安装器根容器：左右两栏 */
 .installer-root {
   display: flex;
-  width: 560px;
-  height: 400px;
+  width: 640px;
+  height: 440px;
   position: relative;
   overflow: hidden;
   background: var(--content-bg);

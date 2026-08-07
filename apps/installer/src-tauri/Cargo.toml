@@ -1,6 +1,6 @@
 [package]
 name = "aurora-installer"
-version = "0.3.0"
+version = "0.4.0"
 description = "Aurora 自定义动画安装器"
 edition = "2021"
 

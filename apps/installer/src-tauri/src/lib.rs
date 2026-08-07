@@ -65,7 +65,7 @@ struct UninstallRequest {
 // 平台与路径辅助
 // ============================================================
 
-/// 默认安装目录：%LOCALAPPDATA%\Aurora（Windows），非 Windows 回退到 $HOME/.aurora
+/// 默认安装目录：Windows → %LOCALAPPDATA%\Aurora，macOS → /Applications，其他 → $HOME/.aurora
 fn default_install_dir() -> String {
     #[cfg(target_os = "windows")]
     {
@@ -86,6 +86,11 @@ fn default_install_dir() -> String {
         }
     }
 
+    #[cfg(target_os = "macos")]
+    {
+        return "/Applications".to_string();
+    }
+
     if let Ok(home) = std::env::var("HOME") {
         if !home.is_empty() {
             return PathBuf::from(home).join(".aurora").to_string_lossy().to_string();
@@ -102,10 +107,12 @@ fn payload_dir() -> PathBuf {
         .unwrap_or_else(|| PathBuf::from("."))
 }
 
-/// 主程序可执行文件名（按平台）
+/// 主程序名称（按平台）：Windows → Aurora.exe，macOS → Aurora.app，其他 → Aurora
 fn aurora_exe_name() -> &'static str {
     if cfg!(target_os = "windows") {
         "Aurora.exe"
+    } else if cfg!(target_os = "macos") {
+        "Aurora.app"
     } else {
         "Aurora"
     }
@@ -166,7 +173,7 @@ fn copy_payload_exe(target: &Path) -> Result<(), String> {
         std::fs::copy(&src, &dst).map_err(|e| format!("复制 Aurora 主程序失败: {}", e))?;
     } else {
         // 占位文件：开发/演示场景下主程序不存在时使用
-        let placeholder = b"#!/usr/bin/env sh\n# Aurora placeholder executable\n# 在正式发布包中应被真实 Aurora 程序替换。\necho Aurora 0.3.0\n";
+        let placeholder = b"#!/usr/bin/env sh\n# Aurora placeholder executable\n# 在正式发布包中应被真实 Aurora 程序替换。\necho Aurora 0.4.0\n";
         std::fs::write(&dst, placeholder).map_err(|e| format!("创建占位主程序失败: {}", e))?;
     }
     Ok(())
@@ -181,7 +188,7 @@ fn copy_resources(target: &Path) -> Result<(), String> {
     } else {
         std::fs::create_dir_all(&dst_resources)
             .map_err(|e| format!("创建资源目录失败: {}", e))?;
-        std::fs::write(dst_resources.join("version.txt"), "Aurora 0.3.0\n")
+        std::fs::write(dst_resources.join("version.txt"), "Aurora 0.4.0\n")
             .map_err(|e| format!("写入版本文件失败: {}", e))?;
     }
     Ok(())
@@ -285,7 +292,7 @@ fn write_uninstall_registry(install_dir: &Path) -> Result<(), String> {
         .set_value("DisplayName", &"Aurora")
         .map_err(|e| e.to_string())?;
     aurora_key
-        .set_value("DisplayVersion", &"0.3.0")
+        .set_value("DisplayVersion", &"0.4.0")
         .map_err(|e| e.to_string())?;
     aurora_key
         .set_value("Publisher", &"Aurora")
@@ -552,12 +559,25 @@ async fn start_install(
 /// 启动 Aurora
 #[tauri::command]
 async fn launch_aurora(target_dir: String) -> Result<(), String> {
-    let exe = PathBuf::from(&target_dir).join(aurora_exe_name());
-    std::process::Command::new(&exe)
-        .current_dir(&target_dir)
-        .spawn()
-        .map_err(|e| format!("启动 Aurora 失败: {}", e))?;
-    Ok(())
+    #[cfg(target_os = "macos")]
+    {
+        let app_path = PathBuf::from(&target_dir).join("Aurora.app");
+        std::process::Command::new("open")
+            .arg(&app_path)
+            .spawn()
+            .map_err(|e| format!("启动 Aurora 失败: {}", e))?;
+        return Ok(());
+    }
+
+    #[cfg(not(target_os = "macos"))]
+    {
+        let exe = PathBuf::from(&target_dir).join(aurora_exe_name());
+        std::process::Command::new(&exe)
+            .current_dir(&target_dir)
+            .spawn()
+            .map_err(|e| format!("启动 Aurora 失败: {}", e))?;
+        Ok(())
+    }
 }
 
 /// 卸载 Aurora（前端调用）：使用已记录的安装目录
@@ -583,7 +603,7 @@ fn get_uninstall_info() -> UninstallInfo {
     UninstallInfo {
         installed: installed_dir.is_some(),
         install_dir: installed_dir.clone().unwrap_or_default(),
-        version: "0.3.0".to_string(),
+        version: "0.4.0".to_string(),
     }
 }
 
