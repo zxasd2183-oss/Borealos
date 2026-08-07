@@ -1,11 +1,11 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "Aurora",
-  "version": "0.2.0",
+  "version": "0.4.0",
   "identifier": "dev.aurora.app",
   "build": {
-    "beforeBuildCommand": "cd ../web && npx vite build",
-    "frontendDist": "../../web/dist"
+    "beforeBuildCommand": "pnpm build",
+    "frontendDist": "../dist"
   },
   "app": {
     "windows": [
@@ -37,12 +37,5 @@
     "shortDescription": "Aurora AI 智能工作站",
     "longDescription": "Aurora — 极光智能 AI 工作站"
   },
-  "plugins": {
-    "updater": {
-      "active": false
-    },
-    "global-shortcut": {
-      "active": false
-    }
-  }
+  "plugins": {}
 }
