@@ -79,8 +79,8 @@ Set-Location "$PROJECT_DIR\apps\desktop"
 # 安装 Tauri CLI
 cargo install tauri-cli --version "^2.0" --locked
 
-# 构建
-cargo tauri build
+# 构建（用 windows 配置覆盖 base 的 ["app"]，生成 nsis exe）
+cargo tauri build --config tauri.windows.conf.json
 
 # ---- 完成 ----
 $exePath = Get-ChildItem -Path "src-tauri\target\release\bundle\nsis\*.exe" -ErrorAction SilentlyContinue | Select-Object -First 1
