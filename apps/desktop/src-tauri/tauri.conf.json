@@ -50,11 +50,8 @@
   "bundle": {
     "active": true,
     "targets": [
-      "deb",
-      "appimage",
       "nsis",
       "app",
-      "dmg",
       "pkg"
     ],
     "icon": [

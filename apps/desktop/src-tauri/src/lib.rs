@@ -225,7 +225,7 @@ async fn transition_to_main(
     // 设置标志位：告诉窗口事件处理器这是登录切换，不要退出应用
     IS_TRANSITIONING.store(true, Ordering::SeqCst);
 
-    // 1. 将用户数据传递给主窗口
+    // 1. 将用户数据传递给主窗口并显示
     if let Some(main_window) = app.get_webview_window("main") {
         let _ = main_window.emit("login-success", &payload);
         let _ = main_window.show();
@@ -234,14 +234,23 @@ async fn transition_to_main(
         let _ = main_window.center();
     }
 
-    // 2. 短暂延迟后关闭登录窗口
-    std::thread::sleep(Duration::from_millis(300));
+    // 2. 短暂延迟让主窗口渲染出来
+    tokio::time::sleep(Duration::from_millis(500)).await;
 
+    // 3. 隐藏登录窗口（不用 close，避免触发 CloseRequested → exit）
     if let Some(login_window) = app.get_webview_window("login") {
-        let _ = login_window.close();
+        let _ = login_window.hide();
+        let _ = login_window.set_visible(false);
     }
 
-    // 3. 重置标志位
+    // 4. 延迟后真正销毁登录窗口（此时主窗口已在前台）
+    tokio::time::sleep(Duration::from_millis(300)).await;
+
+    if let Some(login_window) = app.get_webview_window("login") {
+        let _ = login_window.destroy();
+    }
+
+    // 5. 重置标志位
     IS_TRANSITIONING.store(false, Ordering::SeqCst);
 
     Ok(())
