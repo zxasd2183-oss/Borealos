@@ -82,10 +82,10 @@
   },
   "plugins": {
     "updater": {
-      "active": true,
+      "active": false,
       "endpoints": [
-        "http://127.0.0.1:3005/api/update/check/{{target}}/{{arch}}/{{current_version}}",
-        "http://8.148.237.155:3005/api/update/check/{{target}}/{{arch}}/{{current_version}}"
+        "https://127.0.0.1:3005/api/update/check/{{target}}/{{arch}}/{{current_version}}",
+        "https://8.148.237.155:3005/api/update/check/{{target}}/{{arch}}/{{current_version}}"
       ],
       "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDVERkFGMDVFRjM2OEI5M0YKUldRL3VXanpYdkQ2WFJCamNxYTlIWFJOdmVaWk1zOTJwejJrY0pZZ0c3cHJaeWFWYkMrYlpraXkK",
       "windows": {
