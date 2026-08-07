@@ -51,7 +51,6 @@
     "active": true,
     "targets": [
       "nsis",
-      "app",
       "pkg"
     ],
     "icon": [
