@@ -240,7 +240,6 @@ async fn transition_to_main(
     // 3. 隐藏登录窗口（不用 close，避免触发 CloseRequested → exit）
     if let Some(login_window) = app.get_webview_window("login") {
         let _ = login_window.hide();
-        let _ = login_window.set_visible(false);
     }
 
     // 4. 延迟后真正销毁登录窗口（此时主窗口已在前台）
