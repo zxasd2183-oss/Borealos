@@ -1,0 +1,706 @@
+/* ============================================================
+   CodeEditPanel — AI 代码迭代面板样式
+   ============================================================ */
+
+.cep {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: var(--bg-primary, #0d0d0f);
+  color: var(--text-primary, #f0f0f5);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  overflow: hidden;
+}
+
+/* ── 顶部标题栏 ── */
+.cep__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 20px 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+  flex-shrink: 0;
+}
+
+.cep__header-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.cep__icon {
+  font-size: 18px;
+}
+
+.cep__title {
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.cep__reset-btn {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.4);
+  background: none;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  padding: 4px 10px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.cep__reset-btn:hover {
+  color: rgba(255, 255, 255, 0.7);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+/* ── 步骤指示器 ── */
+.cep__steps {
+  display: flex;
+  align-items: center;
+  padding: 14px 20px;
+  gap: 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  flex-shrink: 0;
+}
+
+.cep__step {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  position: relative;
+}
+
+.cep__step-dot {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1.5px solid rgba(255, 255, 255, 0.15);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.3);
+  flex-shrink: 0;
+  transition: all 0.2s;
+}
+
+.cep__step--active .cep__step-dot {
+  background: #007AFF;
+  border-color: #007AFF;
+  color: #fff;
+  box-shadow: 0 0 10px rgba(0, 122, 255, 0.4);
+}
+
+.cep__step--done .cep__step-dot {
+  background: #30D158;
+  border-color: #30D158;
+  color: #fff;
+}
+
+.cep__step-label {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.3);
+  white-space: nowrap;
+  transition: color 0.2s;
+}
+
+.cep__step--active .cep__step-label {
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.cep__step--done .cep__step-label {
+  color: rgba(48, 209, 88, 0.8);
+}
+
+.cep__step-line {
+  width: 28px;
+  height: 1.5px;
+  background: rgba(255, 255, 255, 0.1);
+  margin: 0 6px;
+  flex-shrink: 0;
+}
+
+/* ── 主体内容区 ── */
+.cep__body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 20px;
+}
+
+.cep__section {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* ── 标签 ── */
+.cep__label {
+  font-size: 12px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.5);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: 4px;
+}
+
+/* ── 文本域 ── */
+.cep__textarea {
+  width: 100%;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  padding: 12px 14px;
+  color: #f0f0f5;
+  font-size: 14px;
+  line-height: 1.6;
+  resize: vertical;
+  outline: none;
+  transition: border-color 0.15s;
+  font-family: inherit;
+  box-sizing: border-box;
+}
+
+.cep__textarea:focus {
+  border-color: rgba(0, 122, 255, 0.5);
+  background: rgba(0, 122, 255, 0.03);
+}
+
+.cep__textarea::placeholder {
+  color: rgba(255, 255, 255, 0.2);
+}
+
+/* ── 上下文文件 ── */
+.cep__context {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.cep__context-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.cep__chip {
+  font-size: 12px;
+  padding: 4px 10px;
+  border-radius: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.04);
+  color: rgba(255, 255, 255, 0.55);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.cep__chip:hover {
+  border-color: rgba(0, 122, 255, 0.4);
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.cep__chip--active {
+  background: rgba(0, 122, 255, 0.15);
+  border-color: rgba(0, 122, 255, 0.5);
+  color: #64b5f6;
+}
+
+.cep__custom-file {
+  display: flex;
+  gap: 8px;
+}
+
+.cep__custom-input {
+  flex: 1;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  padding: 7px 12px;
+  color: #f0f0f5;
+  font-size: 12px;
+  outline: none;
+  font-family: 'SF Mono', 'Cascadia Code', monospace;
+}
+
+.cep__custom-input::placeholder {
+  color: rgba(255, 255, 255, 0.2);
+}
+
+.cep__add-btn {
+  padding: 7px 14px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 12px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.15s;
+}
+
+.cep__add-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.cep__selected-files {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.cep__file-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  padding: 3px 8px;
+  background: rgba(48, 209, 88, 0.1);
+  border: 1px solid rgba(48, 209, 88, 0.2);
+  border-radius: 6px;
+  color: rgba(48, 209, 88, 0.85);
+}
+
+.cep__file-tag button {
+  background: none;
+  border: none;
+  color: inherit;
+  cursor: pointer;
+  font-size: 13px;
+  line-height: 1;
+  opacity: 0.6;
+  padding: 0;
+  margin-left: 2px;
+}
+
+.cep__file-tag button:hover {
+  opacity: 1;
+}
+
+/* ── 模型选择 ── */
+.cep__model-row {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.cep__select {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  padding: 8px 12px;
+  color: #f0f0f5;
+  font-size: 13px;
+  outline: none;
+  cursor: pointer;
+  width: 100%;
+}
+
+.cep__select option {
+  background: #1a1a1f;
+}
+
+/* ── 按钮 ── */
+.cep__primary-btn {
+  padding: 11px 20px;
+  background: #007AFF;
+  color: #fff;
+  border: none;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s;
+  text-align: center;
+}
+
+.cep__primary-btn:hover:not(:disabled) {
+  background: #0066d6;
+  transform: translateY(-1px);
+}
+
+.cep__primary-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.cep__primary-btn--danger {
+  background: #30D158;
+}
+
+.cep__primary-btn--danger:hover:not(:disabled) {
+  background: #28b34a;
+}
+
+.cep__secondary-btn {
+  padding: 10px 18px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 10px;
+  color: rgba(255, 255, 255, 0.75);
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.cep__secondary-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.cep__ghost-btn {
+  padding: 10px 18px;
+  background: none;
+  border: none;
+  color: rgba(255, 255, 255, 0.35);
+  font-size: 13px;
+  cursor: pointer;
+  transition: color 0.15s;
+}
+
+.cep__ghost-btn:hover {
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.cep__action-row {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+/* ── 加载中 ── */
+.cep__loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  padding: 60px 20px;
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 14px;
+  text-align: center;
+}
+
+.cep__loading-sub {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.3);
+}
+
+.cep__spinner {
+  width: 32px;
+  height: 32px;
+  border: 2.5px solid rgba(255, 255, 255, 0.08);
+  border-top-color: #007AFF;
+  border-radius: 50%;
+  animation: cep-spin 0.8s linear infinite;
+}
+
+@keyframes cep-spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ── 方案卡片 ── */
+.cep__plan-card {
+  background: rgba(0, 122, 255, 0.06);
+  border: 1px solid rgba(0, 122, 255, 0.18);
+  border-radius: 12px;
+  padding: 16px;
+}
+
+.cep__plan-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.cep__plan-icon {
+  font-size: 16px;
+}
+
+.cep__plan-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: rgba(100, 178, 255, 0.9);
+}
+
+.cep__plan-content {
+  font-size: 13px;
+  line-height: 1.7;
+  color: rgba(255, 255, 255, 0.75);
+  white-space: pre-wrap;
+}
+
+/* ── 文件预览 ── */
+.cep__previews {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.cep__previews-title {
+  font-size: 12px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.45);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.cep__preview-item {
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.cep__preview-path {
+  padding: 8px 12px;
+  font-size: 12px;
+  font-family: 'SF Mono', 'Cascadia Code', monospace;
+  background: rgba(255, 255, 255, 0.03);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  color: rgba(100, 210, 255, 0.8);
+}
+
+.cep__preview-code {
+  padding: 12px;
+  font-size: 11px;
+  font-family: 'SF Mono', 'Cascadia Code', monospace;
+  color: rgba(255, 255, 255, 0.55);
+  overflow-x: auto;
+  max-height: 200px;
+  overflow-y: auto;
+  margin: 0;
+  line-height: 1.5;
+  white-space: pre;
+}
+
+/* ── 警告文字 ── */
+.cep__warn {
+  font-size: 11px;
+  color: rgba(255, 159, 10, 0.7);
+  background: rgba(255, 159, 10, 0.06);
+  border: 1px solid rgba(255, 159, 10, 0.15);
+  border-radius: 8px;
+  padding: 8px 12px;
+  line-height: 1.5;
+}
+
+/* ── 完成状态 ── */
+.cep__done {
+  align-items: center;
+  text-align: center;
+  padding: 20px 0;
+}
+
+.cep__done-icon {
+  font-size: 48px;
+  margin-bottom: 4px;
+}
+
+.cep__done-title {
+  font-size: 20px;
+  font-weight: 600;
+  margin: 0 0 16px;
+}
+
+.cep__result-card {
+  width: 100%;
+  background: rgba(48, 209, 88, 0.06);
+  border: 1px solid rgba(48, 209, 88, 0.15);
+  border-radius: 12px;
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.cep__result-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.cep__result-label {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.35);
+  width: 70px;
+  flex-shrink: 0;
+  padding-top: 2px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.cep__result-val {
+  font-family: 'SF Mono', 'Cascadia Code', monospace;
+  font-size: 13px;
+  color: rgba(48, 209, 88, 0.9);
+  background: rgba(48, 209, 88, 0.08);
+  padding: 2px 8px;
+  border-radius: 4px;
+}
+
+.cep__result-files {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.cep__ci-row {
+  margin-top: 4px;
+}
+
+.cep__ci-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: #64b5f6;
+  text-decoration: none;
+  padding: 8px 16px;
+  background: rgba(0, 122, 255, 0.08);
+  border: 1px solid rgba(0, 122, 255, 0.2);
+  border-radius: 8px;
+  transition: all 0.15s;
+}
+
+.cep__ci-link:hover {
+  background: rgba(0, 122, 255, 0.15);
+  border-color: rgba(0, 122, 255, 0.35);
+}
+
+.cep__done-note {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.35);
+  line-height: 1.6;
+  max-width: 360px;
+}
+
+/* ── 错误状态 ── */
+.cep__error {
+  align-items: center;
+  text-align: center;
+}
+
+.cep__error-icon {
+  font-size: 40px;
+}
+
+.cep__error-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: #FF453A;
+  margin: 0 0 12px;
+}
+
+.cep__error-msg {
+  width: 100%;
+  background: rgba(255, 69, 58, 0.06);
+  border: 1px solid rgba(255, 69, 58, 0.15);
+  border-radius: 10px;
+  padding: 12px 14px;
+  font-family: 'SF Mono', 'Cascadia Code', monospace;
+  font-size: 12px;
+  color: rgba(255, 100, 92, 0.85);
+  text-align: left;
+  overflow-x: auto;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+/* ── 浅色主题适配 ── */
+@media (prefers-color-scheme: light) {
+  .cep {
+    background: #f5f5f7;
+    color: #1c1c1e;
+  }
+
+  .cep__header {
+    border-bottom-color: rgba(0, 0, 0, 0.08);
+  }
+
+  .cep__steps {
+    border-bottom-color: rgba(0, 0, 0, 0.06);
+  }
+
+  .cep__step-dot {
+    background: rgba(0, 0, 0, 0.05);
+    border-color: rgba(0, 0, 0, 0.12);
+    color: rgba(0, 0, 0, 0.3);
+  }
+
+  .cep__step-label {
+    color: rgba(0, 0, 0, 0.35);
+  }
+
+  .cep__step--active .cep__step-label {
+    color: rgba(0, 0, 0, 0.85);
+  }
+
+  .cep__step-line {
+    background: rgba(0, 0, 0, 0.1);
+  }
+
+  .cep__textarea {
+    background: #fff;
+    border-color: rgba(0, 0, 0, 0.12);
+    color: #1c1c1e;
+  }
+
+  .cep__textarea:focus {
+    border-color: rgba(0, 122, 255, 0.5);
+    background: rgba(0, 122, 255, 0.02);
+  }
+
+  .cep__textarea::placeholder {
+    color: rgba(0, 0, 0, 0.25);
+  }
+
+  .cep__chip {
+    border-color: rgba(0, 0, 0, 0.1);
+    background: rgba(0, 0, 0, 0.03);
+    color: rgba(0, 0, 0, 0.5);
+  }
+
+  .cep__custom-input {
+    background: #fff;
+    border-color: rgba(0, 0, 0, 0.12);
+    color: #1c1c1e;
+  }
+
+  .cep__select {
+    background: #fff;
+    border-color: rgba(0, 0, 0, 0.12);
+    color: #1c1c1e;
+  }
+
+  .cep__plan-content {
+    color: rgba(0, 0, 0, 0.75);
+  }
+
+  .cep__preview-code {
+    color: rgba(0, 0, 0, 0.55);
+  }
+
+  .cep__reset-btn {
+    color: rgba(0, 0, 0, 0.4);
+    border-color: rgba(0, 0, 0, 0.12);
+  }
+
+  .cep__loading {
+    color: rgba(0, 0, 0, 0.45);
+  }
+
+  .cep__spinner {
+    border-color: rgba(0, 0, 0, 0.08);
+    border-top-color: #007AFF;
+  }
+}
+
+:root[data-theme="light"] .cep {
+  background: #f5f5f7;
+  color: #1c1c1e;
+}

@@ -12,14 +12,11 @@ import {
 import LoginScreen from './components/LoginScreen';
 import type { UserInfo } from './components/LoginScreen';
 import ConversationSidebar from './components/ConversationSidebar';
-import type { Conversation } from './components/ConversationSidebar';
+import type { Conversation, NavItem } from './components/ConversationSidebar';
 import ChatPanel from './components/ChatPanel';
 import SplashScreen from './components/SplashScreen';
 import WorkPanel from './components/WorkPanel';
 import ImageGenPanel from './components/ImageGenPanel';
-import FreeCanvas from './components/FreeCanvas';
-import CodeEditor from './components/CodeEditor';
-import SSHPanel from './components/SSHPanel';
 import DesktopTitlebar from './components/DesktopTitlebar';
 import UpdateNotification from './components/UpdateNotification';
 import DynamicIslandComponent, { DynamicIsland } from './components/DynamicIsland';
@@ -28,17 +25,20 @@ import {
   AiIcon,
   WorkIcon,
   ImageIcon,
-  CanvasIcon,
-  CodeIcon,
   ServerIcon,
-  SettingsIcon,
-  AuroraLogo,
   VideoIcon,
 } from './components/Icons';
 import DigitalHumanPanel from './components/DigitalHumanPanel';
+import OnboardingWizard from './components/OnboardingWizard';
+import RemoteDeviceCenter from './components/RemoteDeviceCenter';
+import ModelCenter from './components/ModelCenter';
+import SettingsPanel from './components/SettingsPanel';
+import type { Theme } from './components/SettingsPanel';
+import { GridIcon } from './components/Icons';
+import CodeEditPanel from './components/CodeEditPanel';
 
 /** 视图类型 */
-type ViewType = 'chat' | 'work' | 'image' | 'canvas' | 'code' | 'ssh' | 'digital-human';
+type ViewType = 'chat' | 'work' | 'image' | 'digital-human' | 'remote-devices' | 'model-center' | 'code-edit';
 
 /** 聊天消息 */
 export interface ChatMessage {
@@ -63,14 +63,13 @@ function generateTitle(messages: ChatMessage[]): string {
 }
 
 /** 导航项配置 */
-const NAV_ITEMS: { type: ViewType; label: string; icon: typeof AiIcon }[] = [
-  { type: 'chat', label: '对话', icon: AiIcon },
-  { type: 'work', label: 'Work', icon: WorkIcon },
-  { type: 'image', label: '图片生成', icon: ImageIcon },
-  { type: 'canvas', label: '自由画布', icon: CanvasIcon },
-  { type: 'code', label: '代码', icon: CodeIcon },
-  { type: 'ssh', label: 'SSH', icon: ServerIcon },
-  { type: 'digital-human', label: '数字人', icon: VideoIcon },
+const NAV_ITEMS: NavItem[] = [
+  { type: 'chat',          label: '对话',    icon: AiIcon },
+  { type: 'work',          label: 'Work',    icon: WorkIcon },
+  { type: 'image',         label: '图片生成', icon: ImageIcon },
+  { type: 'digital-human', label: '数字人',   icon: VideoIcon,   group: 'tools' },
+  { type: 'model-center',  label: '模型中心', icon: GridIcon,    group: 'tools' },
+  { type: 'remote-devices',label: '连接中心', icon: ServerIcon,  group: 'tools' },
 ];
 
 /* ============================================================
@@ -107,8 +106,32 @@ const App: React.FC = () => {
   // ---- 侧边栏状态 ----
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
-  // 选中的模型
-  const [selectedModel, setSelectedModel] = useState('qwen3.6-flash');
+  // ---- 首次启动引导 ----
+  const [showOnboarding, setShowOnboarding] = useState(false);
+
+  // ---- 设置面板 ----
+  const [showSettings, setShowSettings] = useState(false);
+
+  // ---- 主题 ----
+  const [theme, setTheme] = useState<Theme>(() => {
+    return (localStorage.getItem('aurora_theme') as Theme) || 'light';
+  });
+
+  // ---- 语言 ----
+  const [language, setLanguage] = useState<'zh' | 'en'>(() => {
+    return (localStorage.getItem('aurora_lang') as 'zh' | 'en') || 'zh';
+  });
+
+  // ---- 用户已选模型（引导后从后端加载） ----
+  const [selectedModels, setSelectedModels] = useState<string[]>([]);
+
+  // ---- 积分余额 ----
+  const [userPoints, setUserPoints] = useState<number>(0);
+
+  // 选中的模型（持久化到 localStorage，DynamicIsland 同步）
+  const [selectedModel, setSelectedModel] = useState(
+    () => localStorage.getItem('aurora_selected_model') || 'qwen3.6-flash',
+  );
 
   // 消息 ID 计数器
   const messagesRef = useRef<ChatMessage[]>([]);
@@ -185,6 +208,46 @@ const App: React.FC = () => {
       apiClient.ws.disconnect();
     };
   }, []);
+
+  // 登录后从后端加载偏好（已选模型 + 积分），并判断是否需要引导
+  useEffect(() => {
+    if (!user) return;
+    if ((user as any).isDemo || user.id === 'demo-user') return;
+    const token = localStorage.getItem('aurora_token');
+    fetch('/api/user/preferences', {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    })
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.success) {
+          const prefs = data.data as { selectedModels: string[]; hasOnboarded: boolean; points?: number };
+          setSelectedModels(prefs.selectedModels);
+          if (prefs.points !== undefined) setUserPoints(prefs.points);
+          if (!prefs.hasOnboarded) setShowOnboarding(true);
+        }
+      })
+      .catch(() => {
+        // 无后端时回退到 localStorage
+        if (!localStorage.getItem('aurora_onboarded')) setShowOnboarding(true);
+      });
+  }, [user]);
+
+  // ---- 主题应用 ----
+  useEffect(() => {
+    const root = document.documentElement;
+    if (theme === 'system') {
+      root.removeAttribute('data-theme');
+    } else {
+      root.setAttribute('data-theme', theme);
+    }
+    localStorage.setItem('aurora_theme', theme);
+  }, [theme]);
+
+  // ---- 语言应用 ----
+  useEffect(() => {
+    localStorage.setItem('aurora_lang', language);
+    document.documentElement.setAttribute('lang', language === 'zh' ? 'zh-CN' : 'en');
+  }, [language]);
 
   // 从 localStorage 恢复会话
   useEffect(() => {
@@ -283,6 +346,21 @@ const App: React.FC = () => {
     try {
       localStorage.setItem(`aurora_messages_${convId}`, JSON.stringify(msgs));
     } catch {}
+  }, []);
+
+  /** 扣积分（聊天）：粗估 1积分/400字符，至少1积分 */
+  const deductChatPoints = useCallback((input: string, output: string) => {
+    const cost = Math.max(1, Math.ceil((input.length + output.length) / 400));
+    const token = localStorage.getItem('aurora_token');
+    if (!token) return;
+    fetch('/api/points/deduct', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ amount: cost, reason: '对话消耗' }),
+    })
+      .then((r) => r.json())
+      .then((d) => { if (d.success) setUserPoints(d.data.balance); })
+      .catch(() => {});
   }, []);
 
   /** 发送聊天消息（通过 /api/chat/ws 流式 WebSocket） */
@@ -432,6 +510,8 @@ const App: React.FC = () => {
       });
 
       setIsAiThinking(false);
+      // 扣积分：粗估 1积分/400字符
+      deductChatPoints(content, fullContent);
       // 灵动岛：回复完成
       DynamicIsland.show({
         type: 'notification',
@@ -454,6 +534,7 @@ const App: React.FC = () => {
         if (reply) {
           updateStreaming(reply);
           setIsAiThinking(false);
+          deductChatPoints(content, reply);
           DynamicIsland.show({
             type: 'notification',
             title: '回复完成',
@@ -490,10 +571,13 @@ const App: React.FC = () => {
         setActiveView('image');
         break;
       case 'canvas':
-        setActiveView('canvas');
+        setActiveView('digital-human');
         break;
       case 'code':
-        setActiveView('code');
+        setActiveView('work');
+        break;
+      case 'update':
+        setActiveView('code-edit');
         break;
       case 'new':
         handleNewConversation();
@@ -579,58 +663,71 @@ const App: React.FC = () => {
     <div className={desktopMode ? 'aurora-desktop' : ''}>
       {desktopMode && <DesktopTitlebar />}
       {desktopMode && <UpdateNotification />}
-      {/* 灵动岛 — 在桌面 main 窗口和移动端渲染 */}
-      {desktopMode && <DynamicIslandComponent />}
+      {/* 灵动岛控制中心 — 桌面 main 窗口 + 浏览器模式均渲染 */}
+      {(desktopMode || windowLabel === null) && (
+        <DynamicIslandComponent
+          selectedModel={selectedModel}
+          onModelChange={(id) => {
+            setSelectedModel(id);
+            localStorage.setItem('aurora_selected_model', id);
+          }}
+          availableModelIds={selectedModels}
+          userPoints={userPoints}
+        />
+      )}
+      {/* 设置面板 */}
+      {showSettings && user && (
+        <SettingsPanel
+          user={{
+            id: user.id,
+            email: user.email,
+            name: user.name,
+            role: user.role,
+            plan: user.plan,
+            points: userPoints || (user as any).points,
+            selectedModels,
+          }}
+          theme={theme}
+          language={language}
+          onThemeChange={setTheme}
+          onLanguageChange={setLanguage}
+          onLogout={() => { setShowSettings(false); handleLogout(); }}
+          onClose={() => setShowSettings(false)}
+        />
+      )}
+
+      {/* 首次启动向导 */}
+      {showOnboarding && (
+        <OnboardingWizard
+          userId={user?.id ?? ''}
+          onFinish={(models) => {
+            setSelectedModels(models);
+            setShowOnboarding(false);
+            localStorage.setItem('aurora_onboarded', '1');
+          }}
+        />
+      )}
       {windowLabel === null && showSplash && (
         <SplashScreen onFinish={() => setShowSplash(false)} />
       )}
       <div className="aurora-app">
-        {/* 左侧导航栏 */}
-        <nav className="aurora-nav">
-          <div className="aurora-nav__logo">
-            <AuroraLogo size={32} />
-          </div>
-          <div className="aurora-nav__items">
-            {NAV_ITEMS.map((item) => {
-              const Icon = item.icon;
-              return (
-                <button
-                  key={item.type}
-                  className={`aurora-nav__item ${activeView === item.type ? 'aurora-nav__item--active' : ''}`}
-                  onClick={() => setActiveView(item.type)}
-                  data-tooltip={item.label}
-                >
-                  <Icon size={22} />
-                  <span className="aurora-nav__label">{item.label}</span>
-                </button>
-              );
-            })}
-          </div>
-          <div className="aurora-nav__bottom">
-            <button
-              className="aurora-nav__item"
-              title="设置"
-            >
-              <SettingsIcon size={22} />
-            </button>
-          </div>
-        </nav>
-
-        {/* 会话栏（仅聊天视图显示） */}
-        {activeView === 'chat' && (
-          <ConversationSidebar
-            conversations={conversations}
-            activeId={activeConversationId}
-            collapsed={sidebarCollapsed}
-            user={user}
-            onSelect={handleSelectConversation}
-            onNew={handleNewConversation}
-            onDelete={handleDeleteConversation}
-            onRename={handleRenameConversation}
-            onToggle={() => setSidebarCollapsed(!sidebarCollapsed)}
-            onLogout={handleLogout}
-          />
-        )}
+        {/* 统一侧边栏（导航 + 会话列表） */}
+        <ConversationSidebar
+          conversations={conversations}
+          activeId={activeConversationId}
+          collapsed={sidebarCollapsed}
+          user={user}
+          activeView={activeView}
+          navItems={NAV_ITEMS}
+          onViewChange={(v) => setActiveView(v as ViewType)}
+          onSelect={handleSelectConversation}
+          onNew={handleNewConversation}
+          onDelete={handleDeleteConversation}
+          onRename={handleRenameConversation}
+          onToggle={() => setSidebarCollapsed(!sidebarCollapsed)}
+          onLogout={handleLogout}
+          onSettings={() => setShowSettings(true)}
+        />
 
         {/* 主内容区 */}
         <main className="aurora-main">
@@ -649,41 +746,48 @@ const App: React.FC = () => {
             </div>
           )}
           {activeView === 'work' && (
-            <div key="work" className="aurora-view-wrapper">
-              <header className="aurora-view-header">
-                <h1>Work 模式</h1>
-                <p>主模型编排 · 子模型并行执行</p>
-              </header>
+            <div key="work" className="aurora-view-wrapper aurora-view-wrapper--work">
               <WorkPanel model={selectedModel} />
             </div>
           )}
           {activeView === 'image' && (
             <div key="image" className="aurora-view-wrapper">
-              <header className="aurora-view-header">
-                <h1>AI 图片生成</h1>
-                <p>文生图 · 图生图 · 风格迁移</p>
-              </header>
-              <ImageGenPanel />
-            </div>
-          )}
-          {activeView === 'canvas' && (
-            <div key="canvas" className="aurora-view-wrapper aurora-view-wrapper--canvas">
-              <FreeCanvas />
-            </div>
-          )}
-          {activeView === 'code' && (
-            <div key="code" className="aurora-view-wrapper aurora-view-wrapper--code">
-              <CodeEditor />
-            </div>
-          )}
-          {activeView === 'ssh' && (
-            <div key="ssh" className="aurora-view-wrapper aurora-view-wrapper--ssh">
-              <SSHPanel />
+              <ImageGenPanel availableModelIds={selectedModels} />
             </div>
           )}
           {activeView === 'digital-human' && (
             <div key="digital-human" className="aurora-view-wrapper aurora-view-wrapper--digital-human">
               <DigitalHumanPanel />
+            </div>
+          )}
+          {activeView === 'remote-devices' && (
+            <div key="remote-devices" className="aurora-view-wrapper aurora-view-wrapper--remote-devices">
+              <RemoteDeviceCenter />
+            </div>
+          )}
+          {activeView === 'model-center' && (
+            <div key="model-center" className="aurora-view-wrapper">
+              <ModelCenter
+                selectedModels={selectedModels}
+                onSelectedModelsChange={(models) => {
+                  setSelectedModels(models);
+                  const token = localStorage.getItem('aurora_token');
+                  fetch('/api/user/preferences', {
+                    method: 'PUT',
+                    headers: {
+                      'Content-Type': 'application/json',
+                      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+                    },
+                    body: JSON.stringify({ selectedModels: models }),
+                  }).catch(() => {});
+                }}
+                userPoints={(user as any)?.points}
+              />
+            </div>
+          )}
+          {activeView === 'code-edit' && (
+            <div key="code-edit" className="aurora-view-wrapper">
+              <CodeEditPanel />
             </div>
           )}
         </main>

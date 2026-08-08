@@ -29,10 +29,33 @@ import workRoutes from './routes/work';
 import uploadRoutes from './routes/upload';
 import scheduleRoutes from './routes/schedule';
 import videoRoutes from './routes/video';
+import audioRoutes from './routes/audio';
+import digitalHumanCloudRoutes from './routes/digital-human-cloud';
 import updateRoutes from './routes/update';
+import codeEditRoutes from './routes/code-edit';
+import configRoutes from './routes/config';
+import sshDevicesRoutes from './routes/ssh-devices';
+import connectionsRoutes from './routes/connections';
+import pointsRoutes from './routes/points';
+import preferencesRoutes from './routes/preferences';
 import { createAuthMiddleware } from './auth/middleware';
 import { initDatabase, closeDatabase } from './db';
 import { seedData, ensureSystemUser } from './store';
+import { ensureDefaultAdmin } from './auth/store';
+
+/** 启动时把 config.json 里保存的 key 写入 process.env */
+function applyConfigToEnv(): void {
+  const configPath = path.join(process.cwd(), 'config.json');
+  try {
+    if (fs.existsSync(configPath)) {
+      const cfg = JSON.parse(fs.readFileSync(configPath, 'utf-8')) as Record<string, string>;
+      const allowed = ['TOKEN_PLAN_API_KEY','TOKEN_PLAN_BASE_URL','RELAY_URL','RELAY_TOKEN','JD_API_KEY','JD_API_BASE_URL','SEEKGT_API_KEY','SEEKGT_BASE_URL','WUYIN_API_KEY','WUYIN_BASE_URL'];
+      for (const k of allowed) {
+        if (cfg[k]) process.env[k] = cfg[k];
+      }
+    }
+  } catch {}
+}
 
 /** 服务器监听端口 */
 const PORT = 3001;
@@ -108,7 +131,15 @@ async function main() {
   await fastify.register(uploadRoutes); // /api/upload/*
   await fastify.register(scheduleRoutes); // /api/schedule/*
   await fastify.register(videoRoutes); // /api/video/*
+  await fastify.register(audioRoutes); // /api/audio/*
+  await fastify.register(digitalHumanCloudRoutes); // /api/digital-human/*
   await fastify.register(updateRoutes); // /api/update/*
+  await fastify.register(codeEditRoutes); // /api/code-edit/*
+  await fastify.register(configRoutes);       // /api/config
+  await fastify.register(sshDevicesRoutes);  // /api/ssh-devices (legacy)
+  await fastify.register(connectionsRoutes); // /api/connections
+  await fastify.register(pointsRoutes);      // /api/points/*
+  await fastify.register(preferencesRoutes); // /api/user/preferences
 
   // ==================== 服务前端静态文件 ====================
 
@@ -141,7 +172,9 @@ async function main() {
 
   // ==================== 初始化数据 ====================
 
+  applyConfigToEnv();   // 先把保存的 key 写入 process.env
   seedData();
+  ensureDefaultAdmin();
   fastify.log.info('示例数据已初始化');
 
   // ==================== 启动服务器 ====================

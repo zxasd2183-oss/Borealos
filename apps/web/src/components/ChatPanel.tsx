@@ -3,17 +3,6 @@ import type { FC } from 'react';
 import type { ChatMessage } from '../App';
 import { SendIcon, CollapseIcon, AiIcon, PlusIcon, PaperclipIcon, MicIcon, ScreenshotIcon, SparkleIcon } from './Icons';
 
-/** 模型信息 */
-interface ModelInfo {
-  id: string;
-  name: string;
-  description: string;
-  vision: boolean;
-  reasoning: boolean;
-  brand: string;
-  isLocal?: boolean;
-}
-
 /** 斜杠命令定义 */
 interface SlashCommand {
   cmd: string;
@@ -25,8 +14,9 @@ interface SlashCommand {
 const SLASH_COMMANDS: SlashCommand[] = [
   { cmd: 'work', label: '/work', desc: '切换到 Work 模式', icon: '⚡' },
   { cmd: 'image', label: '/image', desc: '切换到图片生成', icon: '🖼' },
-  { cmd: 'canvas', label: '/canvas', desc: '切换到自由画布', icon: '🎨' },
+  { cmd: 'canvas', label: '/image', desc: '切换到图片生成', icon: '🎨' },
   { cmd: 'code', label: '/code', desc: '切换到代码编辑器', icon: '</>' },
+  { cmd: 'update', label: '/update', desc: 'AI 迭代更新软件', icon: '🚀' },
   { cmd: 'new', label: '/new', desc: '新建对话', icon: '✨' },
   { cmd: 'clear', label: '/clear', desc: '清空当前对话', icon: '🧹' },
   { cmd: 'model', label: '/model', desc: '切换模型', icon: '🤖' },
@@ -175,9 +165,6 @@ const ChatPanel: FC<ChatPanelProps> = ({
 }) => {
   const [input, setInput] = useState('');
   const [selectedModel, setSelectedModel] = useState(externalModel || '');
-  const [models, setModels] = useState<ModelInfo[]>([]);
-  const [modelsLoading, setModelsLoading] = useState(true);
-  const [showModelDropdown, setShowModelDropdown] = useState(false);
   const [showSlashMenu, setShowSlashMenu] = useState(false);
   const [slashFilter, setSlashFilter] = useState('');
   const [attachedFiles, setAttachedFiles] = useState<{ url: string; name: string; type: string }[]>([]);
@@ -186,50 +173,20 @@ const ChatPanel: FC<ChatPanelProps> = ({
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const dropdownRef = useRef<HTMLDivElement>(null);
   const slashMenuRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const recognitionRef = useRef<any>(null);
 
-  // 从后端获取模型列表
-  useEffect(() => {
-    let cancelled = false;
-    setModelsLoading(true);
-    fetch('/api/models')
-      .then(async (res) => {
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        return res.json();
-      })
-      .then((data) => {
-        if (cancelled) return;
-        if (data.success && Array.isArray(data.data) && data.data.length > 0) {
-          setModels(data.data);
-          if (!selectedModel) {
-            setSelectedModel(data.data[0].id);
-            onModelChange?.(data.data[0].id);
-          }
-        }
-      })
-      .catch(() => {})
-      .finally(() => {
-        if (!cancelled) setModelsLoading(false);
-      });
-    return () => { cancelled = true; };
-  }, []);
-
-  // 同步外部模型选择
+  // 同步外部模型选择（由灵动岛控制）
   useEffect(() => {
     if (externalModel && externalModel !== selectedModel) {
       setSelectedModel(externalModel);
     }
   }, [externalModel]);
 
-  // 点击外部关闭下拉
+  // 点击外部关闭斜杠菜单
   useEffect(() => {
     const handler = (e: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
-        setShowModelDropdown(false);
-      }
       if (slashMenuRef.current && !slashMenuRef.current.contains(e.target as Node)) {
         setShowSlashMenu(false);
       }
@@ -450,7 +407,6 @@ const ChatPanel: FC<ChatPanelProps> = ({
     }
   };
 
-  const currentModel = models.find((m) => m.id === selectedModel);
   const hasMessages = messages.length > 0;
 
   const filteredCommands = slashFilter
@@ -484,45 +440,7 @@ const ChatPanel: FC<ChatPanelProps> = ({
           </button>
         )}
         <div className="chat-main__header-center">
-          {/* 模型选择器 */}
-          <div className="model-dropdown" ref={dropdownRef}>
-            <button
-              className="model-dropdown__trigger"
-              onClick={() => setShowModelDropdown(!showModelDropdown)}
-            >
-              <span className="model-dropdown__label">
-                {modelsLoading ? '加载模型...' : currentModel?.name || '选择模型'}
-              </span>
-              {currentModel && (
-                <span className="model-dropdown__brand">{currentModel.brand}</span>
-              )}
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="m6 9 6 6 6-6" />
-              </svg>
-            </button>
-            {showModelDropdown && (
-              <div className="model-dropdown__menu">
-                {models.map((m) => (
-                  <button
-                    key={m.id}
-                    className={`model-dropdown__item ${m.id === selectedModel ? 'model-dropdown__item--active' : ''}`}
-                    onClick={() => {
-                      setSelectedModel(m.id);
-                      onModelChange?.(m.id);
-                      setShowModelDropdown(false);
-                    }}
-                  >
-                    <div className="model-dropdown__item-info">
-                      <span className="model-dropdown__item-name">{m.name}</span>
-                      <span className="model-dropdown__item-desc">{m.description}</span>
-                    </div>
-                    {m.reasoning && <span className="model-dropdown__badge">推理</span>}
-                    {m.vision && <span className="model-dropdown__badge model-dropdown__badge--vision">视觉</span>}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
+          <span className="chat-main__header-title">{selectedModel || 'Aurora AI'}</span>
         </div>
         <button
           className="chat-main__new-btn"
@@ -539,13 +457,49 @@ const ChatPanel: FC<ChatPanelProps> = ({
       <div className="chat-main__messages">
         {!hasMessages ? (
           <div className="chat-welcome">
+            {/* Aurora 三波极光 logo —— 动态 SVG，无需外部图标 */}
             <div className="chat-welcome__logo">
-              <SparkleIcon size={48} />
+              <svg className="chat-welcome__aurora-icon" width="72" height="72" viewBox="0 0 72 72" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <defs>
+                  <linearGradient id="cw-g1" x1="0%" y1="100%" x2="100%" y2="0%">
+                    <stop offset="0%" stopColor="#007AFF"/>
+                    <stop offset="55%" stopColor="#5856D6"/>
+                    <stop offset="100%" stopColor="#64D2FF"/>
+                  </linearGradient>
+                  <linearGradient id="cw-g2" x1="0%" y1="80%" x2="100%" y2="20%">
+                    <stop offset="0%" stopColor="#34C759"/>
+                    <stop offset="100%" stopColor="#64D2FF"/>
+                  </linearGradient>
+                  <linearGradient id="cw-g3" x1="0%" y1="60%" x2="100%" y2="40%">
+                    <stop offset="0%" stopColor="#BF5AF2"/>
+                    <stop offset="100%" stopColor="#007AFF"/>
+                  </linearGradient>
+                  <filter id="cw-glow">
+                    <feGaussianBlur stdDeviation="2" result="blur"/>
+                    <feComposite in="SourceGraphic" in2="blur" operator="over"/>
+                  </filter>
+                </defs>
+                {/* 波浪 1 — 蓝紫主线 */}
+                <path className="cw-wave cw-wave--1"
+                  d="M4 52 C14 36 24 28 36 34 C48 40 58 28 68 18"
+                  stroke="url(#cw-g1)" strokeWidth="3.5" strokeLinecap="round" fill="none"/>
+                {/* 波浪 2 — 绿蓝辅线 */}
+                <path className="cw-wave cw-wave--2"
+                  d="M4 60 C14 48 22 38 36 42 C50 46 58 36 68 26"
+                  stroke="url(#cw-g2)" strokeWidth="2.5" strokeLinecap="round" fill="none" opacity="0.75"/>
+                {/* 波浪 3 — 紫色底线 */}
+                <path className="cw-wave cw-wave--3"
+                  d="M4 66 C16 58 26 50 36 54 C46 58 56 46 68 36"
+                  stroke="url(#cw-g3)" strokeWidth="1.8" strokeLinecap="round" fill="none" opacity="0.5"/>
+                {/* 焦点光点 */}
+                <circle className="cw-dot" cx="36" cy="34" r="3.5" fill="url(#cw-g1)" filter="url(#cw-glow)"/>
+              </svg>
             </div>
             <h1 className="chat-welcome__title">有什么可以帮你的？</h1>
             <div className="chat-welcome__suggestions">
               <button
                 className="chat-welcome__suggestion"
+                style={{ '--i': 0 } as React.CSSProperties}
                 onClick={() => setInput('帮我写一个 React 组件')}
               >
                 <span className="chat-welcome__suggestion-icon">📝</span>
@@ -556,6 +510,7 @@ const ChatPanel: FC<ChatPanelProps> = ({
               </button>
               <button
                 className="chat-welcome__suggestion"
+                style={{ '--i': 1 } as React.CSSProperties}
                 onClick={() => onSlashCommand?.('work', '')}
               >
                 <span className="chat-welcome__suggestion-icon">⚡</span>
@@ -566,6 +521,7 @@ const ChatPanel: FC<ChatPanelProps> = ({
               </button>
               <button
                 className="chat-welcome__suggestion"
+                style={{ '--i': 2 } as React.CSSProperties}
                 onClick={() => onSlashCommand?.('image', '')}
               >
                 <span className="chat-welcome__suggestion-icon">🖼</span>
@@ -576,12 +532,13 @@ const ChatPanel: FC<ChatPanelProps> = ({
               </button>
               <button
                 className="chat-welcome__suggestion"
+                style={{ '--i': 3 } as React.CSSProperties}
                 onClick={() => onSlashCommand?.('canvas', '')}
               >
-                <span className="chat-welcome__suggestion-icon">🎨</span>
+                <span className="chat-welcome__suggestion-icon">🎬</span>
                 <div>
-                  <div className="chat-welcome__suggestion-title">自由画布</div>
-                  <div className="chat-welcome__suggestion-desc">无限画布 · 图层创作</div>
+                  <div className="chat-welcome__suggestion-title">视频生成</div>
+                  <div className="chat-welcome__suggestion-desc">文生视频 · 图生视频</div>
                 </div>
               </button>
             </div>
