@@ -328,37 +328,43 @@ export function getFileTypeIcon(name: string): FC<IconProps> {
 export const AuroraLogo: FC<IconProps> = ({ size = 24, className }) => (
   <svg width={size} height={size} viewBox="0 0 32 32" fill="none" className={className} style={{ flexShrink: 0 }}>
     <defs>
-      {/* 极光渐变 — 蓝紫青 */}
-      <linearGradient id="aurora-grad-1" x1="0%" y1="100%" x2="100%" y2="0%">
-        <stop offset="0%" stopColor="#007AFF" />
-        <stop offset="50%" stopColor="#5856D6" />
-        <stop offset="100%" stopColor="#64D2FF" />
+      <linearGradient id="al-bg" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0%" stopColor="#06071A" />
+        <stop offset="100%" stopColor="#160830" />
       </linearGradient>
-      <linearGradient id="aurora-grad-2" x1="20%" y1="100%" x2="80%" y2="0%">
-        <stop offset="0%" stopColor="#0066d6" />
-        <stop offset="60%" stopColor="#007AFF" />
-        <stop offset="100%" stopColor="#64D2FF" />
+      <linearGradient id="al-g1" x1="0" y1="0" x2="1" y2="0">
+        <stop offset="0%" stopColor="#00E5BB" />
+        <stop offset="48%" stopColor="#3D8EFF" />
+        <stop offset="100%" stopColor="#BF5AF2" />
       </linearGradient>
-      <radialGradient id="aurora-glow" cx="50%" cy="60%" r="50%">
-        <stop offset="0%" stopColor="#007AFF" stopOpacity="0.3" />
-        <stop offset="100%" stopColor="#007AFF" stopOpacity="0" />
-      </radialGradient>
-      <clipPath id="aurora-clip">
-        <rect width="32" height="32" rx="8" />
-      </clipPath>
+      <linearGradient id="al-g2" x1="0" y1="0" x2="1" y2="0">
+        <stop offset="0%" stopColor="#64D2FF" />
+        <stop offset="100%" stopColor="#9B6BFF" />
+      </linearGradient>
+      <filter id="al-glow" x="-30%" y="-30%" width="160%" height="160%">
+        <feGaussianBlur stdDeviation="1.2" result="blur" />
+        <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+      </filter>
     </defs>
-    {/* 深色底 */}
-    <rect width="32" height="32" rx="8" fill="#1a1a2e" />
-    <g clipPath="url(#aurora-clip)">
-      <rect width="32" height="32" fill="url(#aurora-glow)" />
-      <path d="M-2 28 Q4 20 2 12 Q0 6 6 0 L10 0 Q6 8 8 14 Q10 22 4 28 Z" fill="url(#aurora-grad-1)" opacity="0.9" />
-      <path d="M34 28 Q28 22 30 14 Q32 8 26 2 L22 0 Q26 10 24 16 Q22 24 28 28 Z" fill="url(#aurora-grad-2)" opacity="0.8" />
-      <path d="M14 28 Q13 18 15 10 Q16 4 16 0 L18 0 Q17 6 17 12 Q17 20 18 28 Z" fill="url(#aurora-grad-1)" opacity="0.65" />
-      <circle cx="22" cy="8" r="0.8" fill="#fff" opacity="0.8" />
-      <circle cx="9" cy="6" r="0.6" fill="#fff" opacity="0.6" />
-      <circle cx="25" cy="14" r="0.5" fill="#fff" opacity="0.5" />
-    </g>
-    <rect width="32" height="32" rx="8" fill="none" stroke="rgba(0, 122, 255, 0.4)" strokeWidth="0.5" />
+    {/* 深空背景 */}
+    <rect width="32" height="32" rx="8.5" fill="url(#al-bg)" />
+    {/* 主极光弧 — 最亮 */}
+    <path d="M3 20 C7 15 11 13 16 15 C21 17 25 14 29 10"
+          stroke="url(#al-g1)" strokeWidth="2.6" strokeLinecap="round" fill="none"
+          filter="url(#al-glow)" />
+    {/* 第二弧 */}
+    <path d="M3 24.5 C7 21 11 19 16 20.5 C21 22 25 20 29 17.5"
+          stroke="url(#al-g2)" strokeWidth="1.8" strokeLinecap="round" fill="none" opacity="0.7" />
+    {/* 第三弧 — 最淡 */}
+    <path d="M3 15 C7 10 11 8 16 10 C21 12 25 9.5 29 6"
+          stroke="url(#al-g1)" strokeWidth="1.2" strokeLinecap="round" fill="none" opacity="0.4" />
+    {/* 星点 */}
+    <circle cx="27" cy="5.5" r="1.2" fill="white" opacity="0.9" />
+    <circle cx="6"  cy="7"   r="0.7" fill="#64D2FF" opacity="0.75" />
+    <circle cx="22" cy="26"  r="0.55" fill="#BF5AF2" opacity="0.6" />
+    {/* 外描边高光 */}
+    <rect width="32" height="32" rx="8.5" fill="none"
+          stroke="rgba(100,210,255,0.18)" strokeWidth="0.75" />
   </svg>
 );
 
@@ -428,6 +434,19 @@ export const VideoIcon: FC<IconProps> = (p) => (
   </Svg>
 );
 
+export const GridIcon: FC<IconProps> = (p) => (
+  <Svg {...p}>
+    <rect x="3" y="3" width="7" height="7" rx="1.5" fill="currentColor" fillOpacity="0.15" />
+    <rect x="14" y="3" width="7" height="7" rx="1.5" fill="currentColor" fillOpacity="0.15" />
+    <rect x="3" y="14" width="7" height="7" rx="1.5" fill="currentColor" fillOpacity="0.15" />
+    <rect x="14" y="14" width="7" height="7" rx="1.5" fill="currentColor" fillOpacity="0.15" />
+    <rect x="3" y="3" width="7" height="7" rx="1.5" />
+    <rect x="14" y="3" width="7" height="7" rx="1.5" />
+    <rect x="3" y="14" width="7" height="7" rx="1.5" />
+    <rect x="14" y="14" width="7" height="7" rx="1.5" />
+  </Svg>
+);
+
 /* ==================== 操作工具图标 ==================== */
 
 export const PaperclipIcon: FC<IconProps> = (p) => (
@@ -489,6 +508,39 @@ export const UploadIcon: FC<IconProps> = (p) => (
   <Svg {...p}>
     <path d="M12 4v10M12 4l-4 4M12 4l4 4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" fill="none" />
     <path d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2" stroke="currentColor" strokeWidth="2" strokeLinecap="round" fill="none" />
+  </Svg>
+);
+
+/* ==================== 新增功能图标 ==================== */
+
+export const AudioIcon: FC<IconProps> = (p) => (
+  <Svg {...p}>
+    <path d="M9 18V5l12-2v13" />
+    <circle cx="6" cy="18" r="3" fill="currentColor" fillOpacity="0.2" />
+    <circle cx="18" cy="16" r="3" fill="currentColor" fillOpacity="0.2" />
+    <circle cx="6" cy="18" r="3" />
+    <circle cx="18" cy="16" r="3" />
+  </Svg>
+);
+
+export const TemplateIcon: FC<IconProps> = (p) => (
+  <Svg {...p}>
+    <rect x="3" y="3" width="18" height="5" rx="1.5" fill="currentColor" fillOpacity="0.15" />
+    <rect x="3" y="10" width="8" height="11" rx="1.5" fill="currentColor" fillOpacity="0.1" />
+    <rect x="13" y="10" width="8" height="5" rx="1.5" fill="currentColor" fillOpacity="0.1" />
+    <rect x="13" y="17" width="8" height="4" rx="1.5" fill="currentColor" fillOpacity="0.1" />
+    <rect x="3" y="3" width="18" height="5" rx="1.5" />
+    <rect x="3" y="10" width="8" height="11" rx="1.5" />
+    <rect x="13" y="10" width="8" height="5" rx="1.5" />
+    <rect x="13" y="17" width="8" height="4" rx="1.5" />
+  </Svg>
+);
+
+export const AdminIcon: FC<IconProps> = (p) => (
+  <Svg {...p}>
+    <path d="M12 2L3 7v5c0 5.25 3.75 10.17 9 11.33C17.25 22.17 21 17.25 21 12V7L12 2z" fill="currentColor" fillOpacity="0.1" />
+    <path d="M12 2L3 7v5c0 5.25 3.75 10.17 9 11.33C17.25 22.17 21 17.25 21 12V7L12 2z" />
+    <path d="M9 12l2 2 4-4" />
   </Svg>
 );
 

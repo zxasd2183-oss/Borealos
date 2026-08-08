@@ -17,6 +17,7 @@ const SLASH_COMMANDS: SlashCommand[] = [
   { cmd: 'canvas', label: '/image', desc: '切换到图片生成', icon: '🎨' },
   { cmd: 'code', label: '/code', desc: '切换到代码编辑器', icon: '</>' },
   { cmd: 'update', label: '/update', desc: 'AI 迭代更新软件', icon: '🚀' },
+  { cmd: 'admin', label: '/admin', desc: '管理控制台', icon: '⚙️' },
   { cmd: 'new', label: '/new', desc: '新建对话', icon: '✨' },
   { cmd: 'clear', label: '/clear', desc: '清空当前对话', icon: '🧹' },
   { cmd: 'model', label: '/model', desc: '切换模型', icon: '🤖' },

@@ -15,6 +15,10 @@ import { getDb, isDbInitialized } from '../db';
 export interface StoredUser extends AuthUser {
   /** 密码哈希（salt:hash） */
   passwordHash: string;
+  /** 积分余额（1 RMB = 100 积分，注册赠送 10000 积分） */
+  points: number;
+  /** 用户已选择的模型 ID 列表（空表示尚未完成引导） */
+  selectedModels: string[];
 }
 
 /** 用户存储（key: 用户 ID） */
@@ -42,9 +46,9 @@ function now(): string {
 /**
  * 将存储用户转换为公开用户（去除密码哈希）
  * @param user 存储用户记录
- * @returns 不含密码哈希的 AuthUser
+ * @returns 不含密码哈希的 AuthUser（含积分字段）
  */
-export function toPublicUser(user: StoredUser): AuthUser {
+export function toPublicUser(user: StoredUser): AuthUser & { points: number; selectedModels: string[] } {
   return {
     id: user.id,
     email: user.email,
@@ -53,7 +57,49 @@ export function toPublicUser(user: StoredUser): AuthUser {
     isActive: user.isActive,
     createdAt: user.createdAt,
     updatedAt: user.updatedAt,
+    points: user.points ?? 0,
+    selectedModels: user.selectedModels ?? [],
   };
+}
+
+/** 获取用户当前积分 */
+export function getUserPoints(userId: string): number {
+  return users.get(userId)?.points ?? 0;
+}
+
+/**
+ * 扣除用户积分
+ * @returns true 成功，false 余额不足
+ */
+export function deductPoints(userId: string, amount: number): boolean {
+  const user = users.get(userId);
+  if (!user || user.points < amount) return false;
+  user.points -= amount;
+  user.updatedAt = new Date().toISOString();
+  return true;
+}
+
+/** 增加用户积分（充值/奖励） */
+export function addPoints(userId: string, amount: number): number {
+  const user = users.get(userId);
+  if (!user) return 0;
+  user.points += amount;
+  user.updatedAt = new Date().toISOString();
+  return user.points;
+}
+
+/** 更新用户已选模型列表 */
+export function updateSelectedModels(userId: string, modelIds: string[]): boolean {
+  const user = users.get(userId);
+  if (!user) return false;
+  user.selectedModels = modelIds;
+  user.updatedAt = new Date().toISOString();
+  return true;
+}
+
+/** 获取用户已选模型列表 */
+export function getSelectedModels(userId: string): string[] {
+  return users.get(userId)?.selectedModels ?? [];
 }
 
 /**
@@ -77,6 +123,8 @@ export function createUser(data: {
     createdAt: timestamp,
     updatedAt: timestamp,
     passwordHash: hashPassword(data.password),
+    points: 10000,
+    selectedModels: [],
   };
   users.set(user.id, user);
   emailIndex.set(user.email.toLowerCase(), user.id);
@@ -125,6 +173,55 @@ export function getStoredUserByUsername(
   const id = usernameIndex.get(username.toLowerCase());
   if (!id) return undefined;
   return users.get(id);
+}
+
+/**
+ * 确保默认管理员账号存在于内存 store 中（纯内存模式的种子数据）
+ * 邮箱: admin@borealos.dev  密码: admin123
+ */
+export function ensureDefaultAdmin(): void {
+  if (emailIndex.has('admin@borealos.dev')) return;
+  const timestamp = now();
+  const user: StoredUser = {
+    id: 'usr-admin-default',
+    email: 'admin@borealos.dev',
+    username: 'admin',
+    role: 'admin',
+    isActive: true,
+    createdAt: timestamp,
+    updatedAt: timestamp,
+    passwordHash: hashPassword('admin123'),
+    points: 10000,
+    selectedModels: [],
+  };
+  users.set(user.id, user);
+  emailIndex.set('admin@borealos.dev', user.id);
+  usernameIndex.set('admin', user.id);
+}
+
+/** 获取所有用户列表（仅限管理后台使用） */
+export function getAllUsers(): StoredUser[] {
+  return Array.from(users.values()).sort(
+    (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+  );
+}
+
+/** 更新用户角色 */
+export function updateUserRole(userId: string, role: AuthUser['role']): boolean {
+  const user = users.get(userId);
+  if (!user) return false;
+  user.role = role;
+  user.updatedAt = new Date().toISOString();
+  return true;
+}
+
+/** 启用 / 禁用用户 */
+export function setUserActive(userId: string, isActive: boolean): boolean {
+  const user = users.get(userId);
+  if (!user) return false;
+  user.isActive = isActive;
+  user.updatedAt = new Date().toISOString();
+  return true;
 }
 
 /** 将 token 加入黑名单（登出 / 刷新令牌轮换时使用） */

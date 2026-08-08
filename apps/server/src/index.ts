@@ -33,6 +33,7 @@ import audioRoutes from './routes/audio';
 import digitalHumanCloudRoutes from './routes/digital-human-cloud';
 import updateRoutes from './routes/update';
 import codeEditRoutes from './routes/code-edit';
+import adminRoutes from './routes/admin';
 import configRoutes from './routes/config';
 import sshDevicesRoutes from './routes/ssh-devices';
 import connectionsRoutes from './routes/connections';
@@ -140,6 +141,7 @@ async function main() {
   await fastify.register(connectionsRoutes); // /api/connections
   await fastify.register(pointsRoutes);      // /api/points/*
   await fastify.register(preferencesRoutes); // /api/user/preferences
+  await fastify.register(adminRoutes);       // /api/admin/*
 
   // ==================== 服务前端静态文件 ====================
 

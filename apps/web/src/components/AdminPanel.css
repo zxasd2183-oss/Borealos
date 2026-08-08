@@ -1,0 +1,764 @@
+/* ============================================================
+   AdminPanel — 管理控制台样式
+   ============================================================ */
+
+.ap {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: var(--bg-primary, #0d0d0f);
+  color: var(--text-primary, #f0f0f5);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  overflow: hidden;
+}
+
+.ap--center {
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+}
+
+/* ── 顶部标题栏 ── */
+.ap__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 20px 0;
+  flex-shrink: 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+.ap__header-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-bottom: 14px;
+}
+
+.ap__icon { font-size: 18px; }
+
+.ap__title {
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+/* ── Tab 导航 ── */
+.ap__tabs {
+  display: flex;
+  gap: 2px;
+}
+
+.ap__tab {
+  padding: 10px 16px;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: rgba(255, 255, 255, 0.4);
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+
+.ap__tab:hover {
+  color: rgba(255, 255, 255, 0.75);
+}
+
+.ap__tab--active {
+  color: #fff;
+  border-bottom-color: #007AFF;
+}
+
+/* ── 内容区 ── */
+.ap__body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 20px;
+}
+
+.ap__section {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* ── 加载 / 空 ── */
+.ap__loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 160px;
+}
+
+.ap__empty {
+  text-align: center;
+  color: rgba(255, 255, 255, 0.3);
+  padding: 40px 0;
+  font-size: 14px;
+}
+
+/* ── Spinner ── */
+.ap__spinner {
+  width: 32px;
+  height: 32px;
+  border: 2.5px solid rgba(255, 255, 255, 0.08);
+  border-top-color: #007AFF;
+  border-radius: 50%;
+  animation: ap-spin 0.8s linear infinite;
+  flex-shrink: 0;
+}
+
+.ap__spinner--sm {
+  width: 20px;
+  height: 20px;
+  border-width: 2px;
+}
+
+@keyframes ap-spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ── 无权限 ── */
+.ap__forbidden-icon {
+  font-size: 48px;
+}
+
+.ap__forbidden-title {
+  font-size: 20px;
+  font-weight: 600;
+  margin: 0;
+}
+
+.ap__forbidden-sub {
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.4);
+  margin: 0;
+}
+
+/* ── Toast ── */
+.ap__toast {
+  position: fixed;
+  top: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(30, 30, 36, 0.95);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 10px;
+  padding: 10px 20px;
+  font-size: 13px;
+  color: #f0f0f5;
+  z-index: 9999;
+  backdrop-filter: blur(12px);
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.4);
+  white-space: nowrap;
+}
+
+/* ── 统计卡片 ── */
+.ap__stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 12px;
+}
+
+.ap__stat-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 20px 16px;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  background: rgba(255, 255, 255, 0.03);
+  text-align: center;
+}
+
+.ap__stat-card--blue   { border-color: rgba(0, 122, 255, 0.25); background: rgba(0, 122, 255, 0.06); }
+.ap__stat-card--green  { border-color: rgba(48, 209, 88, 0.25); background: rgba(48, 209, 88, 0.06); }
+.ap__stat-card--purple { border-color: rgba(191, 90, 242, 0.25); background: rgba(191, 90, 242, 0.06); }
+.ap__stat-card--orange { border-color: rgba(255, 159, 10, 0.25); background: rgba(255, 159, 10, 0.06); }
+.ap__stat-card--yellow { border-color: rgba(255, 214, 10, 0.25); background: rgba(255, 214, 10, 0.06); }
+
+.ap__stat-icon  { font-size: 26px; }
+.ap__stat-value { font-size: 26px; font-weight: 700; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+.ap__stat-label { font-size: 11px; color: rgba(255, 255, 255, 0.45); text-transform: uppercase; letter-spacing: 0.04em; }
+
+/* ── 工具栏 ── */
+.ap__toolbar {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.ap__search-input {
+  flex: 1;
+  min-width: 180px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  padding: 8px 12px;
+  color: #f0f0f5;
+  font-size: 13px;
+  outline: none;
+}
+
+.ap__search-input::placeholder { color: rgba(255, 255, 255, 0.25); }
+.ap__search-input:focus { border-color: rgba(0, 122, 255, 0.4); }
+
+.ap__filter-select {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  padding: 8px 10px;
+  color: #f0f0f5;
+  font-size: 13px;
+  outline: none;
+  cursor: pointer;
+}
+
+.ap__filter-select option { background: #1a1a1f; }
+
+.ap__search-btn {
+  padding: 8px 16px;
+  background: #007AFF;
+  border: none;
+  border-radius: 8px;
+  color: #fff;
+  font-size: 13px;
+  cursor: pointer;
+  transition: background 0.15s;
+  white-space: nowrap;
+}
+
+.ap__search-btn:hover { background: #0066d6; }
+
+.ap__total-badge {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.35);
+  margin-left: 4px;
+  white-space: nowrap;
+}
+
+/* ── 表格 ── */
+.ap__table-wrap {
+  overflow-x: auto;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+.ap__table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.ap__table th {
+  padding: 10px 12px;
+  text-align: left;
+  font-size: 11px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.4);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  background: rgba(255, 255, 255, 0.02);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  white-space: nowrap;
+}
+
+.ap__table td {
+  padding: 10px 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  vertical-align: middle;
+}
+
+.ap__table tr:last-child td { border-bottom: none; }
+.ap__table tbody tr:hover td { background: rgba(255, 255, 255, 0.02); }
+
+.ap__tr--inactive td { opacity: 0.45; }
+
+.ap__td-center { text-align: center; }
+
+.ap__username {
+  display: block;
+  font-weight: 500;
+  color: #f0f0f5;
+}
+
+.ap__user-id {
+  display: block;
+  font-size: 10px;
+  font-family: 'SF Mono', 'Cascadia Code', monospace;
+  color: rgba(255, 255, 255, 0.25);
+  margin-top: 2px;
+}
+
+.ap__email {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.55);
+}
+
+.ap__date {
+  font-size: 12px;
+  font-family: 'SF Mono', 'Cascadia Code', monospace;
+  color: rgba(255, 255, 255, 0.35);
+  white-space: nowrap;
+}
+
+/* ── 角色徽章 ── */
+.ap__role-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 11px;
+  padding: 3px 8px;
+  border-radius: 20px;
+  white-space: nowrap;
+}
+
+.ap__role-badge--admin {
+  background: rgba(191, 90, 242, 0.15);
+  border: 1px solid rgba(191, 90, 242, 0.3);
+  color: #d8a0f0;
+}
+
+.ap__role-badge--user {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.5);
+}
+
+/* ── 状态点 ── */
+.ap__status-dot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  margin-right: 6px;
+  vertical-align: middle;
+}
+
+.ap__status-dot--on  { background: #30D158; box-shadow: 0 0 6px rgba(48, 209, 88, 0.5); }
+.ap__status-dot--off { background: rgba(255, 255, 255, 0.2); }
+
+/* ── 积分列 ── */
+.ap__points-cell {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.ap__points-edit-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 12px;
+  opacity: 0.4;
+  margin-left: 4px;
+  transition: opacity 0.15s;
+  vertical-align: middle;
+}
+
+.ap__points-edit-btn:hover { opacity: 1; }
+
+/* ── 操作按钮 ── */
+.ap__actions {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.ap__action-btn {
+  font-size: 11px;
+  padding: 4px 10px;
+  border-radius: 6px;
+  border: 1px solid;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.15s;
+}
+
+.ap__action-btn--primary {
+  background: rgba(0, 122, 255, 0.1);
+  border-color: rgba(0, 122, 255, 0.3);
+  color: #64b5f6;
+}
+
+.ap__action-btn--primary:hover {
+  background: rgba(0, 122, 255, 0.2);
+}
+
+.ap__action-btn--warn {
+  background: rgba(255, 159, 10, 0.1);
+  border-color: rgba(255, 159, 10, 0.3);
+  color: #ffb340;
+}
+
+.ap__action-btn--warn:hover {
+  background: rgba(255, 159, 10, 0.2);
+}
+
+.ap__action-btn--danger {
+  background: rgba(255, 69, 58, 0.1);
+  border-color: rgba(255, 69, 58, 0.3);
+  color: #ff6961;
+}
+
+.ap__action-btn--danger:hover {
+  background: rgba(255, 69, 58, 0.2);
+}
+
+.ap__action-btn--green {
+  background: rgba(48, 209, 88, 0.1);
+  border-color: rgba(48, 209, 88, 0.3);
+  color: #5de07a;
+}
+
+.ap__action-btn--green:hover {
+  background: rgba(48, 209, 88, 0.2);
+}
+
+/* ── 分页 ── */
+.ap__pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+}
+
+.ap__page-btn {
+  padding: 7px 14px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  color: rgba(255, 255, 255, 0.65);
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.ap__page-btn:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.ap__page-btn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.ap__page-info {
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.4);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── 弹窗 ── */
+.ap__modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  z-index: 8888;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  backdrop-filter: blur(4px);
+}
+
+.ap__modal {
+  background: #18181c;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 16px;
+  padding: 24px;
+  width: 340px;
+  max-width: calc(100vw - 40px);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.ap__modal-title {
+  font-size: 15px;
+  font-weight: 600;
+  margin: 0;
+}
+
+.ap__modal-label {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.4);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.ap__modal-input {
+  width: 100%;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  padding: 9px 12px;
+  color: #f0f0f5;
+  font-size: 13px;
+  outline: none;
+  box-sizing: border-box;
+}
+
+.ap__modal-input:focus { border-color: rgba(0, 122, 255, 0.4); }
+
+.ap__modal-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 4px;
+}
+
+/* ── 通用按钮 ── */
+.ap__primary-btn {
+  padding: 10px 20px;
+  background: #007AFF;
+  color: #fff;
+  border: none;
+  border-radius: 9px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s;
+  white-space: nowrap;
+}
+
+.ap__primary-btn:hover:not(:disabled) { background: #0066d6; }
+.ap__primary-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+
+.ap__ghost-btn {
+  padding: 10px 16px;
+  background: none;
+  border: none;
+  color: rgba(255, 255, 255, 0.35);
+  font-size: 13px;
+  cursor: pointer;
+  transition: color 0.15s;
+}
+
+.ap__ghost-btn:hover { color: rgba(255, 255, 255, 0.65); }
+
+/* ── API 配置 ── */
+.ap__config-hint {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.45);
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 10px;
+  padding: 12px 14px;
+  line-height: 1.7;
+  margin: 0;
+}
+
+.ap__config-hint code {
+  font-family: 'SF Mono', 'Cascadia Code', monospace;
+  font-size: 11px;
+  background: rgba(255, 255, 255, 0.08);
+  padding: 1px 5px;
+  border-radius: 4px;
+}
+
+.ap__config-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+@media (max-width: 640px) {
+  .ap__config-grid { grid-template-columns: 1fr; }
+}
+
+.ap__config-row {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.ap__config-label {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.45);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.ap__config-input {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  padding: 8px 12px;
+  color: #f0f0f5;
+  font-size: 13px;
+  font-family: 'SF Mono', 'Cascadia Code', monospace;
+  outline: none;
+}
+
+.ap__config-input::placeholder {
+  color: rgba(255, 255, 255, 0.2);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}
+
+.ap__config-input:focus { border-color: rgba(0, 122, 255, 0.4); }
+
+.ap__config-actions {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+/* ── 浅色主题适配 ── */
+@media (prefers-color-scheme: light) {
+  .ap { background: #f5f5f7; color: #1c1c1e; }
+  .ap__header { border-bottom-color: rgba(0,0,0,0.08); }
+  .ap__tab { color: rgba(0,0,0,0.4); }
+  .ap__tab--active { color: #1c1c1e; border-bottom-color: #007AFF; }
+  .ap__search-input,
+  .ap__filter-select,
+  .ap__modal-input,
+  .ap__config-input { background: #fff; border-color: rgba(0,0,0,0.12); color: #1c1c1e; }
+  .ap__table-wrap { border-color: rgba(0,0,0,0.08); }
+  .ap__table th { background: rgba(0,0,0,0.02); color: rgba(0,0,0,0.4); border-bottom-color: rgba(0,0,0,0.06); }
+  .ap__table td { border-bottom-color: rgba(0,0,0,0.04); }
+  .ap__username { color: #1c1c1e; }
+  .ap__modal { background: #fff; border-color: rgba(0,0,0,0.1); }
+  .ap__config-hint { background: rgba(0,0,0,0.02); border-color: rgba(0,0,0,0.06); color: rgba(0,0,0,0.5); }
+}
+
+:root[data-theme="light"] .ap { background: #f5f5f7; color: #1c1c1e; }
+
+/* ── 开发工具卡片 ── */
+.ap__dev-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 12px;
+}
+
+.ap__dev-card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 5px;
+  padding: 18px 16px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.15s;
+  text-align: left;
+  position: relative;
+}
+
+.ap__dev-card:hover:not(.ap__dev-card--disabled) {
+  background: rgba(0, 122, 255, 0.08);
+  border-color: rgba(0, 122, 255, 0.3);
+}
+
+.ap__dev-card--disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.ap__dev-card-icon { font-size: 24px; margin-bottom: 4px; }
+.ap__dev-card-title { font-size: 14px; font-weight: 600; color: #f0f0f5; }
+.ap__dev-card-sub   { font-size: 12px; color: rgba(255,255,255,0.45); line-height: 1.5; }
+
+.ap__dev-card-soon {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  font-size: 10px;
+  padding: 2px 7px;
+  background: rgba(255,159,10,0.12);
+  border: 1px solid rgba(255,159,10,0.25);
+  border-radius: 20px;
+  color: #ffb340;
+}
+
+.ap__dev-hint {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+  background: rgba(0,122,255,0.06);
+  border: 1px solid rgba(0,122,255,0.18);
+  border-radius: 12px;
+  padding: 16px;
+}
+
+.ap__dev-hint-icon { font-size: 28px; flex-shrink: 0; }
+.ap__dev-hint-title { font-size: 14px; font-weight: 600; margin-bottom: 4px; }
+.ap__dev-hint-sub  { font-size: 13px; color: rgba(255,255,255,0.55); line-height: 1.6; }
+.ap__dev-hint-sub code {
+  font-family: 'SF Mono', 'Cascadia Code', monospace;
+  font-size: 12px;
+  background: rgba(255,255,255,0.1);
+  padding: 1px 5px;
+  border-radius: 4px;
+}
+
+/* ── 连接中心空状态 ── */
+.ap__conn-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 20px;
+  text-align: center;
+  color: rgba(255,255,255,0.35);
+}
+
+/* ── 响应式：手机 ── */
+@media (max-width: 600px) {
+  .ap__header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0;
+    padding-bottom: 0;
+  }
+
+  .ap__header-left { padding-bottom: 10px; }
+
+  .ap__tabs {
+    width: 100%;
+    overflow-x: auto;
+    scrollbar-width: none;
+    padding-bottom: 0;
+  }
+
+  .ap__tabs::-webkit-scrollbar { display: none; }
+
+  .ap__tab {
+    padding: 10px 12px;
+    font-size: 12px;
+  }
+
+  .ap__stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .ap__toolbar {
+    flex-wrap: wrap;
+  }
+
+  .ap__table th:nth-child(4),
+  .ap__table td:nth-child(4),
+  .ap__table th:nth-child(6),
+  .ap__table td:nth-child(6) {
+    display: none;
+  }
+
+  .ap__dev-cards {
+    grid-template-columns: 1fr;
+  }
+
+  .ap__body {
+    padding: 14px;
+  }
+}
+
+/* ── 响应式：平板 ── */
+@media (min-width: 601px) and (max-width: 900px) {
+  .ap__stats-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+  .ap__config-grid {
+    grid-template-columns: 1fr;
+  }
+}

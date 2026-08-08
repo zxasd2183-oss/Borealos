@@ -23,22 +23,23 @@ import DynamicIslandComponent, { DynamicIsland } from './components/DynamicIslan
 import type { IslandData } from './components/DynamicIsland';
 import {
   AiIcon,
-  WorkIcon,
   ImageIcon,
-  ServerIcon,
   VideoIcon,
+  AudioIcon,
+  TemplateIcon,
+  GridIcon,
+  AdminIcon,
 } from './components/Icons';
 import DigitalHumanPanel from './components/DigitalHumanPanel';
 import OnboardingWizard from './components/OnboardingWizard';
-import RemoteDeviceCenter from './components/RemoteDeviceCenter';
 import ModelCenter from './components/ModelCenter';
 import SettingsPanel from './components/SettingsPanel';
 import type { Theme } from './components/SettingsPanel';
-import { GridIcon } from './components/Icons';
 import CodeEditPanel from './components/CodeEditPanel';
+import AdminPanel from './components/AdminPanel';
 
 /** 视图类型 */
-type ViewType = 'chat' | 'work' | 'image' | 'digital-human' | 'remote-devices' | 'model-center' | 'code-edit';
+type ViewType = 'chat' | 'image' | 'video' | 'audio' | 'template' | 'digital-human' | 'model-center' | 'code-edit' | 'admin';
 
 /** 聊天消息 */
 export interface ChatMessage {
@@ -65,11 +66,12 @@ function generateTitle(messages: ChatMessage[]): string {
 /** 导航项配置 */
 const NAV_ITEMS: NavItem[] = [
   { type: 'chat',          label: '对话',    icon: AiIcon },
-  { type: 'work',          label: 'Work',    icon: WorkIcon },
   { type: 'image',         label: '图片生成', icon: ImageIcon },
+  { type: 'video',         label: '视频生成', icon: VideoIcon },
+  { type: 'audio',         label: '音频生成', icon: AudioIcon },
   { type: 'digital-human', label: '数字人',   icon: VideoIcon,   group: 'tools' },
+  { type: 'template',      label: '模板中心', icon: TemplateIcon, group: 'tools' },
   { type: 'model-center',  label: '模型中心', icon: GridIcon,    group: 'tools' },
-  { type: 'remote-devices',label: '连接中心', icon: ServerIcon,  group: 'tools' },
 ];
 
 /* ============================================================
@@ -564,20 +566,27 @@ const App: React.FC = () => {
   /** 处理斜杠命令 */
   const handleSlashCommand = useCallback((cmd: string, args: string) => {
     switch (cmd) {
-      case 'work':
-        setActiveView('work');
-        break;
       case 'image':
         setActiveView('image');
         break;
-      case 'canvas':
-        setActiveView('digital-human');
+      case 'video':
+        setActiveView('video');
         break;
-      case 'code':
-        setActiveView('work');
+      case 'audio':
+        setActiveView('audio');
+        break;
+      case 'template':
+        setActiveView('template');
+        break;
+      case 'canvas':
+      case 'digital-human':
+        setActiveView('digital-human');
         break;
       case 'update':
         setActiveView('code-edit');
+        break;
+      case 'admin':
+        setActiveView('admin');
         break;
       case 'new':
         handleNewConversation();
@@ -745,14 +754,20 @@ const App: React.FC = () => {
               />
             </div>
           )}
-          {activeView === 'work' && (
-            <div key="work" className="aurora-view-wrapper aurora-view-wrapper--work">
-              <WorkPanel model={selectedModel} />
-            </div>
-          )}
           {activeView === 'image' && (
             <div key="image" className="aurora-view-wrapper">
               <ImageGenPanel availableModelIds={selectedModels} />
+            </div>
+          )}
+          {activeView === 'video' && (
+            <div key="video" className="aurora-view-wrapper aurora-view-wrapper--digital-human">
+              <DigitalHumanPanel />
+            </div>
+          )}
+          {activeView === 'audio' && (
+            <div key="audio" className="aurora-view-wrapper">
+              {/* 音频生成面板 — 占位，复用 DigitalHumanPanel 或独立组件 */}
+              <DigitalHumanPanel />
             </div>
           )}
           {activeView === 'digital-human' && (
@@ -760,9 +775,14 @@ const App: React.FC = () => {
               <DigitalHumanPanel />
             </div>
           )}
-          {activeView === 'remote-devices' && (
-            <div key="remote-devices" className="aurora-view-wrapper aurora-view-wrapper--remote-devices">
-              <RemoteDeviceCenter />
+          {activeView === 'template' && (
+            <div key="template" className="aurora-view-wrapper">
+              {/* 模板中心 — 占位 */}
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'rgba(255,255,255,0.35)', flexDirection: 'column', gap: 12 }}>
+                <span style={{ fontSize: 48 }}>📋</span>
+                <span style={{ fontSize: 16, fontWeight: 500 }}>模板中心</span>
+                <span style={{ fontSize: 13 }}>即将推出</span>
+              </div>
             </div>
           )}
           {activeView === 'model-center' && (
@@ -788,6 +808,11 @@ const App: React.FC = () => {
           {activeView === 'code-edit' && (
             <div key="code-edit" className="aurora-view-wrapper">
               <CodeEditPanel />
+            </div>
+          )}
+          {activeView === 'admin' && (
+            <div key="admin" className="aurora-view-wrapper">
+              <AdminPanel />
             </div>
           )}
         </main>
